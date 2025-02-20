@@ -1,0 +1,564 @@
+
+
+Prepping all the datasets for the cross-primate and mouse consensus taxonomy comparisons.
+
+Use the human and cross-primate data from the consensus primate project, data provided by Hamsini
+Use the old mini-atlas Allen data, the new whole brain Allen atlas, and the new whole brain Broad atlas for the mouse data.
+
+
+Load up the orthology df first
+Then go through the human/primate data to get their shared 1-1-orthologs
+
+Then go through the mouse data to get the final set of shared 1-1-othologs
+
+Filter all the datasets for those genes and save.
+
+Will eventually be running MetaNeighbor and marker gene expression analyses across these datasets
+
+
+
+```{r}
+
+library(SingleCellExperiment)
+library(Seurat)
+library(rhdf5)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(stats)
+library(data.table)
+library(MetaMarkers)
+setwd('/home/werner/projects/mouse_brain_consensus_taxonomy/code')
+```
+
+
+
+Select the MGE and CGE metaclusters from the Macosko atlas, just grabbing these clusters for the inhibitory analyses
+```{r}
+
+macosko_metaclusts = data.table::fread('/inkwell03/werner/lamp5_lhx6_meta/datasets/mouse/macosko_CellType_MetaCluster.csv')
+macosko_metaclusts 
+
+mge_cge_index = grepl('CGE', macosko_metaclusts$Annotation) | grepl('MGE', macosko_metaclusts$Annotation)
+
+macosko_metaclusts[mge_cge_index, ]
+
+macosko_metaclusts$cge_mge_meta_cluster = grepl('CGE', macosko_metaclusts$Annotation) | grepl('MGE', macosko_metaclusts$Annotation)
+
+write.csv(macosko_metaclusts,'/inkwell03/werner/lamp5_lhx6_meta/datasets/mouse/macosko_CellType_MetaCluster_MgeCge.csv', row.names = F)
+
+
+temp_df = data.table::fread('/inkwell03/werner/lamp5_lhx6_meta/datasets/mouse/macosko_CellType_MetaCluster_MgeCge.csv')
+
+```
+
+
+
+load in the datasets
+```{r}
+
+tasic18 = readRDS(file = '/vault/werner/rotation/jonathan/data/tasic18.rds')
+#Just grab the GABAergic cells
+inhib_filt = colData(tasic18)$cell_class == 'GABAergic'
+tasic18 = tasic18[ ,inhib_filt]
+
+table(colData(tasic18)$cell_cluster)
+ncol(tasic18)
+
+```
+
+
+```{r}
+
+zeng_10x_cells = readRDS("/vault/werner/rotation/jonathan/data/zeng_10x_cells/zeng_10x_cells.rds")
+zeng_10x_nuclei = readRDS("/vault/werner/rotation/jonathan/data/zeng_10x_nuclei/zeng_10x_nuclei.rds")
+zeng_smart_cells = readRDS("/vault/werner/rotation/jonathan/data/zeng_smart_cells/zeng_smart_cells.rds")
+zeng_smart_nuclei = readRDS("/vault/werner/rotation/jonathan/data/zeng_smart_nuclei/zeng_smart_nuclei.rds")
+
+
+inhib_filt = colData(zeng_10x_cells)$class_label == 'GABAergic'
+zeng_10x_cells = zeng_10x_cells[ , inhib_filt]
+
+inhib_filt = colData(zeng_10x_nuclei)$class_label == 'GABAergic'
+zeng_10x_nuclei = zeng_10x_nuclei[ , inhib_filt]
+
+inhib_filt = colData(zeng_smart_cells)$class_label == 'GABAergic'
+zeng_smart_cells = zeng_smart_cells[ , inhib_filt]
+
+inhib_filt = colData(zeng_smart_nuclei)$class_label == 'GABAergic'
+zeng_smart_nuclei = zeng_smart_nuclei[ , inhib_filt]
+
+
+ncol(zeng_10x_cells)
+ncol(zeng_10x_nuclei)
+ncol(zeng_smart_cells)
+ncol(zeng_smart_nuclei)
+```
+
+
+
+
+Zeng whole brain atlas data, already subsetted to CGE and MGE cells via Leon
+
+279966 cells in total, take ups about 40GB of RAM to load in as singleCellExperiment, not bad
+263406 cells for the classic CGE and MGE labels used in tasic 18 and original zeng datasets
+
+No Pax6 cells. And the most recent inhibitory taxonomy from the Allen using this data plus others also does not have Pax6 neurons.
+
+```{r}
+zeng_wb_atlas = zellkonverter::readH5AD(file = '/vault/lfrench/whole_mouse_brain/processed/zeng/subsets/AIT21.0.merged.with_multiome.MGE_and_CGE.h5ad', verbose = F)
+zeng_wb_atlas
+
+zeng_wb_meta = data.frame(colData(zeng_wb_atlas))
+
+zeng_wb_meta %>% group_by(method) %>% summarise(n = n())
+
+zeng_wb_meta %>% group_by(subclass_label) %>% summarise(n = n())
+
+
+#Filter for the MGE and CGE cells we want
+#cell_filt = zeng_wb_meta$subclass_label %in% c('Lamp5 Gaba','Lamp5 Lhx6 Gaba','Pvalb Gaba','Pvalb chandelier Gaba','Sncg Gaba','Sst Chodl Gaba','Sst Gaba','Vip Gaba')
+#zeng_wb_atlas = zeng_wb_atlas[ , cell_filt]
+
+#split by 10x tech
+zeng_wb_atlas_10xv2 = zeng_wb_atlas[ , zeng_wb_atlas$method == '10Xv2']
+zeng_wb_atlas_10xv3 = zeng_wb_atlas[ , zeng_wb_atlas$method == '10Xv3']
+
+
+rm(zeng_wb_atlas)
+gc()
+
+zeng_wb_atlas_10xv3
+
+```
+
+
+Macosko whole brain dataset
+~120,000 cells
+```{r}
+#Saved as a SingleCellExperiment object
+macosko_wb_atlas = readRDS(file ='/vault/lfrench/whole_mouse_brain/processed/macosko/subsets/Macosko_Mouse_Atlas_Single_Nuclei.Use_Backed.MGE_and_CGE.h5ad.rds')
+
+table(as.character(colData(macosko_wb_atlas)$cell.type))
+
+macosko_wb_atlas_genes = rowData(macosko_wb_atlas)$gene_name
+
+```
+
+
+
+
+The hippocampus and isocortex dataset, just grab the genes for initial filtering
+
+
+```{r}
+
+#data_file = '/inkwell03/werner/sc_data/mouse_iso_hipp_zeng_2022/10x/CTX_Hip_counts_10x.h5'
+
+#Get the gene and cell indices first and then can subset the count matrix for those, the full count matrix is huge and cannot be loaded into memory
+#zeng_hipp_10x_genes = h5read(data_file, 'data/gene')
+#h5closeAll()
+
+
+#data_file = '/inkwell03/werner/sc_data/mouse_iso_hipp_zeng_2022/ss/smrt.h5'
+#h5ls(data_file)
+#Get the gene and cell indices first and then can subset the count matrix for those, the full count matrix is huge and cannot be loaded into memory
+#zeng_hipp_ss_genes = h5read(data_file, '/gene_names')
+#h5closeAll()
+
+
+```
+
+
+
+
+
+Get the intersect of the gene names and filter down to the intersect
+zeng_10x gene names are ensemble. Do the same thing as in human and rename all the genes as ensmebl_id-gene_symbol
+
+```{r}
+library(org.Mm.eg.db)
+gene_map <- select(org.Mm.eg.db, keys(org.Mm.eg.db), c("SYMBOL", "ENSEMBL"), "ENTREZID")
+gene_map
+
+
+```
+
+```{r}
+
+final_present_1to1s = readRDS('/home/werner/projects/mouse_brain_consensus_taxonomy/data/final_present_1to1s.rds')
+
+final_present_1to1s
+
+mouse_present_1to1s= paste(final_present_1to1s$`Mouse gene stable ID`, final_present_1to1s$`Mouse gene name`, sep = '_')
+length(mouse_present_1to1s)
+```
+
+Try out the zeng and macosko single cell whole brain atlasses
+```{r}
+#Trying converting first leons jupyter notebook for loading up the data
+#input = '/inkwell03/werner/lamp5_lhx6_meta/data/Basic_loading_notebook.ipynb'
+#rmarkdown::convert_ipynb(input, output = xfun::with_ext(input, "Rmd"))
+
+```
+
+
+
+```{r}
+#Get the genes and map to ENSEMBL_SYMBOL names
+tasic18_genes = rownames(tasic18)
+index = match(tasic18_genes, gene_map$SYMBOL)
+tasic18_genes = paste(gene_map[index, 'ENSEMBL' ], gene_map[index, 'SYMBOL'], sep = '_')
+rowData(tasic18)$full_gene_id = tasic18_genes
+tasic18_genes[tasic18_genes == 'NA_NA'] = NA
+tasic18_genes = tasic18_genes[!is.na(tasic18_genes)]
+
+#10X datasets are already ensembl genes
+zeng_10x_cells_genes = rownames(zeng_10x_cells)
+index = match(zeng_10x_cells_genes, gene_map$ENSEMBL)
+zeng_10x_cells_genes = paste(gene_map[index, 'ENSEMBL' ], gene_map[index, 'SYMBOL'], sep = '_')
+rowData(zeng_10x_cells)$full_gene_id = zeng_10x_cells_genes
+zeng_10x_cells_genes[zeng_10x_cells_genes == 'NA_NA'] = NA
+zeng_10x_cells_genes = zeng_10x_cells_genes[!is.na(zeng_10x_cells_genes)]
+
+zeng_10x_nuclei_genes = rownames(zeng_10x_nuclei)
+index = match(zeng_10x_nuclei_genes, gene_map$ENSEMBL)
+zeng_10x_nuclei_genes = paste(gene_map[index, 'ENSEMBL' ], gene_map[index, 'SYMBOL'], sep = '_')
+rowData(zeng_10x_nuclei)$full_gene_id = zeng_10x_nuclei_genes
+zeng_10x_nuclei_genes[zeng_10x_nuclei_genes == 'NA_NA'] = NA
+zeng_10x_nuclei_genes = zeng_10x_nuclei_genes[!is.na(zeng_10x_nuclei_genes)]
+
+#Back to gene symbols
+zeng_smart_cells_genes = rownames(zeng_smart_cells)
+index = match(zeng_smart_cells_genes, gene_map$SYMBOL)
+zeng_smart_cells_genes = paste(gene_map[index, 'ENSEMBL' ], gene_map[index, 'SYMBOL'], sep = '_')
+rowData(zeng_smart_cells)$full_gene_id = zeng_smart_cells_genes
+zeng_smart_cells_genes[zeng_smart_cells_genes == 'NA_NA'] = NA
+zeng_smart_cells_genes = zeng_smart_cells_genes[!is.na(zeng_smart_cells_genes)]
+
+zeng_smart_nuclei_genes = rownames(zeng_smart_nuclei)
+index = match(zeng_smart_nuclei_genes, gene_map$SYMBOL)
+zeng_smart_nuclei_genes = paste(gene_map[index, 'ENSEMBL' ], gene_map[index, 'SYMBOL'], sep = '_')
+rowData(zeng_smart_nuclei)$full_gene_id = zeng_smart_nuclei_genes
+zeng_smart_nuclei_genes[zeng_smart_nuclei_genes == 'NA_NA'] = NA
+zeng_smart_nuclei_genes = zeng_smart_nuclei_genes[!is.na(zeng_smart_nuclei_genes)]
+
+
+#Zeng whole brain datasets
+zeng_wb_genes = rownames(zeng_wb_atlas_10xv3)
+index = match(zeng_wb_genes, gene_map$ENSEMBL)
+zeng_wb_genes = paste(gene_map[index, 'ENSEMBL' ], gene_map[index, 'SYMBOL'], sep = '_')
+rowData(zeng_wb_atlas_10xv2)$full_gene_id = zeng_wb_genes
+rowData(zeng_wb_atlas_10xv3)$full_gene_id = zeng_wb_genes
+zeng_wb_genes[zeng_wb_genes == 'NA_NA'] = NA
+zeng_wb_genes = zeng_wb_genes[!is.na(zeng_wb_genes)]
+
+
+#Macosko whole brain atlas
+macosko_wb_atlas_genes = paste(rownames(macosko_wb_atlas), rowData(macosko_wb_atlas)$gene_name, sep = '_' )
+rowData(macosko_wb_atlas)$full_gene_id = macosko_wb_atlas_genes
+
+
+shared_mouse_genes = Reduce(intersect, list(tasic18_genes, zeng_10x_cells_genes, zeng_10x_nuclei_genes, zeng_smart_cells_genes, zeng_smart_nuclei_genes, 
+                                      zeng_wb_genes, macosko_wb_atlas_genes))
+length(shared_mouse_genes)
+
+
+```
+
+
+
+Double check
+
+```{r}
+
+length(mouse_present_1to1s)
+table(shared_mouse_genes %in% mouse_present_1to1s)
+
+
+```
+
+
+Filter all datasets to the gene intersect and reorder so it's all the same
+
+```{r}
+
+gene_filt = rowData(tasic18)$full_gene_id %in% mouse_present_1to1s
+tasic18 = tasic18[gene_filt, ]
+index = match(mouse_present_1to1s, rowData(tasic18)$full_gene_id)
+tasic18 = tasic18[index, ]
+rownames(tasic18) = rowData(tasic18)$full_gene_id
+
+gene_filt = rowData(zeng_10x_cells)$full_gene_id %in% mouse_present_1to1s
+zeng_10x_cells = zeng_10x_cells[gene_filt, ]
+index = match(mouse_present_1to1s, rowData(zeng_10x_cells)$full_gene_id)
+zeng_10x_cells = zeng_10x_cells[index, ]
+rownames(zeng_10x_cells) = rowData(zeng_10x_cells)$full_gene_id
+
+gene_filt = rowData(zeng_10x_nuclei)$full_gene_id %in% mouse_present_1to1s
+zeng_10x_nuclei = zeng_10x_nuclei[gene_filt, ]
+index = match(mouse_present_1to1s, rowData(zeng_10x_nuclei)$full_gene_id)
+zeng_10x_nuclei = zeng_10x_nuclei[index, ]
+rownames(zeng_10x_nuclei) = rowData(zeng_10x_nuclei)$full_gene_id
+
+gene_filt = rowData(zeng_smart_cells)$full_gene_id %in% mouse_present_1to1s
+zeng_smart_cells = zeng_smart_cells[gene_filt, ]
+index = match(mouse_present_1to1s, rowData(zeng_smart_cells)$full_gene_id)
+zeng_smart_cells = zeng_smart_cells[index, ]
+rownames(zeng_smart_cells) = rowData(zeng_smart_cells)$full_gene_id
+
+gene_filt = rowData(zeng_smart_nuclei)$full_gene_id %in% mouse_present_1to1s
+zeng_smart_nuclei = zeng_smart_nuclei[gene_filt, ]
+index = match(mouse_present_1to1s, rowData(zeng_smart_nuclei)$full_gene_id)
+zeng_smart_nuclei = zeng_smart_nuclei[index, ]
+rownames(zeng_smart_nuclei) = rowData(zeng_smart_nuclei)$full_gene_id
+
+
+gene_filt = rowData(zeng_wb_atlas_10xv2)$full_gene_id %in% mouse_present_1to1s
+zeng_wb_atlas_10xv2 = zeng_wb_atlas_10xv2[gene_filt, ]
+index = match(mouse_present_1to1s, rowData(zeng_wb_atlas_10xv2)$full_gene_id)
+zeng_wb_atlas_10xv2 = zeng_wb_atlas_10xv2[index, ]
+rownames(zeng_wb_atlas_10xv2) = rowData(zeng_wb_atlas_10xv2)$full_gene_id
+
+gene_filt = rowData(zeng_wb_atlas_10xv3)$full_gene_id %in% mouse_present_1to1s
+zeng_wb_atlas_10xv3 = zeng_wb_atlas_10xv3[gene_filt, ]
+index = match(mouse_present_1to1s, rowData(zeng_wb_atlas_10xv3)$full_gene_id)
+zeng_wb_atlas_10xv3 = zeng_wb_atlas_10xv3[index, ]
+rownames(zeng_wb_atlas_10xv3) = rowData(zeng_wb_atlas_10xv3)$full_gene_id
+
+
+gene_filt = rowData(macosko_wb_atlas)$full_gene_id %in% mouse_present_1to1s
+macosko_wb_atlas = macosko_wb_atlas[gene_filt, ]
+index = match(mouse_present_1to1s, rowData(macosko_wb_atlas)$full_gene_id)
+macosko_wb_atlas = macosko_wb_atlas[index, ]
+rownames(macosko_wb_atlas) = rowData(macosko_wb_atlas)$full_gene_id
+
+```
+
+
+Use the MetaMarker approach for quick CPMs, then save as SCE objects.
+
+
+```{r}
+library(MetaMarkers)
+
+```
+
+```{r}
+
+assay(tasic18, "cpm") = MetaMarkers::convert_to_cpm(assay(tasic18))
+assay(zeng_10x_cells, "cpm") = MetaMarkers::convert_to_cpm(assay(zeng_10x_cells))
+assay(zeng_10x_nuclei, "cpm") = MetaMarkers::convert_to_cpm(assay(zeng_10x_nuclei))
+assay(zeng_smart_cells, "cpm") = MetaMarkers::convert_to_cpm(assay(zeng_smart_cells))
+assay(zeng_smart_nuclei, "cpm") = MetaMarkers::convert_to_cpm(assay(zeng_smart_nuclei))
+
+assay(zeng_wb_atlas_10xv2, "cpm") = MetaMarkers::convert_to_cpm(assay(zeng_wb_atlas_10xv2))
+assay(zeng_wb_atlas_10xv3, "cpm") = MetaMarkers::convert_to_cpm(assay(zeng_wb_atlas_10xv3))
+
+assay(macosko_wb_atlas, "cpm") = MetaMarkers::convert_to_cpm(assay(macosko_wb_atlas))
+```
+
+
+Save the mouse data
+
+```{r}
+
+saveRDS(tasic18, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba.rds')
+saveRDS(zeng_10x_cells, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba.rds')
+saveRDS(zeng_10x_nuclei, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba.rds')
+saveRDS(zeng_smart_cells, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba.rds')
+saveRDS(zeng_smart_nuclei, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba.rds')
+
+saveRDS(zeng_wb_atlas_10xv2, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba.rds')
+saveRDS(zeng_wb_atlas_10xv3, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv3_gaba.rds')
+
+saveRDS(macosko_wb_atlas,file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba.rds' )
+
+```
+
+
+
+########################
+
+Now load up and subset the primate data to the same orthologs, subset to GABA, CPM normalize and save as SCE objects
+
+
+#####################
+
+
+```{r}
+human_data = readRDS(file = '/inkwell03/werner/sc_data/primate_MTG/human_raw_UMI_expression_matrix.RDS')
+
+chimp_data = readRDS(file = '/inkwell03/werner/sc_data/primate_MTG/chimp_raw_UMI_expression_matrix.RDS')
+
+gorilla_data = readRDS(file = '/inkwell03/werner/sc_data/primate_MTG/gorilla_raw_UMI_expression_matrix.RDS')
+
+macaca_data = readRDS(file = '/inkwell03/werner/sc_data/primate_MTG/rhesus_raw_UMI_expression_matrix.RDS')
+
+marmoset_data = readRDS(file = '/inkwell03/werner/sc_data/primate_MTG/marmoset_raw_UMI_expression_matrix.RDS')
+
+```
+
+
+human data
+```{r}
+
+table(human_data$confirmed_subclass)
+human_genes = rownames(human_data)
+
+gene_index = human_genes %in% final_present_1to1s$`Gene name`
+cell_index = human_data$confirmed_subclass %in% c('Vip','Sncg','Pax6','Lamp5','Lamp5_Lhx6','Pvalb','Chandelier','Sst','Sst Chodl')
+
+dim(human_data)
+human_data = human_data[gene_index, cell_index ]
+dim(human_data)
+
+#Convert to singlecell experiment
+human_data = as.SingleCellExperiment(human_data)
+#CPM normalize
+assay(human_data, "cpm") = MetaMarkers::convert_to_cpm(assay(human_data))
+#Split by smartseq and 10x
+ss_index = colData(human_data)$species_tech == 'human_ss'
+human_data_ss = human_data[ , ss_index]
+human_data_10x = human_data[ , !ss_index]
+
+dim(human_data_ss)
+dim(human_data_10x)
+
+```
+
+
+chimp data
+```{r}
+
+table(chimp_data$confirmed_subclass)
+chimp_genes = rownames(chimp_data)
+
+gene_index = chimp_genes %in% final_present_1to1s$`Chimpanzee gene name`
+cell_index = chimp_data$confirmed_subclass %in% c('Vip','Sncg','Pax6','Lamp5','Lamp5_Lhx6','Pvalb','Chandelier','Sst','Sst Chodl')
+
+dim(chimp_data)
+chimp_data = chimp_data[gene_index, cell_index ]
+dim(chimp_data)
+
+#Convert to singlecell experiment
+chimp_data = as.SingleCellExperiment(chimp_data)
+#CPM normalize
+assay(chimp_data, "cpm") = MetaMarkers::convert_to_cpm(assay(chimp_data))
+#Split by smartseq and 10x
+ss_index = colData(chimp_data)$species_tech == 'chimp_ss'
+chimp_data_ss = chimp_data[ , ss_index]
+chimp_data_10x = chimp_data[ , !ss_index]
+
+dim(chimp_data_ss)
+dim(chimp_data_10x)
+
+```
+
+
+gorilla data
+```{r}
+
+table(gorilla_data$confirmed_subclass)
+gorilla_genes = rownames(gorilla_data)
+
+gene_index = gorilla_genes %in% final_present_1to1s$`Gorilla gene name`
+table(gene_index)
+cell_index = gorilla_data$confirmed_subclass %in% c('Vip','Sncg','Pax6','Lamp5','Lamp5_Lhx6','Pvalb','Chandelier','Sst','Sst Chodl')
+
+dim(gorilla_data)
+gorilla_data = gorilla_data[gene_index, cell_index ]
+dim(gorilla_data)
+
+#Convert to singlecell experiment
+gorilla_data = as.SingleCellExperiment(gorilla_data)
+#CPM normalize
+assay(gorilla_data, "cpm") = MetaMarkers::convert_to_cpm(assay(gorilla_data))
+#Split by smartseq and 10x
+ss_index = colData(gorilla_data)$species_tech == 'gorilla_ss'
+gorilla_data_ss = gorilla_data[ , ss_index]
+gorilla_data_10x = gorilla_data[ , !ss_index]
+
+dim(gorilla_data_ss)
+dim(gorilla_data_10x)
+
+```
+
+macaca data
+```{r}
+macaca_data[[]]
+table(macaca_data$confirmed_subclass)
+macaca_genes = rownames(macaca_data)
+
+gene_index = macaca_genes %in% final_present_1to1s$`Macaque gene name`
+table(gene_index)
+cell_index = macaca_data$confirmed_subclass %in% c('Vip','Sncg','Pax6','Lamp5','Lamp5_Lhx6','Pvalb','Chandelier','Sst','Sst Chodl')
+
+dim(macaca_data)
+macaca_data = macaca_data[gene_index, cell_index ]
+dim(macaca_data)
+
+#Convert to singlecell experiment
+macaca_data = as.SingleCellExperiment(macaca_data)
+#CPM normalize
+assay(macaca_data, "cpm") = MetaMarkers::convert_to_cpm(assay(macaca_data))
+dim(macaca_data)
+
+```
+
+
+marmoset data
+```{r}
+table(marmoset_data$confirmed_subclass)
+marmoset_genes = rownames(marmoset_data)
+
+gene_index = marmoset_genes %in% final_present_1to1s$`White-tufted-ear marmoset gene name`
+table(gene_index)
+cell_index = marmoset_data$confirmed_subclass %in% c('Vip','Sncg','Pax6','Lamp5','Lamp5_Lhx6','Pvalb','Chandelier','Sst','Sst Chodl')
+
+dim(marmoset_data)
+marmoset_data = marmoset_data[gene_index, cell_index ]
+dim(marmoset_data)
+
+#Convert to singlecell experiment
+marmoset_data = as.SingleCellExperiment(marmoset_data)
+#CPM normalize
+assay(marmoset_data, "cpm") = MetaMarkers::convert_to_cpm(assay(marmoset_data))
+dim(marmoset_data)
+
+```
+
+
+
+Save
+
+```{r}
+
+saveRDS(human_data_10x, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_10x_gaba.rds')
+saveRDS(human_data_ss, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_ss_gaba.rds')
+
+saveRDS(chimp_data_10x, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_10x_gaba.rds')
+saveRDS(chimp_data_ss, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_ss_gaba.rds')
+
+saveRDS(gorilla_data_10x, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_10x_gaba.rds')
+saveRDS(gorilla_data_ss, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_ss_gaba.rds')
+
+saveRDS(macaca_data, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/macaca_data_10x_gaba.rds')
+
+saveRDS(marmoset_data, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
+
+```
+
+
+And now use these datasets with MetaNeighbor to map the mouse clusters to the primate subclassess
+
+
+
+
+
+
+
+
+
+
+
