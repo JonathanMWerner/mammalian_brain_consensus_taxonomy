@@ -296,21 +296,129 @@ merged_mouse_sce = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/dat
 
 ```
 
+
+
+Run MetaNeighbor
+
 Get highly variable genes
 ```{r}
 start = Sys.time()
-global_hvgs = variableGenes(dat = merged_mouse_sce, exp_labels = merged_mouse_sce$study_id, min_recurrence = 7)
+global_hvgs = variableGenes(dat = merged_mouse_sce, exp_labels = merged_mouse_sce$study_id, min_recurrence = 6)
 length(global_hvgs)
 Sys.time() - start
 ```
 
+Just use the top 250 hvgs
 ```{r}
-global_hvgs
+global_hvgs = global_hvgs[1:250]
 
 ```
 
-Run MetaNeighbor
-Only takes less than 1min to run on all the mouse data, with a small hvg set of ~150
+
+```{r}
+
+start = Sys.time()
+
+mouse_aurocs = MetaNeighborUS(var_genes = global_hvgs, 
+                              dat = merged_mouse_sce, 
+                              study_id = merged_mouse_sce$study_id,
+                              cell_type = merged_mouse_sce$cluster_label,
+                              fast_version = T)
+
+Sys.time() - start
+gc()
+```
+
+
+```{r}
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/all_within_mouse_data.pdf', 
+    useDingbats = F, height = 25, width = 25)
+plotHeatmap(mouse_aurocs, cex = .2)
+
+
+dev.off()
+
+```
+
+
+And now the one-vs-best cell-types
+
+```{r}
+start = Sys.time()
+mouse_best_hits = MetaNeighborUS(var_genes = global_hvgs, 
+                              dat = merged_mouse_sce, 
+                              study_id = merged_mouse_sce$study_id,
+                              cell_type = merged_mouse_sce$cluster_label,
+                              fast_version = T,
+                              one_vs_best = T, symmetric_output = F)
+
+
+Sys.time() - start
+gc()
+
+```
+
+```{r}
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/all_within_mouse_data_1vsbest.pdf', 
+    useDingbats = F, height = 25, width = 25)
+plotHeatmap(mouse_best_hits, cex = .2)
+dev.off()
+
+
+
+```
+
+
+Grab the meta-clusters that have the other brain regions in them, will exclude those clusters
+
+```{r}
+mouse_mclusters = extractMetaClusters(mouse_best_hits, threshold = .6)
+mouse_mclusters
+
+
+allen_brain_regions = c('NDB-SI-MA-STRv', 'PAL-STR', 'RHP-COA', 'STR')
+
+other_region_clusters= c()
+for(i in 1:length(mouse_mclusters)){
+  other_regions = sum(sapply(strsplit(sapply(strsplit(mouse_mclusters[[i]], '|',2), '[[', 2), ' ', 2 ), '[[', 1) %in% allen_brain_regions)
+  
+  if(other_regions > 0){
+    other_region_clusters = c(other_region_clusters, mouse_mclusters[[i]])
+  }
+}
+
+
+#And now filter those other region clusters out of the merged_mouse_sce
+full_mouse_clusters = paste(colData(merged_mouse_sce)$study_id, colData(merged_mouse_sce)$cluster_label, sep = '|')
+keep_index = !full_mouse_clusters %in% other_region_clusters
+dim(merged_mouse_sce)
+merged_mouse_sce = merged_mouse_sce[ , keep_index]
+gc()
+dim(merged_mouse_sce)
+
+```
+
+
+
+
+
+Get highly variable genes
+```{r}
+start = Sys.time()
+global_hvgs = variableGenes(dat = merged_mouse_sce, exp_labels = merged_mouse_sce$study_id, min_recurrence = 6)
+length(global_hvgs)
+Sys.time() - start
+```
+
+Just use the top 250 hvgs
+```{r}
+global_hvgs = global_hvgs[1:250]
+
+```
+
+
 ```{r}
 
 start = Sys.time()
@@ -380,14 +488,14 @@ dev.off()
 
 
 ```{r}
-cluster_graph = makeClusterGraph(mouse_best_hits, low_threshold = .3)
+#cluster_graph = makeClusterGraph(mouse_best_hits, low_threshold = .3)
 
 
-pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/within_mouse_data_1vsbest_graph.pdf', 
-    useDingbats = F, height = 12, width = 12)
-plotClusterGraph(cluster_graph, merged_mouse_sce$study_id, 
-                 merged_mouse_sce$cluster_label, size_factor = 3)
-dev.off()
+#pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/within_mouse_data_1vsbest_graph.pdf', 
+#    useDingbats = F, height = 12, width = 12)
+#plotClusterGraph(cluster_graph, merged_mouse_sce$study_id, 
+#                 merged_mouse_sce$cluster_label, size_factor = 3)
+#dev.off()
 
 ```
 
@@ -396,8 +504,6 @@ Add the metacluster assignments to the data, use these when comparing to the cro
 ```{r}
 mouse_mclusters = extractMetaClusters(mouse_best_hits, threshold = .6)
 mouse_mclusters
-
-
 
 full_mouse_clusters = paste(colData(merged_mouse_sce)$study_id, colData(merged_mouse_sce)$cluster_label, sep = '|')
 
@@ -415,10 +521,31 @@ colData(merged_mouse_sce)$meta_cluster_label = meta_clust_label
 ```
 
 
+
+```{r}
+library(tidyverse)
+mouse_mclusters_df = enframe(mouse_mclusters) %>% unnest(cols = c('value'))
+
+mouse_mclusters_df$study = sapply(strsplit(mouse_mclusters_df$value, split = '|', fixed = T), '[[', 1)
+
+#Get the number of studies present in each metacluster and whether or not macosko is present
+#Will try only using the metaclusters represented by at least half of the datasets and include macosko. Those will be metaclusters that replicate
+#across the big atlases plus some of the older datasets. Metaclusters with macosko and only 3 studies are likely all of the extra regions sampled in the whole brain atlasses
+mouse_super_metaclusters = mouse_mclusters_df %>% group_by(name) %>% 
+  summarise(num_study = length(unique(study)), macosko_present = c('macosko_wba') %in% study) %>%
+  arrange(desc(num_study))
+
+mouse_super_metaclusters
+
+
+```
+
+
+
 save the mouse metaneighbor results
 ```{r}
 
-save(mouse_aurocs,mouse_best_hits , mouse_mclusters,
+save(mouse_aurocs, mouse_best_hits , mouse_mclusters, mouse_super_metaclusters,
      file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/mouse_MN_results.Rdata')
 
 
@@ -430,6 +557,15 @@ rm(merged_mouse_sce)
 gc()
 
 ```
+
+
+```{r}
+
+load('/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/mouse_MN_results.Rdata')
+
+mouse_mclusters
+```
+
 
 
 
@@ -633,43 +769,71 @@ merged_mammal_sce = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/da
 ```
 
 
+Only keep the mouse clusters in the replicable metaclusters
+
+```{r}
+
+keep_mouse_clusters = unname(unlist(mouse_mclusters))
+
+primate_index = colData(merged_mammal_sce)$study_id %in% c('chimp_10x','chimp_ss','human_ss','human_10x','gorilla_ss','gorilla_10x',
+                                                           'marmoset_10x','macaca_10x')
+
+primate_clusters = paste(colData(merged_mammal_sce)$study_id[primate_index], colData(merged_mammal_sce)$cluster_label[primate_index], sep = '|')
+
+#And now filter those other region clusters out of the merged_mouse_sce
+full_clusters = paste(colData(merged_mammal_sce)$study_id, colData(merged_mammal_sce)$cluster_label, sep = '|')
+keep_index = full_clusters %in% c(keep_mouse_clusters, primate_clusters)
+
+dim(merged_mammal_sce)
+merged_mammal_sce = merged_mammal_sce[ , keep_index]
+gc()
+dim(merged_mammal_sce)
+
+
+```
+
+
 
 Get highly variable genes
 ```{r}
 start = Sys.time()
-global_hvgs = variableGenes(dat = merged_mammal_sce, exp_labels = merged_mammal_sce$study_id, min_recurrence = 14)
+global_hvgs = variableGenes(dat = merged_mammal_sce, exp_labels = merged_mammal_sce$study_id, min_recurrence = 10)
 length(global_hvgs)
 Sys.time() - start
 
 ```
+
+Use the top 250
+```{r}
+global_hvgs = global_hvgs[1:250]
+```
+
+
 
 Add an annotation using the primate subclass but the mouse datasets cluster labels, looking to see which mouse clusters align with the primate subclasses
 ```{r}
 
 current_metadata = as.data.frame(colData(merged_mammal_sce))
 
-table(current_metadata$study_id)
+#table(current_metadata$study_id)
 
 
 mouse_clust_primate_sub = as.character(current_metadata$subclass_label)
-table(mouse_clust_primate_sub)
+#table(mouse_clust_primate_sub)
 
 index = current_metadata$study_id %in% c('tasic18','zeng_10x_cells','zeng_10x_nuclei','zeng_smart_cells','zeng_smart_nuclei',
                                          'zeng_10xv2_wba','zeng_10xv3_wba', 'macosko_wba')
 mouse_clust_primate_sub[index] = as.character(current_metadata$cluster_label)[index]
 
-table(mouse_clust_primate_sub)
+#table(mouse_clust_primate_sub)
 
 merged_mammal_sce$mouse_clust_primate_sub = mouse_clust_primate_sub
 
-colData(merged_mammal_sce)[1:10, ]
 
 ```
 
 And add an annotation using the mouse metacluster annotations
 ```{r}
-
-current_metadata 
 
 mouse_metaclust_primate_sub = as.character(current_metadata$subclass_label)
 full_cluster_label = paste(as.character(current_metadata$study_id), as.character(current_metadata$cluster_label), sep = '|')
@@ -684,9 +848,6 @@ merged_mammal_sce$mouse_metaclust_primate_sub = mouse_metaclust_primate_sub
 
 ```
 
-
-
-
 Run MetaNeighbor
 ```{r}
 
@@ -700,10 +861,6 @@ mammal_aurocs = MetaNeighborUS(var_genes = global_hvgs,
 
 Sys.time() - start
 
-```
-
-
-```{r}
 
 pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/across_mammals_data.pdf', 
     useDingbats = F, height = 25, width = 25)
@@ -742,22 +899,22 @@ dev.off()
 
 ```{r}
 
-mammal_mclusters = extractMetaClusters(mammal_best_hits, threshold = .7)
-mammal_mcsummary = scoreMetaClusters(mammal_mclusters, mammal_best_hits)
+#mammal_mclusters = extractMetaClusters(mammal_best_hits, threshold = .7)
+#mammal_mcsummary = scoreMetaClusters(mammal_mclusters, mammal_best_hits)
 
-mammal_mclusters 
+#mammal_mclusters 
 
 ```
 
 ```{r}
-cluster_graph = makeClusterGraph(mammal_best_hits, low_threshold = .3)
+#cluster_graph = makeClusterGraph(mammal_best_hits, low_threshold = .3)
 
 
-pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/across_mammal_data_1vsbest_graph.pdf', 
-    useDingbats = F, height = 12, width = 12)
-plotClusterGraph(cluster_graph, merged_mammal_sce$study_id, 
-                 merged_mammal_sce$cluster_label, size_factor = 3)
-dev.off()
+#pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/across_mammal_data_1vsbest_graph.pdf', 
+#    useDingbats = F, height = 12, width = 12)
+#plotClusterGraph(cluster_graph, merged_mammal_sce$study_id, 
+#                 merged_mammal_sce$cluster_label, size_factor = 3)
+#dev.off()
 
 ```
 
@@ -790,12 +947,64 @@ pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneig
 plotHeatmap(mammal_mouseMC_best_hits, cex = .2)
 dev.off()
 
+gc()
 ```
+
+
+
+And now the 1vs best but only using the super mouse metaclusters
+Those metaclusters that contain atleast 4 datasets, including the macosko atlas
+
+
+```{r}
+#Grab the mouse super clusters
+super_clusters = mouse_super_metaclusters %>% filter(num_study >= 4 & macosko_present) %>% pull(name)
+
+#Filter for the primate subclasses and the mouse super clusters
+current_subclass_metaclusts = colData(merged_mammal_sce)$mouse_metaclust_primate_sub
+keep_index = current_subclass_metaclusts %in% c(super_clusters, 'Lamp5','Lamp5_Lhx6','Vip','Pax6','Sncg','Pvalb','Chandelier','Sst','Sst Chodl' ) & current_subclass_metaclusts != 'outliers'
+table(keep_index)
+merged_mammal_super_sce = merged_mammal_sce[ , keep_index]
+dim(merged_mammal_super_sce)
+```
+
+```{r}
+start = Sys.time()
+global_hvgs_super = variableGenes(dat = merged_mammal_super_sce, exp_labels = merged_mammal_super_sce$study_id, min_recurrence = 10)
+length(global_hvgs_super)
+Sys.time() - start
+
+
+global_hvgs_super = global_hvgs_super[1:250]
+length(global_hvgs_super)
+```
+
+```{r}
+start = Sys.time()
+mammal_mouseSuperMC_best_hits = MetaNeighborUS(var_genes = global_hvgs_super, 
+                              dat = merged_mammal_super_sce, 
+                              study_id = merged_mammal_super_sce$study_id,
+                              cell_type = merged_mammal_super_sce$mouse_metaclust_primate_sub,
+                              fast_version = T,
+                              one_vs_best = T, symmetric_output = F)
+Sys.time() - start
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/across_mammal_mouseSuperMC_data_1vsbest.pdf', 
+    useDingbats = F, height = 25, width = 25)
+plotHeatmap(mammal_mouseMC_best_hits, cex = .2)
+dev.off()
+
+```
+
+
+
+
 
 save the cross-mammal metaneighbor results
 ```{r}
 
-save(mammal_aurocs,mammal_best_hits , mammal_mouseMC_best_hits, mammal_mclusters, mammal_mcsummary , cluster_graph,
+save(mammal_aurocs,mammal_best_hits , mammal_mouseMC_best_hits, mammal_mouseSuperMC_best_hits, 
      file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/cross_mammal_MN_results.Rdata')
 
 
@@ -938,58 +1147,64 @@ row_ha = rowAnnotation(primate_subclass = primate_subclass,
 
 auroc_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
 
-ht = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
+ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
                         row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
                         column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
                         column_names_gp = gpar(fontsize = 4),
                         row_names_gp = gpar(fontsize = 8),
                         left_annotation = row_ha,
-                        column_split = 9, row_split = 9)
+                        column_split = 10, row_split = 9)
 
-ht = draw(ht)
+ht_mc = draw(ht_mc)
 
 
 pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/primate_subclass_mouse_metacluster_heatmap.pdf',
     useDingbats = F, height = 8, width = 20)
-ht = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
+ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
                         row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
                         column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
                         column_names_gp = gpar(fontsize = 4),
                         row_names_gp = gpar(fontsize = 8),
                         left_annotation = row_ha)
 
-ht = draw(ht)
+ht_mc = draw(ht_mc)
 
 dev.off()
 
 pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/split_primate_subclass_mouse_metacluster_heatmap.pdf',
     useDingbats = F, height = 8, width = 20)
-ht_split = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
+ht_mc_split = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
                         row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
                         column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
                         column_names_gp = gpar(fontsize = 4),
                         row_names_gp = gpar(fontsize = 8),
                         left_annotation = row_ha,
-                        column_split = 9, row_split = 9)
-ht_split = draw(ht_split)
+                        column_split = 10, row_split = 9)
+ht_mc_split = draw(ht_mc_split)
 dev.off()
 
-meta_clust_groups = column_order(ht_split)
+```
+
+
+```{r}
+
+meta_clust_groups = column_order(ht_mc_split)
 
 
 colnames(test_metasubclass_hits)[meta_clust_groups[[1]]]
 
-df_1 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[1]]], primate_subclass = 'Sst' )
-df_2 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[2]]], primate_subclass = 'Sst Chodl' )
-df_3 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[3]]], primate_subclass = 'Pvalb' )
-df_4 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[4]]], primate_subclass = 'Chandelier' )
+df_1 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[1]]], primate_subclass = 'Sst Chodl' )
+df_2 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[2]]], primate_subclass = 'Sst' )
+df_3 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[3]]], primate_subclass = 'Chandelier' )
+df_4 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[4]]], primate_subclass = 'Pvalb' )
 df_5 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[5]]], primate_subclass = 'Vip' )
-df_6 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[6]]], primate_subclass = 'Lamp5' )
-df_7 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[7]]], primate_subclass = 'Lamp5 Lhx6' )
+df_6 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[6]]], primate_subclass = 'Lamp5 Lhx6' )
+df_7 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[7]]], primate_subclass = 'Lamp5' )
 df_8 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[8]]], primate_subclass = 'Pax6' )
 df_9 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[9]]], primate_subclass = 'Sncg' )
+df_10 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[10]]], primate_subclass = 'Pax6_Sncg' )
 
-mouse_metaclust_df = do.call(rbind, list(df_1, df_2, df_3, df_4, df_5, df_6, df_7, df_8, df_9))
+mouse_metaclust_df = do.call(rbind, list(df_1, df_2, df_3, df_4, df_5, df_6, df_7, df_8, df_9, df_10))
 mouse_metaclust_df
 
 
@@ -1011,9 +1226,7 @@ mouse_metaclust_df$cluster_names = clust_names
 mouse_metaclust_df
 ```
 
-
 Reorganize it so it's study, meta_cluster, primate subclass, and then cluster name
-
 
 ```{r}
 all_meta_dfs = list()
@@ -1067,9 +1280,155 @@ load(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneigh
 
 ```
 
+And now just the mouse super clusters
 
 
+And the metacluster annotations
+```{r}
+r_names = rownames(mammal_mouseSuperMC_best_hits)
+r_index = grepl('human', r_names) | grepl('chimp', r_names) | grepl('gorilla', r_names) | grepl('macaca', r_names) | grepl('marmoset', r_names) 
+c_index = !r_index
 
+test_metasubclass_hits = mammal_mouseSuperMC_best_hits[r_index, c_index]
+m = test_metasubclass_hits 
+#Cluster first, need to swap NAs to 0 for clustering
+m[is.na(m)] <- 0
+row_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-m), method = "ward.D2"))
+col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(m)), method = "ward.D2"))
+
+
+#And the primate subclass colors
+primate_subclass = rownames(test_metasubclass_hits)
+primate_subclass = sapply(strsplit(primate_subclass, '|', fixed = T), '[[', 2)
+primate_subclass = gsub('_',' ', primate_subclass)
+
+row_ha = rowAnnotation(primate_subclass = primate_subclass,
+                              col = list(primate_subclass = celltype_color_palette))
+
+
+auroc_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+
+ht_Supermc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8),
+                        left_annotation = row_ha,
+                        column_split =9, row_split = 9)
+
+ht_Supermc = draw(ht_Supermc)
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/primate_subclass_mouse_Supermetacluster_heatmap.pdf',
+    useDingbats = F, height = 8, width = 15)
+ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8),
+                        left_annotation = row_ha)
+
+ht_mc = draw(ht_mc)
+
+dev.off()
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/split_primate_subclass_mouse_Supermetacluster_heatmap.pdf',
+    useDingbats = F, height = 8, width = 15)
+ht_mc_split = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8),
+                        left_annotation = row_ha,
+                        column_split =9, row_split = 9)
+ht_mc_split = draw(ht_mc_split)
+dev.off()
+
+```
+```{r}
+
+#meta_clust_groups = column_order(ht_mc_split)
+
+
+#colnames(test_metasubclass_hits)[meta_clust_groups[[1]]]
+
+#df_1 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[1]]], primate_subclass = 'Sst Chodl' )
+#df_2 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[2]]], primate_subclass = 'Sst' )
+#df_3 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[3]]], primate_subclass = 'Chandelier' )
+#df_4 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[4]]], primate_subclass = 'Pvalb_Sst' )
+#df_5 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[5]]], primate_subclass = 'Pvalb' )
+#df_6 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[6]]], primate_subclass = 'Lamp5 Lhx6' )
+#df_7 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[7]]], primate_subclass = 'Lamp5' )
+#df_8 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[8]]], primate_subclass = 'Pax6_Sncg' )
+#df_9 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[9]]], primate_subclass = 'Pax6' )
+#df_10 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[10]]], primate_subclass = 'Vip' )
+#df_11 = data.frame(mouse_meta_cluster = colnames(test_metasubclass_hits)[meta_clust_groups[[11]]], primate_subclass = 'Sncg' )
+
+#mouse_metaclust_df = do.call(rbind, list(df_1, df_2, df_3, df_4, df_5, df_6, df_7, df_8, df_9, df_10, df_11))
+#mouse_metaclust_df
+
+
+#clust_names = vector(mode = 'character', length = nrow(mouse_metaclust_df))
+
+#for(i in 1:nrow(mouse_metaclust_df)){
+  
+#  current_label = mouse_metaclust_df$mouse_meta_cluster[i]
+#  
+#  current_study = unlist(strsplit(current_label, '|', fixed = T))[1]
+#  current_meta_cluster = unlist(strsplit(current_label, '|', fixed = T))[2]
+#  
+#  current_cluster_names = mouse_mclusters[[current_meta_cluster]][grepl(current_study, mouse_mclusters[[current_meta_cluster]])]
+#  clust_names[i] = paste(current_cluster_names, collapse = ';')
+
+#}
+
+#mouse_metaclust_df$cluster_names = clust_names
+#mouse_metaclust_df
+```
+
+
+```{r}
+#all_meta_dfs = list()
+
+#for(i in 1:nrow(mouse_metaclust_df)){
+#  current_meta_clust = mouse_metaclust_df$mouse_meta_cluster[i]
+  
+#  current_study = unlist(strsplit(current_meta_clust, '|', fixed = T))[1]
+#  current_meta_clust = unlist(strsplit(current_meta_clust, '|', fixed = T))[2]
+  
+#  current_primate_subclass = mouse_metaclust_df$primate_subclass[i]
+  
+#  current_clusters = mouse_metaclust_df$cluster_names[i]
+  
+  #Annoyingly long line of code, but it works
+#  current_clusters = unname(sapply(sapply( unlist(strsplit(current_clusters, ';', fixed = T)), strsplit, split = '|', fixed = T),'[[', 2 ))
+  
+  
+#  temp_df = data.frame(study = current_study, meta_cluster = current_meta_clust, primate_subclass = current_primate_subclass, cluster = current_clusters)
+  
+#  all_meta_dfs[[i]] = temp_df
+
+#}
+
+#all_meta_dfs = do.call(rbind, all_meta_dfs)
+
+#mouse_metaclust_df = all_meta_dfs
+#mouse_metaclust_df
+
+#table(mouse_metaclust_df$primate_subclass)
+
+#Keep the SNCG_Pax6 and Sncg_Vip as Sncg
+#index = mouse_metaclust_df$primate_subclass %in% c('Sncg_Pax6','Sncg_Vip')
+#mouse_metaclust_df$primate_subclass[index] = 'Sncg'
+
+
+```
+```{r}
+rm(merged_mammal_sce, merged_mammal_super_sce)
+gc()
+
+
+```
 
 
 
@@ -1086,72 +1445,109 @@ tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ort
 tasic18 = as.Seurat(tasic18, counts = "counts", data = "cpm")
 
 zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba.rds')
+names(assays(zeng_10x_cells)) = c('counts','cpm')
 zeng_10x_cells= as.Seurat(zeng_10x_cells, counts = "counts", data = "cpm")
 
 zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba.rds')
+names(assays(zeng_10x_nuclei)) = c('counts','cpm')
 zeng_10x_nuclei = as.Seurat(zeng_10x_nuclei, counts = "counts", data = "cpm")
 
 zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba.rds')
+names(assays(zeng_smart_cells)) = c('counts','cpm')
 zeng_smart_cells= as.Seurat(zeng_smart_cells, counts = "counts", data = "cpm")
 
 zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba.rds')
+names(assays(zeng_smart_nuclei)) = c('counts','cpm')
 zeng_smart_nuclei= as.Seurat(zeng_smart_nuclei, counts = "counts", data = "cpm")
 
 zeng_10xv2_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba.rds')
+names(assays(zeng_10xv2_wba)) = c('counts','cpm')
 zeng_10xv2_wba= as.Seurat(zeng_10xv2_wba, counts = "counts", data = "cpm")
 
 zeng_10xv3_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv3_gaba.rds')
+names(assays(zeng_10xv3_wba)) = c('counts','cpm')
 zeng_10xv3_wba= as.Seurat(zeng_10xv3_wba, counts = "counts", data = "cpm")
 
 macosko_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba.rds')
+names(assays(macosko_wba)) = c('counts','cpm')
 macosko_wba= as.Seurat(macosko_wba, counts = "counts", data = "cpm")
+gc()
 ```
 
 Add the primate subclass labels
 
 ```{r}
-
+tasic18
 study_clusts_df = mouse_metaclust_df %>% filter(study == 'tasic18')
-index = match(tasic18$cluster_label, study_clusts_df$cluster)
+index = match(tasic18$cell_cluster, study_clusts_df$cluster)
 tasic18$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 tasic18$primate_subclass = study_clusts_df$primate_subclass[index]
+tasic18 = tasic18[ ,!is.na(tasic18$primate_subclass)]
+
 
 study_clusts_df = mouse_metaclust_df %>% filter(study == 'zeng_10x_cells')
 index = match(zeng_10x_cells$cluster_label, study_clusts_df$cluster)
 zeng_10x_cells$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 zeng_10x_cells$primate_subclass = study_clusts_df$primate_subclass[index]
+zeng_10x_cells= zeng_10x_cells[ ,!is.na(zeng_10x_cells$primate_subclass)]
 
 study_clusts_df = mouse_metaclust_df %>% filter(study == 'zeng_10x_nuclei')
 index = match(zeng_10x_nuclei$cluster_label, study_clusts_df$cluster)
 zeng_10x_nuclei$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 zeng_10x_nuclei$primate_subclass = study_clusts_df$primate_subclass[index]
+zeng_10x_nuclei= zeng_10x_nuclei[ ,!is.na(zeng_10x_nuclei$primate_subclass)]
 
 study_clusts_df = mouse_metaclust_df %>% filter(study == 'zeng_smart_cells')
 index = match(zeng_smart_cells$cluster_label, study_clusts_df$cluster)
 zeng_smart_cells$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 zeng_smart_cells$primate_subclass = study_clusts_df$primate_subclass[index]
+zeng_smart_cells= zeng_smart_cells[ ,!is.na(zeng_smart_cells$primate_subclass)]
 
 study_clusts_df = mouse_metaclust_df %>% filter(study == 'zeng_smart_nuclei')
 index = match(zeng_smart_nuclei$cluster_label, study_clusts_df$cluster)
 zeng_smart_nuclei$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 zeng_smart_nuclei$primate_subclass = study_clusts_df$primate_subclass[index]
+zeng_smart_nuclei= zeng_smart_nuclei[ ,!is.na(zeng_smart_nuclei$primate_subclass)]
+
 
 study_clusts_df = mouse_metaclust_df %>% filter(study == 'zeng_10xv2_wba')
-index = match(zeng_10xv2_wba$cluster_label, study_clusts_df$cluster)
+index = match(zeng_10xv2_wba$supertype_label, study_clusts_df$cluster)
 zeng_10xv2_wba$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 zeng_10xv2_wba$primate_subclass = study_clusts_df$primate_subclass[index]
+zeng_10xv2_wba= zeng_10xv2_wba[ ,!is.na(zeng_10xv2_wba$primate_subclass)]
 
 study_clusts_df = mouse_metaclust_df %>% filter(study == 'zeng_10xv3_wba')
-index = match(zeng_10xv3_wba$cluster_label, study_clusts_df$cluster)
+index = match(zeng_10xv3_wba$supertype_label, study_clusts_df$cluster)
 zeng_10xv3_wba$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 zeng_10xv3_wba$primate_subclass = study_clusts_df$primate_subclass[index]
+zeng_10xv3_wba= zeng_10xv3_wba[ ,!is.na(zeng_10xv3_wba$primate_subclass)]
 
-macosko_wba[[]]
+
 study_clusts_df = mouse_metaclust_df %>% filter(study == 'macosko_wba')
-index = match(macosko_wba$cluster_label, study_clusts_df$cluster)
+index = match(macosko_wba$cell.type, study_clusts_df$cluster)
 macosko_wba$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 macosko_wba$primate_subclass = study_clusts_df$primate_subclass[index]
+macosko_wba= macosko_wba[ ,!is.na(macosko_wba$primate_subclass)]
 
+#Filter out the outlier clusters
+#outlier_index = tasic18$MN_meta_cluster != 'outliers'
+#tasic18 = tasic18[ , outlier_index]
+#outlier_index = zeng_10x_cells$MN_meta_cluster != 'outliers'
+#zeng_10x_cells = zeng_10x_cells[ , outlier_index]
+#outlier_index = zeng_10x_nuclei$MN_meta_cluster != 'outliers'
+#zeng_10x_nuclei = zeng_10x_nuclei[ , outlier_index]
+#outlier_index = zeng_smart_cells$MN_meta_cluster != 'outliers'
+#zeng_smart_cells = zeng_smart_cells[ , outlier_index]
+#outlier_index = zeng_smart_nuclei$MN_meta_cluster != 'outliers'
+#zeng_smart_nuclei = zeng_smart_nuclei[ , outlier_index]
+#outlier_index = zeng_10xv2_wba$MN_meta_cluster != 'outliers'
+#zeng_10xv2_wba = zeng_10xv2_wba[ , outlier_index]
+#outlier_index = zeng_10xv3_wba$MN_meta_cluster != 'outliers'
+#zeng_10xv3_wba = zeng_10xv3_wba[ , outlier_index]
+#outlier_index = macosko_wba$MN_meta_cluster != 'outliers'
+#macosko_wba = macosko_wba[ , outlier_index]
+
+gc()
 
 ```
 
@@ -1168,31 +1564,14 @@ celltype_color_palette = c("Chandelier"='#F641A8',
                            "Vip"='#A45FBF', 
                            "Lamp5 Lhx6"='#935F50',
                            "Pax6"='#71238C',
-                           'Vip_Sncg' = 'grey', 'Sncg_Pax6' = 'grey50',
+                           'Pvalb_Sst' = 'grey', 'Pax6_Sncg' = 'grey50',
                            'Serpinf1' = 'grey20')
 
 ```
 
 
 ```{r}
-outlier_index = tasic18$MN_meta_cluster != 'outliers'
-tasic18 = tasic18[ , outlier_index]
-outlier_index = zeng_10x_cells$MN_meta_cluster != 'outliers'
-zeng_10x_cells = zeng_10x_cells[ , outlier_index]
-outlier_index = zeng_10x_nuclei$MN_meta_cluster != 'outliers'
-zeng_10x_nuclei = zeng_10x_nuclei[ , outlier_index]
-outlier_index = zeng_smart_cells$MN_meta_cluster != 'outliers'
-zeng_smart_cells = zeng_smart_cells[ , outlier_index]
-outlier_index = zeng_smart_nuclei$MN_meta_cluster != 'outliers'
-zeng_smart_nuclei = zeng_smart_nuclei[ , outlier_index]
-outlier_index = zeng_10xv2_wba$MN_meta_cluster != 'outliers'
-zeng_10xv2_wba = zeng_10xv2_wba[ , outlier_index]
-outlier_index = zeng_10xv3_wba$MN_meta_cluster != 'outliers'
-zeng_10xv3_wba = zeng_10xv3_wba[ , outlier_index]
-outlier_index = macosko_wba$MN_meta_cluster != 'outliers'
-macosko_wba = macosko_wba[ , outlier_index]
 
-gc()
 
 #Update the wba subclass labels to drop the Gaba
 zeng_10xv2_wba$subclass_label = as.character(zeng_10xv2_wba$subclass_label)
@@ -1267,7 +1646,13 @@ macosko_wba <- RunPCA(macosko_wba, features = VariableFeatures(object = macosko_
 macosko_wba<- RunUMAP(macosko_wba , dims = 1:20, verbose = F)
 
 
-DimPlot(tasic18, reduction = "umap", group.by = 'subclass_label', cols = celltype_color_palette) + ggtitle('Tasic18 original subclass')
+```
+
+
+
+```{r}
+
+DimPlot(tasic18, reduction = "umap", group.by = 'cell_subclass', cols = celltype_color_palette) + ggtitle('Tasic18 original subclass')
 DimPlot(tasic18, reduction = "umap", group.by = 'primate_subclass', cols = celltype_color_palette) + ggtitle('Tasic18 new primate subclass')
 
 DimPlot(zeng_10x_cells, reduction = "umap", group.by = 'subclass_label', cols = celltype_color_palette) + ggtitle('zeng_10x_cells original subclass')
@@ -1282,6 +1667,7 @@ DimPlot(zeng_smart_cells, reduction = "umap", group.by = 'primate_subclass', col
 DimPlot(zeng_smart_nuclei, reduction = "umap", group.by = 'subclass_label', cols = celltype_color_palette) + ggtitle('zeng_smart_nuclei original subclass')
 DimPlot(zeng_smart_nuclei, reduction = "umap", group.by = 'primate_subclass', cols = celltype_color_palette) + ggtitle('zeng_smart_nuclei new primate subclass')
 
+
 DimPlot(zeng_10xv2_wba, reduction = "umap", group.by = 'subclass_label', cols = celltype_color_palette) + ggtitle('zeng_10xv2_wba original subclass')
 DimPlot(zeng_10xv2_wba, reduction = "umap", group.by = 'primate_subclass', cols = celltype_color_palette) + ggtitle('zeng_10xv2_wba new primate subclass')
 
@@ -1294,7 +1680,13 @@ DimPlot(macosko_wba, reduction = "umap", group.by = 'primate_subclass', cols = c
 
 ```
 
+```{r}
 
+mouse_super_metaclusters %>% filter(num_study >= 4 & macosko_present) %>% pull(name)
+
+mouse_mclusters$meta_cluster32
+
+```
 
 
 
