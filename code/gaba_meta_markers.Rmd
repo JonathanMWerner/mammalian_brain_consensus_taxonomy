@@ -1,0 +1,522 @@
+
+Looking at marker gene expression for the mouse data
+
+Compare marker genes from individual datasets and metamarkers
+
+Comparing the original subclasses to the primate orthologous subclasses
+
+
+
+
+```{r}
+library(SingleCellExperiment)
+library(MetaMarkers)
+library(dplyr)
+library(ggplot2)
+```
+
+
+
+
+
+```{r}
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba_primate_MN.rds')
+zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba_primate_MN.rds')
+zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba_primate_MN.rds')
+zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba_primate_MN.rds')
+zeng_10xv2_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba_primate_MN.rds')
+zeng_10xv3_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv3_gaba_primate_MN.rds')
+macosko_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba_primate_MN.rds')
+```
+
+
+filter out the low-orthologous clusters
+
+```{r}
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
+zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
+zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
+zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
+zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
+zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
+macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
+
+gc()
+```
+
+
+Rename the old Allen institute subclasses
+
+```{r}
+
+zeng_10x_cells$cell_subclass = as.character(zeng_10x_cells$cell_subclass)
+zeng_10x_cells$cell_cluster = as.character(zeng_10x_cells$cell_cluster)
+
+zeng_smart_cells$cell_subclass = as.character(zeng_smart_cells$cell_subclass)
+zeng_smart_cells$cell_cluster = as.character(zeng_smart_cells$cell_cluster)
+
+zeng_smart_nuclei$cell_subclass = as.character(zeng_smart_nuclei$cell_subclass)
+zeng_smart_nuclei$cell_cluster = as.character(zeng_smart_nuclei$cell_cluster)
+
+zeng_10x_nuclei$cell_subclass = as.character(zeng_10x_nuclei$cell_subclass)
+zeng_10x_nuclei$cell_cluster = as.character(zeng_10x_nuclei$cell_cluster)
+
+zeng_10xv2_wba$cell_cluster = as.character(zeng_10xv2_wba$cell_cluster)
+zeng_10xv3_wba$cell_cluster = as.character(zeng_10xv3_wba$cell_cluster)
+
+tasic18$cell_subclass[tasic18$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+tasic18$cell_subclass[tasic18$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+tasic18$cell_subclass[tasic18$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+tasic18$cell_subclass[tasic18$cell_subclass == 'Serpinf1'] = 'Vip'
+
+zeng_10x_cells$cell_subclass[zeng_10x_cells$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_10x_cells$cell_subclass[zeng_10x_cells$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_10x_cells$cell_subclass[zeng_10x_cells$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+zeng_10x_nuclei$cell_subclass[zeng_10x_nuclei$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_10x_nuclei$cell_subclass[zeng_10x_nuclei$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_10x_nuclei$cell_subclass[zeng_10x_nuclei$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+zeng_smart_nuclei$cell_subclass[zeng_smart_nuclei$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_smart_nuclei$cell_subclass[zeng_smart_nuclei$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_smart_nuclei$cell_subclass[zeng_smart_nuclei$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+zeng_smart_cells$cell_subclass[zeng_smart_cells$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_smart_cells$cell_subclass[zeng_smart_cells$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_smart_cells$cell_subclass[zeng_smart_cells$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+
+zeng_10xv2_wba$cell_subclass[zeng_10xv2_wba$cell_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+zeng_10xv3_wba$cell_subclass[zeng_10xv3_wba$cell_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+```
+
+
+
+
+
+
+dataset specific markers for the original subclasses
+```{r}
+
+markers_tasic18 = compute_markers(assay(tasic18, "cpm"), tasic18$cell_subclass)
+markers_zeng_10x_cells = compute_markers(assay(zeng_10x_cells, "cpm"), zeng_10x_cells$cell_subclass)
+markers_zeng_10x_nuclei = compute_markers(assay(zeng_10x_nuclei, "cpm"), zeng_10x_nuclei$cell_subclass)
+markers_zeng_smart_nuclei = compute_markers(assay(zeng_smart_nuclei, "cpm"), zeng_smart_nuclei$cell_subclass)
+markers_zeng_smart_cells = compute_markers(assay(zeng_smart_cells, "cpm"), zeng_smart_cells$cell_subclass)
+markers_zeng_10xv2_wba = compute_markers(assay(zeng_10xv2_wba, "cpm"), zeng_10xv2_wba$cell_subclass)
+markers_zeng_10xv3_wba = compute_markers(assay(zeng_10xv3_wba, "cpm"), zeng_10xv3_wba$cell_subclass)
+markers_macosko_wba = compute_markers(assay(macosko_wba, "cpm"), macosko_wba$cell_subclass)
+
+
+```
+
+
+
+```{r}
+markers_zeng_10xv2_wba %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = 10)
+
+```
+
+
+```{r}
+
+export_markers(markers_tasic18, "metamarkers/markers_tasic18.csv")
+export_markers(markers_zeng_10x_cells, "metamarkers/markers_zeng_10x_cells.csv")
+export_markers(markers_zeng_10x_nuclei, "metamarkers/markers_zeng_10x_nuclei.csv")
+export_markers(markers_zeng_smart_nuclei, "metamarkers/markers_zeng_smart_nuclei.csv")
+export_markers(markers_zeng_smart_cells, "metamarkers/markers_zeng_smart_cells.csv")
+export_markers(markers_zeng_10xv2_wba, "metamarkers/markers_zeng_10xv2_wba.csv")
+export_markers(markers_zeng_10xv3_wba, "metamarkers/markers_zeng_10xv3_wba.csv")
+export_markers(markers_macosko_wba, "metamarkers/markers_macosko_wba.csv")
+
+```
+
+
+MetaMarkers
+```{r}
+markers = list(
+    tasic18 = read_markers("metamarkers/markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("metamarkers/markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("metamarkers/markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("metamarkers/markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("metamarkers/markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("metamarkers/markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("metamarkers/markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("metamarkers/markers_macosko_wba.csv.gz")
+)
+
+```
+
+
+
+```{r}
+meta_markers = make_meta_markers(markers, detailed_stats = TRUE)
+
+```
+
+```{r}
+
+meta_markers %>% group_by(cell_type) %>% filter(rank <= 20)
+
+```
+
+
+```{r}
+
+export_meta_markers(meta_markers, "metamarkers/meta_markers.csv", names(markers))
+
+```
+
+
+```{r}
+
+meta_markers = read_meta_markers( "metamarkers/meta_markers.csv.gz")
+
+```
+
+
+
+```{r}
+
+meta_markers$gene = sapply(stringr::str_split(meta_markers$gene, '-', 2), '[[', 2 )
+
+plot_pareto_markers(meta_markers, "Chandelier", min_recurrence = 0)
+plot_pareto_markers(meta_markers, "Pvalb", min_recurrence = 0)
+plot_pareto_markers(meta_markers, "Sst", min_recurrence = 0)
+plot_pareto_markers(meta_markers, "Sst Chodl", min_recurrence = 0)
+
+plot_pareto_markers(meta_markers, "Vip", min_recurrence = 0)
+plot_pareto_markers(meta_markers, "Lamp5", min_recurrence = 0)
+plot_pareto_markers(meta_markers, "Lamp5 Lhx6", min_recurrence = 0)
+plot_pareto_markers(meta_markers, "Sncg", min_recurrence = 0)
+
+
+```
+
+
+
+
+
+################
+Markers using the orthologous Primate subclass labels
+
+
+###############
+
+
+
+dataset specific markers for the primate subclasses
+```{r}
+
+ortho_markers_tasic18 = compute_markers(assay(tasic18, "cpm"), tasic18$primate_subclass)
+ortho_markers_zeng_10x_cells = compute_markers(assay(zeng_10x_cells, "cpm"), zeng_10x_cells$primate_subclass)
+ortho_markers_zeng_10x_nuclei = compute_markers(assay(zeng_10x_nuclei, "cpm"), zeng_10x_nuclei$primate_subclass)
+ortho_markers_zeng_smart_nuclei = compute_markers(assay(zeng_smart_nuclei, "cpm"), zeng_smart_nuclei$primate_subclass)
+ortho_markers_zeng_smart_cells = compute_markers(assay(zeng_smart_cells, "cpm"), zeng_smart_cells$primate_subclass)
+ortho_markers_zeng_10xv2_wba = compute_markers(assay(zeng_10xv2_wba, "cpm"), zeng_10xv2_wba$primate_subclass)
+ortho_markers_zeng_10xv3_wba = compute_markers(assay(zeng_10xv3_wba, "cpm"), zeng_10xv3_wba$primate_subclass)
+ortho_markers_macosko_wba = compute_markers(assay(macosko_wba, "cpm"), macosko_wba$primate_subclass)
+
+
+```
+
+
+
+```{r}
+ortho_markers_macosko_wba %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = 20)
+
+```
+
+
+```{r}
+
+export_markers(ortho_markers_tasic18, "metamarkers/ortho_markers_tasic18.csv")
+export_markers(ortho_markers_zeng_10x_cells, "metamarkers/ortho_markers_zeng_10x_cells.csv")
+export_markers(ortho_markers_zeng_10x_nuclei, "metamarkers/ortho_markers_zeng_10x_nuclei.csv")
+export_markers(ortho_markers_zeng_smart_nuclei, "metamarkers/ortho_markers_zeng_smart_nuclei.csv")
+export_markers(ortho_markers_zeng_smart_cells, "metamarkers/ortho_markers_zeng_smart_cells.csv")
+export_markers(ortho_markers_zeng_10xv2_wba, "metamarkers/ortho_markers_zeng_10xv2_wba.csv")
+export_markers(ortho_markers_zeng_10xv3_wba, "metamarkers/ortho_markers_zeng_10xv3_wba.csv")
+export_markers(ortho_markers_macosko_wba, "metamarkers/ortho_markers_macosko_wba.csv")
+
+```
+
+
+Ortho Metamarkers
+
+```{r}
+ortho_markers = list(
+    tasic18 = read_markers("metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("metamarkers/ortho_markers_macosko_wba.csv.gz")
+)
+
+```
+
+
+
+```{r}
+ortho_meta_markers = make_meta_markers(ortho_markers, detailed_stats = TRUE)
+
+```
+
+```{r}
+
+ortho_meta_markers %>% group_by(cell_type) %>% filter(rank <= 20)
+
+```
+
+
+
+```{r}
+
+export_meta_markers(ortho_meta_markers, "metamarkers/ortho_meta_markers.csv", names(ortho_markers))
+
+```
+
+
+```{r}
+
+ortho_meta_markers = read_meta_markers( "metamarkers/ortho_meta_markers.csv.gz")
+
+```
+
+
+
+```{r}
+
+ortho_meta_markers$gene = sapply(stringr::str_split(ortho_meta_markers$gene, '-', 2), '[[', 2 )
+
+plot_pareto_markers(ortho_meta_markers, "Chandelier", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Pvalb", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Sst", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Sst Chodl", min_recurrence = 0)
+
+plot_pareto_markers(ortho_meta_markers, "Vip", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Lamp5", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Lamp5_Lhx6", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Sncg", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Pax6", min_recurrence = 0)
+
+```
+
+
+```{r}
+
+get_pareto_markers(ortho_meta_markers, "Sncg", min_recurrence=1)
+get_pareto_markers(ortho_meta_markers, "Pax6", min_recurrence=1)
+
+
+```
+
+
+```{r}
+
+ortho_meta_markers %>% filter(gene == '')
+
+```
+
+
+
+
+
+##########################
+
+And the primate meta-markers
+
+##########################
+
+
+```{r}
+
+human_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_10x_gaba.rds')
+human_ss = readRDS( file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_ss_gaba.rds')
+
+chimp_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_10x_gaba.rds')
+chimp_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_ss_gaba.rds')
+
+gorilla_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_10x_gaba.rds')
+gorilla_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_ss_gaba.rds')
+
+macaca_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/macaca_data_10x_gaba.rds')
+
+marmoset_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
+
+```
+
+
+```{r}
+
+
+
+markers_human_10x = compute_markers(assay(human_10x, "cpm"), human_10x$confirmed_subclass)
+markers_human_ss = compute_markers(assay(human_ss, "cpm"), human_ss$confirmed_subclass)
+
+markers_chimp_10x = compute_markers(assay(chimp_10x, "cpm"), chimp_10x$confirmed_subclass)
+markers_chimp_ss = compute_markers(assay(chimp_ss, "cpm"), chimp_ss$confirmed_subclass)
+
+markers_gorilla_10x = compute_markers(assay(gorilla_10x, "cpm"), gorilla_10x$confirmed_subclass)
+markers_gorilla_ss = compute_markers(assay(gorilla_ss, "cpm"), gorilla_ss$confirmed_subclass)
+
+markers_macaca_10x = compute_markers(assay(macaca_10x, "cpm"), macaca_10x$confirmed_subclass)
+
+markers_marmoset_10x = compute_markers(assay(marmoset_10x, "cpm"), marmoset_10x$confirmed_subclass)
+
+
+
+
+```
+
+
+
+```{r}
+
+export_markers(markers_human_10x, "metamarkers/markers_human_10x.csv")
+export_markers(markers_human_ss, "metamarkers/markers_human_ss.csv")
+export_markers(markers_chimp_10x, "metamarkers/markers_chimp_10x.csv")
+export_markers(markers_chimp_ss, "metamarkers/markers_chimp_ss.csv")
+export_markers(markers_gorilla_10x, "metamarkers/markers_gorilla_10x.csv")
+export_markers(markers_gorilla_ss, "metamarkers/markers_gorilla_ss.csv")
+export_markers(markers_macaca_10x, "metamarkers/markers_macaca_10x.csv")
+export_markers(markers_marmoset_10x, "metamarkers/markers_marmoset_10x.csv")
+
+```
+
+
+Primate Metamarkers
+
+```{r}
+primate_markers = list(
+    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
+)
+
+```
+
+
+
+```{r}
+primate_meta_markers = make_meta_markers(primate_markers, detailed_stats = TRUE)
+
+```
+
+```{r}
+
+primate_meta_markers %>% group_by(cell_type) %>% filter(rank <= 20)
+
+```
+
+
+```{r}
+
+export_meta_markers(primate_meta_markers, "metamarkers/primate_meta_markers.csv", names(primate_markers))
+
+```
+
+
+```{r}
+
+primate_meta_markers = read_meta_markers( "metamarkers/primate_meta_markers.csv")
+
+```
+
+
+
+```{r}
+
+plot_pareto_markers(primate_meta_markers, "Chandelier", min_recurrence = 0)
+plot_pareto_markers(primate_meta_markers, "Pvalb", min_recurrence = 0)
+plot_pareto_markers(primate_meta_markers, "Sst", min_recurrence = 0)
+plot_pareto_markers(primate_meta_markers, "Sst Chodl", min_recurrence = 0)
+
+plot_pareto_markers(primate_meta_markers, "Vip", min_recurrence = 0)
+plot_pareto_markers(primate_meta_markers, "Lamp5", min_recurrence = 0)
+plot_pareto_markers(primate_meta_markers, "Lamp5_Lhx6", min_recurrence = 0)
+plot_pareto_markers(primate_meta_markers, "Sncg", min_recurrence = 0)
+plot_pareto_markers(primate_meta_markers, "Pax6", min_recurrence = 0)
+
+```
+
+
+
+
+```{r}
+primate_meta_markers %>% filter(gene == 'SNCG')
+primate_meta_markers %>% filter(gene == 'PAX6')
+primate_meta_markers %>% filter(gene == 'TRPS1')
+```
+
+
+
+```{r}
+
+meta_markers %>% filter(cell_type == 'Pvalb', rank <= 20) 
+
+```
+
+
+```{r}
+
+ortho_meta_markers %>% filter(cell_type == 'Pvalb', rank <= 20) 
+
+```
+
+
+```{r}
+
+primate_meta_markers %>% filter(cell_type == 'Pvalb', rank <= 20) 
+
+```
+
+
+```{r}
+
+hamsini_primate_top100 = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/code/metamarkers/primate_MTG_consensus_markers.csv',
+                                           skip = 4)
+hamsini_primate_top100 
+
+
+hamsini_primate_top100$gene[as.logical(hamsini_primate_top100$Chandelier)]
+
+
+hamsini_primate_top100$gene[as.logical(hamsini_primate_top100$Lamp5_Lhx6)]
+
+```
+
+
+
+```{r}
+colData(human_10x)
+
+table(human_10x$cross_species_cluster)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
