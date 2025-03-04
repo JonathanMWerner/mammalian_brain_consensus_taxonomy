@@ -1075,26 +1075,6 @@ max_avg_mapping$orthology = rep('high_orthology', length = nrow(max_avg_mapping)
 max_avg_mapping$orthology[max_avg_mapping$mean_subclass < 0.6] = 'low_orthology'
 
 
-#all_meta_dfs = list()
-
-#for(i in 1:length(mouse_mclusters)){
-#  current_mc = mouse_mclusters[i]
-  
-#  current_studies = sapply(strsplit(current_mc[[1]], '|', fixed = T),'[[', 1 )
-#  current_clusters = sapply(strsplit(current_mc[[1]], '|', fixed = T),'[[', 2 )
-#  mc_name = rep(names(current_mc), length = length(current_studies))
-  
-#  all_meta_dfs[[i]] = data.frame(study = current_studies, meta_cluster = mc_name, cluster = current_clusters)
-#}
-
-#avg_mouse_metaclust_df = do.call('rbind', all_meta_dfs)
-#avg_mouse_metaclust_df$study_meta_cluster = paste(avg_mouse_metaclust_df$study, avg_mouse_metaclust_df$meta_cluster, sep = '|')
-
-
-#index = match(avg_mouse_metaclust_df$study_meta_cluster, as.character(max_avg_mapping$mouse_mcluster))
-#avg_mouse_metaclust_df$primate_subclass = max_avg_mapping$primate_subclass[index]
-#avg_mouse_metaclust_df$orthology = max_avg_mapping$orthology[index]
-#avg_mouse_metaclust_df
 ```
 
 
@@ -1435,6 +1415,26 @@ max_avg_mapping$mouse_mcluster = as.character(max_avg_mapping$mouse_mcluster)
 max_avg_mapping$study = sapply(strsplit(max_avg_mapping$mouse_mcluster,split = '|', fixed = T ), '[[', 1)
 max_avg_mapping$cluster = sapply(strsplit(max_avg_mapping$mouse_mcluster,split = '|', fixed = T ), '[[', 2)
 
+#Also add the mouse meta-cluster assignment to the clusters
+all_meta_dfs = list()
+
+for(i in 1:length(mouse_mclusters)){
+  current_mc = mouse_mclusters[i]
+  
+  current_studies = sapply(strsplit(current_mc[[1]], '|', fixed = T),'[[', 1 )
+  current_clusters = sapply(strsplit(current_mc[[1]], '|', fixed = T),'[[', 2 )
+  mc_name = rep(names(current_mc), length = length(current_studies))
+  
+  all_meta_dfs[[i]] = data.frame(study = current_studies, meta_cluster = mc_name, cluster = current_clusters)
+}
+
+avg_mouse_metaclust_df = do.call('rbind', all_meta_dfs)
+avg_mouse_metaclust_df$study_meta_cluster = paste(avg_mouse_metaclust_df$study, avg_mouse_metaclust_df$meta_cluster, sep = '|')
+avg_mouse_metaclust_df$study_cluster = paste(avg_mouse_metaclust_df$study, avg_mouse_metaclust_df$cluster, sep = '|')
+
+index = match(as.character(max_avg_mapping$mouse_mcluster), avg_mouse_metaclust_df$study_cluster)
+max_avg_mapping$meta_cluster = avg_mouse_metaclust_df$meta_cluster[index]
+
 
 
 
@@ -1608,7 +1608,7 @@ avg_mouse_metaclust_primate_clust_df
 
 study_clusts_df = max_avg_mapping %>% filter(study == 'tasic18')
 index = match(tasic18$cell_cluster, study_clusts_df$cluster)
-#tasic18$MN_meta_cluster = study_clusts_df$meta_cluster[index]
+tasic18$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 tasic18$primate_subclass = study_clusts_df$primate_subclass[index]
 tasic18$orthology = study_clusts_df$orthology[index]
 tasic18 = tasic18[ ,!is.na(tasic18$primate_subclass)]
@@ -1616,28 +1616,28 @@ tasic18 = tasic18[ ,!is.na(tasic18$primate_subclass)]
 
 study_clusts_df = max_avg_mapping %>% filter(study == 'zeng_10x_cells')
 index = match(zeng_10x_cells$cluster_label, study_clusts_df$cluster)
-#zeng_10x_cells$MN_meta_cluster = study_clusts_df$meta_cluster[index]
+zeng_10x_cells$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 zeng_10x_cells$primate_subclass = study_clusts_df$primate_subclass[index]
 zeng_10x_cells$orthology = study_clusts_df$orthology[index]
 zeng_10x_cells= zeng_10x_cells[ , !is.na(zeng_10x_cells$primate_subclass) ]
 
 study_clusts_df = max_avg_mapping %>% filter(study == 'zeng_10x_nuclei')
 index = match(zeng_10x_nuclei$cluster_label, study_clusts_df$cluster)
-#zeng_10x_nuclei$MN_meta_cluster = study_clusts_df$meta_cluster[index]
+zeng_10x_nuclei$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 zeng_10x_nuclei$primate_subclass = study_clusts_df$primate_subclass[index]
 zeng_10x_nuclei$orthology = study_clusts_df$orthology[index]
 zeng_10x_nuclei= zeng_10x_nuclei[ , !is.na(zeng_10x_nuclei$primate_subclass) ]
 
 study_clusts_df = max_avg_mapping %>% filter(study == 'zeng_smart_cells')
 index = match(zeng_smart_cells$cluster_label, study_clusts_df$cluster)
-#zeng_smart_cells$MN_meta_cluster = study_clusts_df$meta_cluster[index]
+zeng_smart_cells$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 zeng_smart_cells$primate_subclass = study_clusts_df$primate_subclass[index]
 zeng_smart_cells$orthology = study_clusts_df$orthology[index]
 zeng_smart_cells= zeng_smart_cells[ , !is.na(zeng_smart_cells$primate_subclass)]
 
 study_clusts_df = max_avg_mapping %>% filter(study == 'zeng_smart_nuclei')
 index = match(zeng_smart_nuclei$cluster_label, study_clusts_df$cluster)
-#zeng_smart_nuclei$MN_meta_cluster = study_clusts_df$meta_cluster[index]
+zeng_smart_nuclei$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 zeng_smart_nuclei$primate_subclass = study_clusts_df$primate_subclass[index]
 zeng_smart_nuclei$orthology = study_clusts_df$orthology[index]
 zeng_smart_nuclei= zeng_smart_nuclei[ , !is.na(zeng_smart_nuclei$primate_subclass)]
@@ -1648,14 +1648,14 @@ zeng_smart_nuclei= zeng_smart_nuclei[ , !is.na(zeng_smart_nuclei$primate_subclas
 
 study_clusts_df = max_avg_mapping%>% filter(study == 'zeng_10xv2_wba')
 index = match(zeng_10xv2_wba$supertype_label, study_clusts_df$cluster)
-#zeng_10xv2_wba$MN_meta_cluster = study_clusts_df$meta_cluster[index]
+zeng_10xv2_wba$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 zeng_10xv2_wba$primate_subclass = study_clusts_df$primate_subclass[index]
 zeng_10xv2_wba$orthology = study_clusts_df$orthology[index]
 zeng_10xv2_wba= zeng_10xv2_wba[ , !is.na(zeng_10xv2_wba$primate_subclass) ]
 
 study_clusts_df = max_avg_mapping %>% filter(study == 'zeng_10xv3_wba')
 index = match(zeng_10xv3_wba$supertype_label, study_clusts_df$cluster)
-#zeng_10xv3_wba$MN_meta_cluster = study_clusts_df$meta_cluster[index]
+zeng_10xv3_wba$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 zeng_10xv3_wba$primate_subclass = study_clusts_df$primate_subclass[index]
 zeng_10xv3_wba$orthology = study_clusts_df$orthology[index]
 zeng_10xv3_wba= zeng_10xv3_wba[ , !is.na(zeng_10xv3_wba$primate_subclass) ]
@@ -1663,7 +1663,7 @@ zeng_10xv3_wba= zeng_10xv3_wba[ , !is.na(zeng_10xv3_wba$primate_subclass) ]
 
 study_clusts_df = max_avg_mapping %>% filter(study == 'macosko_wba')
 index = match(macosko_wba$cell.type, study_clusts_df$cluster)
-#macosko_wba$MN_meta_cluster = study_clusts_df$meta_cluster[index]
+macosko_wba$MN_meta_cluster = study_clusts_df$meta_cluster[index]
 macosko_wba$primate_subclass = study_clusts_df$primate_subclass[index]
 macosko_wba$orthology = study_clusts_df$orthology[index]
 macosko_wba= macosko_wba[ , !is.na(macosko_wba$primate_subclass) ]
@@ -1671,6 +1671,7 @@ macosko_wba= macosko_wba[ , !is.na(macosko_wba$primate_subclass) ]
 
 gc()
 
+tasic18[[]]
 ```
 
 
