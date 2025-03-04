@@ -359,6 +359,75 @@ assay(macosko_wb_atlas, "cpm") = MetaMarkers::convert_to_cpm(assay(macosko_wb_at
 ```
 
 
+Rename all genes to the human gene names, accounting for the one2one orthologs across species that are named differently.
+
+```{r}
+rowData(tasic18)[1:10, ]
+current_mouse_genes = sapply(stringr::str_split(rownames(tasic18), '_', 2), '[[', 2 )
+table(current_mouse_genes %in% final_present_1to1s$`Mouse gene name`)
+
+index = match(current_mouse_genes, final_present_1to1s$`Mouse gene name`)
+rownames(tasic18) = final_present_1to1s$`Gene name`[index]
+
+
+rowData(zeng_10x_cells)
+current_mouse_genes = sapply(stringr::str_split(rownames(zeng_10x_cells), '_', 2), '[[', 2 )
+table(current_mouse_genes %in% final_present_1to1s$`Mouse gene name`)
+
+index = match(current_mouse_genes, final_present_1to1s$`Mouse gene name`)
+rownames(zeng_10x_cells) = final_present_1to1s$`Gene name`[index]
+
+rowData(zeng_10x_nuclei)
+current_mouse_genes = sapply(stringr::str_split(rownames(zeng_10x_nuclei), '_', 2), '[[', 2 )
+table(current_mouse_genes %in% final_present_1to1s$`Mouse gene name`)
+
+index = match(current_mouse_genes, final_present_1to1s$`Mouse gene name`)
+rownames(zeng_10x_nuclei) = final_present_1to1s$`Gene name`[index]
+
+
+
+rowData(zeng_smart_nuclei)
+current_mouse_genes = sapply(stringr::str_split(rownames(zeng_smart_nuclei), '_', 2), '[[', 2 )
+table(current_mouse_genes %in% final_present_1to1s$`Mouse gene name`)
+
+index = match(current_mouse_genes, final_present_1to1s$`Mouse gene name`)
+rownames(zeng_smart_nuclei) = final_present_1to1s$`Gene name`[index]
+
+
+rowData(zeng_smart_cells)
+current_mouse_genes = sapply(stringr::str_split(rownames(zeng_smart_cells), '_', 2), '[[', 2 )
+table(current_mouse_genes %in% final_present_1to1s$`Mouse gene name`)
+
+index = match(current_mouse_genes, final_present_1to1s$`Mouse gene name`)
+rownames(zeng_smart_cells) = final_present_1to1s$`Gene name`[index]
+
+
+rowData(zeng_wb_atlas_10xv2)[1:10, ]
+current_mouse_genes = sapply(stringr::str_split(rownames(zeng_wb_atlas_10xv2), '_', 2), '[[', 2 )
+table(current_mouse_genes %in% final_present_1to1s$`Mouse gene name`)
+
+index = match(current_mouse_genes, final_present_1to1s$`Mouse gene name`)
+rownames(zeng_wb_atlas_10xv2) = final_present_1to1s$`Gene name`[index]
+
+
+rowData(zeng_wb_atlas_10xv3)[1:10, ]
+current_mouse_genes = sapply(stringr::str_split(rownames(zeng_wb_atlas_10xv3), '_', 2), '[[', 2 )
+table(current_mouse_genes %in% final_present_1to1s$`Mouse gene name`)
+
+index = match(current_mouse_genes, final_present_1to1s$`Mouse gene name`)
+rownames(zeng_wb_atlas_10xv3) = final_present_1to1s$`Gene name`[index]
+
+
+rowData(macosko_wb_atlas)[1:10, ]
+current_mouse_genes = sapply(stringr::str_split(rownames(macosko_wb_atlas), '_', 2), '[[', 2 )
+table(current_mouse_genes %in% final_present_1to1s$`Mouse gene name`)
+
+index = match(current_mouse_genes, final_present_1to1s$`Mouse gene name`)
+rownames(macosko_wb_atlas) = final_present_1to1s$`Gene name`[index]
+
+```
+
+
 Save the mouse data
 
 ```{r}
@@ -375,6 +444,24 @@ saveRDS(zeng_wb_atlas_10xv3, file = '/inkwell03/werner/mouse_brain_consensus_tax
 saveRDS(macosko_wb_atlas,file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba.rds' )
 
 ```
+
+
+```{r}
+
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba.rds')
+zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba.rds')
+zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba.rds')
+zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba.rds')
+zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba.rds')
+zeng_wb_atlas_10xv2 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba.rds')
+zeng_wb_atlas_10xv3 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv3_gaba.rds')
+macosko_wb_atlas = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba.rds')
+```
+
+
+
+
+
 
 
 
@@ -528,6 +615,59 @@ dim(marmoset_data)
 
 ```
 
+Rename all genes to human gene names so they match across species
+
+```{r}
+
+current_genes = rownames(chimp_data_10x)
+table(current_genes %in% final_present_1to1s$`Chimpanzee gene name`)
+
+index = match(current_genes, final_present_1to1s$`Chimpanzee gene name`)
+rownames(chimp_data_10x) = final_present_1to1s$`Gene name`[index]
+table(rownames(chimp_data_10x) %in% final_present_1to1s$`Gene name` )
+
+current_genes = rownames(chimp_data_ss)
+table(current_genes %in% final_present_1to1s$`Chimpanzee gene name`)
+
+index = match(current_genes, final_present_1to1s$`Chimpanzee gene name`)
+rownames(chimp_data_ss) = final_present_1to1s$`Gene name`[index]
+table(rownames(chimp_data_ss) %in% final_present_1to1s$`Gene name` )
+
+
+
+current_genes = rownames(gorilla_data_10x)
+table(current_genes %in% final_present_1to1s$`Gorilla gene name`)
+
+index = match(current_genes, final_present_1to1s$`Gorilla gene name`)
+rownames(gorilla_data_10x) = final_present_1to1s$`Gene name`[index]
+table(rownames(gorilla_data_10x) %in% final_present_1to1s$`Gene name` )
+
+current_genes = rownames(gorilla_data_ss)
+table(current_genes %in% final_present_1to1s$`Gorilla gene name`)
+
+index = match(current_genes, final_present_1to1s$`Gorilla gene name`)
+rownames(gorilla_data_ss) = final_present_1to1s$`Gene name`[index]
+table(rownames(gorilla_data_ss) %in% final_present_1to1s$`Gene name` )
+
+
+current_genes = rownames(macaca_data)
+table(current_genes %in% final_present_1to1s$`Macaque gene name`)
+
+index = match(current_genes, final_present_1to1s$`Macaque gene name`)
+rownames(macaca_data) = final_present_1to1s$`Gene name`[index]
+table(rownames(macaca_data) %in% final_present_1to1s$`Gene name` )
+
+current_genes = rownames(marmoset_data)
+table(current_genes %in% final_present_1to1s$`White-tufted-ear marmoset gene name`)
+
+index = match(current_genes, final_present_1to1s$`White-tufted-ear marmoset gene name`)
+rownames(marmoset_data) = final_present_1to1s$`Gene name`[index]
+table(rownames(marmoset_data) %in% final_present_1to1s$`Gene name` )
+
+
+
+```
+
 
 
 Save
@@ -548,6 +688,22 @@ saveRDS(macaca_data, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/da
 saveRDS(marmoset_data, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
 
 ```
+
+
+```{r}
+
+chimp_data_10x  = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_10x_gaba.rds')
+chimp_data_ss = readRDS( file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_ss_gaba.rds')
+
+gorilla_data_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_10x_gaba.rds')
+gorilla_data_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_ss_gaba.rds')
+
+macaca_data = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/macaca_data_10x_gaba.rds')
+
+marmoset_data = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
+
+```
+
 
 
 And now use these datasets with MetaNeighbor to map the mouse clusters to the primate subclassess
