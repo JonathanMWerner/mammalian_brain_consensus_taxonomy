@@ -1,0 +1,431 @@
+
+Generating cluster taxonomies in the style of the Allen and comparing the original vs orthologous subclass labels
+
+Make the taxonomies at the cluster level, per dataset initially.
+Probably end up doing it with the integrated data as a summary plot
+But also might be morepowerful to show the consistency across all the datasets
+
+
+
+
+```{r}
+library(MetaMarkers)
+library(SingleCellExperiment)
+library(ggplot2)
+library(dplyr)
+library(scCustomize)
+library(ComplexHeatmap)
+
+```
+
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C')
+
+
+```
+
+This data is already filtered and renamed for the ~11200 primate 1to1 orthologs, 
+also includes the primate subclass labels.
+Will need to filter out the low orthologous clusters, just focusing on those with high primate orthology
+
+
+```{r}
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba_primate_MN.rds')
+zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba_primate_MN.rds')
+zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba_primate_MN.rds')
+zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba_primate_MN.rds')
+zeng_10xv2_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba_primate_MN.rds')
+zeng_10xv3_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv3_gaba_primate_MN.rds')
+macosko_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba_primate_MN.rds')
+
+zeng_10x_cells$cell_subclass = as.character(zeng_10x_cells$cell_subclass)
+zeng_10x_cells$cell_cluster = as.character(zeng_10x_cells$cell_cluster)
+
+zeng_smart_cells$cell_subclass = as.character(zeng_smart_cells$cell_subclass)
+zeng_smart_cells$cell_cluster = as.character(zeng_smart_cells$cell_cluster)
+
+zeng_smart_nuclei$cell_subclass = as.character(zeng_smart_nuclei$cell_subclass)
+zeng_smart_nuclei$cell_cluster = as.character(zeng_smart_nuclei$cell_cluster)
+
+zeng_10x_nuclei$cell_subclass = as.character(zeng_10x_nuclei$cell_subclass)
+zeng_10x_nuclei$cell_cluster = as.character(zeng_10x_nuclei$cell_cluster)
+
+zeng_10xv2_wba$cell_cluster = as.character(zeng_10xv2_wba$cell_cluster)
+zeng_10xv3_wba$cell_cluster = as.character(zeng_10xv3_wba$cell_cluster)
+
+macosko_wba$cell_cluster = as.character(macosko_wba$cell_cluster)
+```
+
+
+
+cell_subclass is the original subclass annotations
+primate_subclass are the orthologous annotations
+```{r}
+
+
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
+zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
+zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
+zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
+zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
+zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
+macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
+
+gc()
+
+
+tasic18$cell_subclass[tasic18$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+tasic18$cell_subclass[tasic18$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+tasic18$cell_subclass[tasic18$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+tasic18$cell_subclass[tasic18$cell_subclass == 'Serpinf1'] = 'Vip'
+
+zeng_10x_cells$cell_subclass[zeng_10x_cells$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_10x_cells$cell_subclass[zeng_10x_cells$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_10x_cells$cell_subclass[zeng_10x_cells$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+zeng_10x_nuclei$cell_subclass[zeng_10x_nuclei$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_10x_nuclei$cell_subclass[zeng_10x_nuclei$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_10x_nuclei$cell_subclass[zeng_10x_nuclei$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+zeng_smart_nuclei$cell_subclass[zeng_smart_nuclei$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_smart_nuclei$cell_subclass[zeng_smart_nuclei$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_smart_nuclei$cell_subclass[zeng_smart_nuclei$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+zeng_smart_cells$cell_subclass[zeng_smart_cells$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_smart_cells$cell_subclass[zeng_smart_cells$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_smart_cells$cell_subclass[zeng_smart_cells$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+
+zeng_10xv2_wba$cell_subclass[zeng_10xv2_wba$cell_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+zeng_10xv3_wba$cell_subclass[zeng_10xv3_wba$cell_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+```
+
+
+first step is to generate cluster markers, using MetaMarkers approach
+Ranking markers by auroc to get the top N
+
+```{r}
+
+clust_markers_tasic18 = compute_markers(assay(tasic18, "cpm"), tasic18$cell_cluster)
+clust_markers_zeng_10x_cells = compute_markers(assay(zeng_10x_cells, "cpm"), zeng_10x_cells$cell_cluster)
+clust_markers_zeng_10x_nuclei = compute_markers(assay(zeng_10x_nuclei, "cpm"), zeng_10x_nuclei$cell_cluster)
+clust_markers_zeng_smart_nuclei = compute_markers(assay(zeng_smart_nuclei, "cpm"), zeng_smart_nuclei$cell_cluster)
+clust_markers_zeng_smart_cells = compute_markers(assay(zeng_smart_cells, "cpm"), zeng_smart_cells$cell_cluster)
+clust_markers_zeng_10xv2_wba = compute_markers(assay(zeng_10xv2_wba, "cpm"), zeng_10xv2_wba$cell_cluster)
+clust_markers_zeng_10xv3_wba = compute_markers(assay(zeng_10xv3_wba, "cpm"), zeng_10xv3_wba$cell_cluster)
+clust_markers_macosko_wba = compute_markers(assay(macosko_wba, "cpm"), macosko_wba$cell_cluster)
+
+export_markers(clust_markers_tasic18, "metamarkers/clust_markers_tasic18.csv")
+export_markers(clust_markers_zeng_10x_cells, "metamarkers/clust_markers_zeng_10x_cells.csv")
+export_markers(clust_markers_zeng_10x_nuclei, "metamarkers/clust_markers_zeng_10x_nuclei.csv")
+export_markers(clust_markers_zeng_smart_nuclei, "metamarkers/clust_markers_zeng_smart_nuclei.csv")
+export_markers(clust_markers_zeng_smart_cells, "metamarkers/clust_markers_zeng_smart_cells.csv")
+export_markers(clust_markers_zeng_10xv2_wba, "metamarkers/clust_markers_zeng_10xv2_wba.csv")
+export_markers(clust_markers_zeng_10xv3_wba, "metamarkers/clust_markers_zeng_10xv3_wba.csv")
+export_markers(clust_markers_macosko_wba, "metamarkers/clust_markers_macosko_wba.csv")
+gc()
+```
+
+
+```{r}
+cluster_markers = list(
+    tasic18 = read_markers("metamarkers/clust_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("metamarkers/clust_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("metamarkers/clust_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("metamarkers/clust_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("metamarkers/clust_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("metamarkers/clust_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("metamarkers/clust_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("metamarkers/clust_markers_macosko_wba.csv.gz")
+)
+
+```
+
+
+
+
+```{r}
+
+construct_cell_taxonomy = function(sc_exp, dataset_name, marker_list, num_markers = 50){
+
+  
+  current_dataset_markers = marker_list[[dataset_name]]
+  
+  #Unique list of the top cluster markers
+  top_clust_markers = current_dataset_markers %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = num_markers)
+  top_clust_markers = unique(top_clust_markers$gene)
+  
+  #Expression data for that list
+  gene_filt = rownames(sc_exp) %in% top_clust_markers
+  exp_data = assay(sc_exp, 'cpm')[gene_filt, ]
+  #Compute centroids of gene expression per cluster
+  exp_data = as.data.frame(t(as.matrix(exp_data)))
+  exp_data = exp_data %>% mutate(cluster = sc_exp$cell_cluster)
+  
+  centroids = exp_data %>% group_by(cluster) %>% summarize(across(which(colnames(exp_data)!= 'cluster'), median)) %>% as.data.frame()
+  #Get back into genes on rows and subclass on columns
+  rownames(centroids) = centroids$cluster
+  centroids = t(centroids[ ,2:ncol(centroids)])
+  
+  #Compute a distance matrix from the correlations of the centroids
+  centroid_corr = cor(centroids, method = 'spearman')
+  
+  #Hierarchical clusting on the correlation distance matrix
+  hclust_avg <- hclust(as.dist(1-centroid_corr), method = 'ward.D2')
+  
+  dataset_subclasses = as.data.frame(colData(sc_exp)[ ,c('cell_subclass','cell_cluster','primate_subclass')])
+  dataset_subclasses = dataset_subclasses %>% filter(!duplicated(cell_cluster))
+  
+  clust_index = match(colnames(centroid_corr), dataset_subclasses$cell_cluster)
+  original_subclass = dataset_subclasses$cell_subclass[clust_index]
+  orthologous_subclass = dataset_subclasses$primate_subclass[clust_index]
+  
+  column_ha = HeatmapAnnotation(original_subclass = original_subclass, orthologous_subclass = orthologous_subclass,
+                                col = list(original_subclass = celltype_color_palette, orthologous_subclass = celltype_color_palette ),
+                                show_legend = c("orthologous_subclass" = FALSE))
+  
+  
+  corr_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+  cent_hm = ComplexHeatmap::Heatmap(centroid_corr, col = corr_cols, name = 'spearman' ,
+                                    cluster_columns = hclust_avg,
+                                    cluster_rows = hclust_avg,
+                                    top_annotation = column_ha, column_title = dataset_name)
+  cent_hm = ComplexHeatmap::draw(cent_hm)
+
+  return(list('dendro' = hclust_avg, 'centroid_corr' = cent_hm ))
+  
+  #If i ever just want the dendrogram with the column annotations
+  #Heatmap(matrix(nc = ncol(centroids) , nr = 0), cluster_columns = hclust_avg, top_annotation = column_ha)
+
+}
+
+
+```
+
+
+```{r}
+
+tasic_taxonomy = construct_cell_taxonomy(tasic18, 'tasic18', cluster_markers, num_markers = 50 )
+
+#plot(tasic_taxonomy[['dendro']], main = 'tasic', xlab = 'Interneuron clusters', hang = -1)
+
+tasic_taxonomy[['centroid_corr']]
+
+```
+
+```{r}
+
+zeng_10x_cells_taxonomy = construct_cell_taxonomy(zeng_10x_cells, 'zeng_10x_cells', cluster_markers, num_markers = 50 )
+
+zeng_10x_cells_taxonomy[['centroid_corr']]
+
+```
+
+
+```{r}
+
+zeng_10x_nuclei_taxonomy = construct_cell_taxonomy(zeng_10x_nuclei, 'zeng_10x_nuclei', cluster_markers, num_markers = 50 )
+
+zeng_10x_nuclei_taxonomy[['centroid_corr']]
+
+```
+
+```{r}
+
+zeng_smart_cells_taxonomy = construct_cell_taxonomy(zeng_smart_cells, 'zeng_smart_cells', cluster_markers, num_markers = 50 )
+
+zeng_smart_cells_taxonomy[['centroid_corr']]
+
+```
+
+
+```{r}
+
+zeng_smart_nuclei_taxonomy = construct_cell_taxonomy(zeng_smart_nuclei, 'zeng_smart_nuclei', cluster_markers, num_markers = 50 )
+
+zeng_smart_nuclei_taxonomy[['centroid_corr']]
+
+```
+
+
+
+```{r}
+
+zeng_10xv2_wba_taxonomy = construct_cell_taxonomy(zeng_10xv2_wba, 'zeng_10xv2_wba', cluster_markers, num_markers = 50 )
+
+zeng_10xv2_wba_taxonomy[['centroid_corr']]
+
+```
+
+```{r}
+
+zeng_10xv3_wba_taxonomy = construct_cell_taxonomy(zeng_10xv3_wba, 'zeng_10xv3_wba', cluster_markers, num_markers = 50 )
+
+zeng_10xv3_wba_taxonomy[['centroid_corr']]
+
+```
+
+```{r}
+
+macosko_wba_taxonomy = construct_cell_taxonomy(macosko_wba, 'macosko_wba', cluster_markers, num_markers = 50 )
+
+macosko_wba_taxonomy[['centroid_corr']]
+
+```
+
+
+
+
+And now one using the integrated data
+
+```{r}
+library(Seurat)
+
+```
+
+```{r}
+
+load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/mouse_primate_MN_integrated.Rdata')
+
+interneuron.combined$cell_subclass[interneuron.combined$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+interneuron.combined$cell_subclass[interneuron.combined$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+interneuron.combined$cell_subclass[interneuron.combined$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+interneuron.combined$cell_subclass[interneuron.combined$cell_subclass == 'Serpinf1'] = 'Vip'
+
+
+
+```
+
+Get the intersect of the cluster markers across the individual datasets, plus the intersect with the 2000 genes used in the integration
+
+```{r}
+num_markers = 50
+
+top_clust_markers = cluster_markers[['tasic18']] %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = num_markers)
+top_markers_1 = unique(top_clust_markers$gene)
+
+top_clust_markers = cluster_markers[['zeng_10x_cells']] %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = num_markers)
+top_markers_2 = unique(top_clust_markers$gene)
+
+top_clust_markers = cluster_markers[['zeng_10x_nuclei']] %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = num_markers)
+top_markers_3 = unique(top_clust_markers$gene)
+
+top_clust_markers = cluster_markers[['zeng_smart_cells']] %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = num_markers)
+top_markers_4 = unique(top_clust_markers$gene)
+
+top_clust_markers = cluster_markers[['zeng_smart_nuclei']] %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = num_markers)
+top_markers_5 = unique(top_clust_markers$gene)
+
+top_clust_markers = cluster_markers[['zeng_10xv2_wba']] %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = num_markers)
+top_markers_6 = unique(top_clust_markers$gene)
+
+top_clust_markers = cluster_markers[['zeng_10xv3_wba']] %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = num_markers)
+top_markers_7 = unique(top_clust_markers$gene)
+
+top_clust_markers = cluster_markers[['macosko_wba']] %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = num_markers)
+top_markers_8 = unique(top_clust_markers$gene)
+
+use_genes = unique(c(top_markers_1, top_markers_2, top_markers_3, top_markers_4, top_markers_5, top_markers_6, top_markers_7, top_markers_8 ))
+
+table(use_genes %in% rownames(interneuron.combined@assays$integrated@meta.features))
+
+use_genes = use_genes[use_genes %in% rownames(interneuron.combined@assays$integrated@meta.features) ]
+
+length(use_genes)
+
+```
+
+
+
+
+
+
+```{r}
+
+#Expression data for that list
+gene_index = rownames(interneuron.combined@assays$integrated@data) %in% use_genes
+exp_data = interneuron.combined@assays$integrated@data[gene_index, ]
+#Compute centroids of gene expression per cluster
+exp_data = as.data.frame(t(as.matrix(exp_data)))
+exp_data = exp_data %>% mutate(cluster = interneuron.combined$cell_cluster)
+
+centroids = exp_data %>% group_by(cluster) %>% summarize(across(which(colnames(exp_data)!= 'cluster'), median)) %>% as.data.frame()
+#Get back into genes on rows and subclass on columns
+rownames(centroids) = centroids$cluster
+centroids = t(centroids[ ,2:ncol(centroids)])
+
+#Compute a distance matrix from the correlations of the centroids
+centroid_corr = cor(centroids, method = 'spearman')
+
+#Hierarchical clusting on the correlation distance matrix
+hclust_avg <- hclust(as.dist(1-centroid_corr), method = 'ward.D2')
+
+dataset_subclasses = interneuron.combined[[]][ , c('cell_subclass','cell_cluster','primate_subclass', 'study')]
+dataset_subclasses = dataset_subclasses %>% filter(!duplicated(cell_cluster))
+
+clust_index = match(colnames(centroid_corr), dataset_subclasses$cell_cluster)
+original_subclass = dataset_subclasses$cell_subclass[clust_index]
+orthologous_subclass = dataset_subclasses$primate_subclass[clust_index]
+study_label = dataset_subclasses$study[clust_index]
+
+study_colors = MetBrewer::met.brewer("Veronese", n=8, type="continuous")
+study_colors = study_colors[1:8] 
+names(study_colors) = names(table(study_label))
+
+
+column_ha = HeatmapAnnotation(original_subclass = original_subclass, 
+                              orthologous_subclass = orthologous_subclass,
+                              study = study_label,
+                              col = list(original_subclass = celltype_color_palette, 
+                                         orthologous_subclass = celltype_color_palette,
+                                         study = study_colors ),
+                              show_legend = c("orthologous_subclass" = FALSE))
+
+
+corr_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+cent_hm = ComplexHeatmap::Heatmap(centroid_corr, col = corr_cols, name = 'spearman' ,
+                                  cluster_columns = hclust_avg,
+                                  cluster_rows = hclust_avg,
+                                  top_annotation = column_ha, column_title = 'integrated_interneurons',
+                                  show_row_dend = F, show_row_names = F, show_column_names = F)
+cent_hm = ComplexHeatmap::draw(cent_hm)
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
