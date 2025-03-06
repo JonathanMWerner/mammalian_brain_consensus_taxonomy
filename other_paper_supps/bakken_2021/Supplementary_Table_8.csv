@@ -1,0 +1,1524 @@
+gene,subclasses
+ALK,Lamp5
+NYAP2,Lamp5
+SV2C,Lamp5
+NFIB,Lamp5
+CACNA2D1,Lamp5
+DOCK10,Lamp5
+SLC6A1,Lamp5
+LAMP5,Lamp5
+MCTP1,Lamp5
+BCL11B,Lamp5
+RIMS1,Lamp5
+ADARB2,Lamp5
+KIT,Lamp5
+IGSF11,Lamp5
+UNC5C,Lamp5
+RIMBP2,Lamp5
+ZNF536,Lamp5
+RAB3C,Lamp5
+HS3ST5,Lamp5
+EGFR,Lamp5
+SGCZ,Lamp5
+SIPA1L1,Lamp5
+DSCAML1,Lamp5
+CHSY3,Lamp5
+KCNN2,Lamp5
+GAS7,Lamp5
+DAB1,Lamp5
+NFIX,Lamp5
+GRIK2,Lamp5
+CNR1,Sncg
+CXCL14,Sncg
+SHISA9,Sncg
+MAML3,Sncg
+NRXN1,Sncg
+NPAS3,Sncg
+PCSK2,Sncg
+ADARB2,Sncg
+RGS12,Sncg
+CHRNA7,Sncg
+ARPP21,Sncg
+INPP4B,Sncg
+KCNQ5,Sncg
+DAB1,Sncg
+DSCAM,Sncg
+MAGI3,Sncg
+GABRA2,Sncg
+DSCAM,Vip
+PROX1,Vip
+KCNT2,Vip
+SOBP,Vip
+SLC24A3,Vip
+NRXN1,Vip
+ARPP21,Vip
+SYNPR,Vip
+LRFN2,Vip
+ADARB2,Vip
+VWC2L,Vip
+NR3C2,Vip
+SORCS3,Vip
+NFIB,Vip
+EGFR,Vip
+PTPRZ1,Vip
+SDK1,Vip
+AKT3,Vip
+PDE4B,Vip
+MAGI3,Vip
+DPF3,Vip
+NPY,Sst Chodl
+CRHBP,Sst Chodl
+MPPED2,Sst Chodl
+SOX6,Sst Chodl
+SST,Sst Chodl
+RIT2,Sst Chodl
+NOS1,Sst Chodl
+MAML2,Sst Chodl
+RUNX1T1,Sst Chodl
+TRPC6,Sst Chodl
+NELL1,Sst Chodl
+PLCB1,Sst Chodl
+BCL11A,Sst Chodl
+TACR1,Sst Chodl
+SCN9A,Sst Chodl
+DGKG,Sst Chodl
+TOX,Sst Chodl
+GRIK1,Sst Chodl
+UTRN,Sst Chodl
+BRINP3,Sst Chodl
+SRGAP1,Sst Chodl
+PCSK2,Sst Chodl
+CHODL,Sst Chodl
+FAM46A,Sst Chodl
+PAM,Sst Chodl
+PTPRT,Sst Chodl
+CACNA1E,Sst Chodl
+BCL11B,Sst Chodl
+FAT3,Sst Chodl
+CHRM2,Sst Chodl
+STAC,Sst Chodl
+KCNB2,Sst Chodl
+UNC5D,Sst Chodl
+CADM1,Sst Chodl
+AFF2,Sst Chodl
+KLF5,Sst Chodl
+SYT4,Sst Chodl
+ACACA,Sst Chodl
+XYLT1,Sst Chodl
+LHFPL3,Sst Chodl
+NAV3,Sst Chodl
+GRK5,Sst Chodl
+GABRB1,Sst Chodl
+NKAIN3,Sst Chodl
+GABRA2,Sst Chodl
+RALYL,Sst Chodl
+GABRG1,Sst Chodl
+CELF4,Sst Chodl
+OPCML,Sst Chodl
+NCAM2,Sst Chodl
+PDE1A,Sst Chodl
+GRIA1,Sst Chodl
+NTN1,Sst Chodl
+PTPRD,Sst Chodl
+STXBP6,Sst
+TRHDE,Sst
+SST,Sst
+GRIA3,Sst
+RBFOX1,Sst
+KIAA1217,Sst
+SATB1,Sst
+RALYL,Sst
+CTNND2,Sst
+SLC24A2,Sst
+RUNX1T1,Sst
+PCDH11X,Sst
+OXR1,Sst
+CDH9,Sst
+CACNA2D3,Sst
+SOX6,Sst
+NXPH1,Sst
+BCL11A,Sst
+ELAVL2,Sst
+GPM6A,Sst
+GRM1,Sst
+KIF26B,Sst
+CELF2,Sst
+DLG2,Sst
+PPARGC1A,Pvalb
+FGF12,Pvalb
+SLIT2,Pvalb
+DLGAP2,Pvalb
+FAM19A2,Pvalb
+SPARCL1,Pvalb
+BTBD11,Pvalb
+TMEM132C,Pvalb
+RUNX2,Pvalb
+KLF12,Pvalb
+ATRNL1,Pvalb
+CPLX1,Pvalb
+FMN1,Pvalb
+SOX6,Pvalb
+RNF144B,Pvalb
+PRKG1,Pvalb
+ERBB4,Pvalb
+SLC4A4,Pvalb
+ESRRG,Pvalb
+ETV6,Pvalb
+MYO5B,Pvalb
+TRPS1,Pvalb
+KCNC2,Pvalb
+VWC2,Pvalb
+PVALB,Pvalb
+MEF2C,Pvalb
+MAGI2,Pvalb
+ANK1,Pvalb
+LUZP1,Pvalb
+LPP,Pvalb
+PLXNA4,Pvalb
+FAM135B,Pvalb
+SLC24A2,Pvalb
+KCNC1,Pvalb
+KCNAB1,Pvalb
+RAPGEF5,Pvalb
+GABRD,Pvalb
+GRIA4,Pvalb
+TMEM108,Pvalb
+SCN8A,Pvalb
+CEMIP,Pvalb
+MGAT4C,Lamp5
+EYA4,Lamp5
+SPHKAP,Lamp5
+UNC5D,Lamp5
+PDGFD,Lamp5
+NXPH2,Lamp5
+TRPC3,Lamp5
+CDHR3,Lamp5
+PRELID2,Lamp5
+COBL,Lamp5
+TMEM132B,Lamp5
+CDK14,Lamp5
+FREM1,Lamp5
+GRIP1,Lamp5
+ST6GAL2,Lamp5
+AP1S2,Lamp5
+ABI1,Lamp5
+DPY19L1,Lamp5
+FAM110B,Lamp5
+EXT1,Lamp5
+GRIK4,Lamp5
+B3GALT1,Lamp5
+FAT1,Lamp5
+RBMS3,Lamp5
+LSAMP,Lamp5
+EEPD1,Lamp5
+KCNIP1,Lamp5
+SCAI,Lamp5
+TNR,Lamp5
+PMEPA1,Lamp5
+KIAA1109,Lamp5
+MTUS2,Lamp5
+ATP8A2,Lamp5
+CSMD3,Lamp5
+KCNAB1,Lamp5
+BCL2,Lamp5
+GOLIM4,Lamp5
+GABRB3,Lamp5
+KIRREL3,Lamp5
+HECW2,Lamp5
+CNTNAP4,Lamp5
+PAPSS2,Lamp5
+KCNH5,Lamp5
+DOCK9,Lamp5
+SLC35F1,Lamp5
+GNG4,Lamp5
+ARID5B,Lamp5
+DOCK3,Lamp5
+ETV1,Lamp5
+BRINP2,Lamp5
+TOX,Lamp5
+SGMS1,Lamp5
+ADAMTSL3,Lamp5
+FLRT2,Lamp5
+B3GALT2,Lamp5
+FMNL2,Lamp5
+PDGFRA,Lamp5
+ANKRD55,Lamp5
+ANKRD6,Lamp5
+SNCAIP,Lamp5
+DDR2,Lamp5
+ARHGAP31,Lamp5
+FSTL5,Lamp5
+OCA2,Lamp5
+PHYHIPL,Lamp5
+LRRC7,Lamp5
+UNC13C,Lamp5
+GABRA5,Lamp5
+DGKD,Lamp5
+FUT9,Lamp5
+AMMECR1,Lamp5
+MPPED1,Lamp5
+CCSER1,Lamp5
+PKP2,Lamp5
+NECAB2,Lamp5
+PKNOX2,Lamp5
+TENM4,Lamp5
+7-Sep,Lamp5
+LTBP1,Lamp5
+TMTC2,Lamp5
+UBASH3B,Lamp5
+SEMA6A,Lamp5
+ATXN7L1,Lamp5
+PDE8B,Lamp5
+DNAH6,Lamp5
+BMPER,Lamp5
+NRCAM,Lamp5
+PKP4,Lamp5
+KCNC2,Lamp5
+MSI2,Lamp5
+SLC1A1,Lamp5
+LINGO2,Sncg
+CCDC85A,Sncg
+ADRA1A,Sncg
+CNTNAP4,Sncg
+CHL1,Sncg
+SIPA1L2,Sncg
+HS3ST5,Sncg
+KCNQ3,Sncg
+PHACTR1,Sncg
+PLCB4,Sncg
+WWP1,Sncg
+FNBP1L,Sncg
+PDE3A,Sncg
+COBL,Sncg
+PRELID2,Sncg
+DOCK10,Sncg
+PLS3,Sncg
+NECAB2,Sncg
+TMEFF2,Sncg
+BICD1,Sncg
+COL12A1,Sncg
+SLCO5A1,Sncg
+CHST11,Sncg
+SYT17,Sncg
+AKAP6,Sncg
+ANK2,Sncg
+NCKAP5,Sncg
+NCAM1,Sncg
+LRRC39,Sncg
+COL16A1,Sncg
+CACNA1D,Sncg
+EGFR,Sncg
+NYAP2,Sncg
+TSPAN5,Sncg
+CDHR3,Sncg
+CDH8,Sncg
+MEGF11,Sncg
+SGK1,Sncg
+LMO3,Sncg
+NKAIN2,Sncg
+RGS12,Vip
+MAPK4,Vip
+SEZ6L,Vip
+PLD5,Vip
+NLGN1,Vip
+AK5,Vip
+NCAM1,Vip
+NKAIN3,Vip
+SNTG1,Vip
+SCG2,Vip
+CHRNA2,Vip
+SHISA8,Vip
+B4GALT6,Vip
+ADAMTS6,Vip
+KCNH7,Vip
+FRMD4A,Vip
+TAC3,Vip
+KIAA1456,Vip
+KMO,Vip
+PPP1R1C,Vip
+CNTN6,Vip
+FAT4,Vip
+CPE,Vip
+PDE3A,Vip
+CCNG2,Vip
+CACNA1D,Vip
+1-Mar,Vip
+PLXNA4,Vip
+SLC22A3,Vip
+OSBPL1A,Vip
+CADM2,Vip
+NRG3,Vip
+GLRA2,Vip
+HTR1F,Vip
+CXCL14,Vip
+BRINP1,Vip
+ASIC4,Vip
+N4BP2,Vip
+DLG2,Vip
+RGS6,Vip
+TSPAN7,Vip
+RYR3,Vip
+CHD7,Vip
+ZBTB18,Vip
+DOCK10,Vip
+FRMPD4,Vip
+CHRM3,Vip
+PARP8,Vip
+ZFPM2,Vip
+ROBO1,Vip
+FAT3,Vip
+NR2F2,Vip
+REV3L,Vip
+B3GAT1,Vip
+TSHZ2,Vip
+ENC1,Vip
+LRRC3B,Vip
+ARHGEF28,Sst Chodl
+LRP8,Sst Chodl
+SORBS2,Sst Chodl
+DGKH,Sst Chodl
+THSD4,Sst Chodl
+FRMD4B,Sst Chodl
+DNAH6,Sst Chodl
+RBFOX1,Sst Chodl
+CRYBG3,Sst Chodl
+SYTL5,Sst Chodl
+FAM163A,Sst Chodl
+LRRC4C,Sst Chodl
+CPNE5,Sst Chodl
+IQSEC1,Sst Chodl
+GRB10,Sst Chodl
+ITGA9,Sst Chodl
+CSMD2,Sst Chodl
+CTTNBP2,Sst Chodl
+RBP4,Sst Chodl
+CDH11,Sst Chodl
+CUX2,Sst Chodl
+MAP2K1,Sst Chodl
+KIAA1549L,Sst Chodl
+SORCS2,Sst Chodl
+GSK3B,Sst Chodl
+LIMS1,Sst Chodl
+SIDT1,Sst Chodl
+TMEM233,Sst Chodl
+MDGA2,Sst Chodl
+GPC6,Sst Chodl
+SH3PXD2A,Sst Chodl
+WIPF3,Sst Chodl
+RAB3B,Sst Chodl
+OTOF,Sst Chodl
+NCKAP5,Sst Chodl
+ANKRD34B,Sst Chodl
+PPP2R5A,Sst Chodl
+MSMO1,Sst Chodl
+BEND7,Sst Chodl
+PDE4D,Sst Chodl
+DDX5,Sst Chodl
+HMGCS1,Sst Chodl
+FBXL13,Sst Chodl
+GRIA3,Sst Chodl
+PAPSS1,Sst Chodl
+RFK,Sst Chodl
+ERO1LB,Sst Chodl
+NPNT,Sst Chodl
+TMEM132D,Sst Chodl
+NCOA2,Sst Chodl
+PAK3,Sst Chodl
+SQLE,Sst Chodl
+GRM7,Sst Chodl
+STARD4,Sst Chodl
+PARP8,Sst Chodl
+CMSS1,Sst Chodl
+MGAT4A,Sst Chodl
+KMT2C,Sst Chodl
+C11orf80,Sst Chodl
+B2M,Sst Chodl
+NENF,Sst Chodl
+SPECC1,Sst Chodl
+SYT13,Sst Chodl
+AOX1,Sst Chodl
+LIN7A,Sst Chodl
+VPS13C,Sst Chodl
+HRH1,Sst Chodl
+KLHL4,Sst Chodl
+SPATA13,Sst Chodl
+RGS9,Sst Chodl
+NCOA1,Sst Chodl
+GNAQ,Sst Chodl
+RALGPS2,Sst Chodl
+HELB,Sst Chodl
+ZDHHC20,Sst Chodl
+GNG4,Sst Chodl
+SCN7A,Sst Chodl
+PGAP1,Sst Chodl
+SNAP25,Sst Chodl
+DENND3,Sst Chodl
+SPOCK1,Sst Chodl
+LRFN5,Sst Chodl
+BTRC,Sst Chodl
+LSS,Sst Chodl
+RYR2,Sst Chodl
+ABCA5,Sst Chodl
+ODF2L,Sst Chodl
+CRIM1,Sst Chodl
+C9orf3,Sst Chodl
+DNAJC10,Sst Chodl
+KATNAL1,Sst Chodl
+EXOC6B,Sst Chodl
+GAB2,Sst Chodl
+FDFT1,Sst Chodl
+DMKN,Sst Chodl
+GLT1D1,Sst Chodl
+SHISA6,Sst Chodl
+CAMK4,Sst Chodl
+XKR6,Sst Chodl
+DKK2,Sst Chodl
+SAMD3,Sst Chodl
+NREP,Sst Chodl
+RNF165,Sst Chodl
+CMTM8,Sst Chodl
+SPEF2,Sst Chodl
+CORO2B,Sst Chodl
+TRPC5,Sst Chodl
+KIAA1958,Sst Chodl
+AHR,Sst Chodl
+MAMLD1,Sst Chodl
+ATF7IP2,Sst Chodl
+SULF2,Sst Chodl
+DGKZ,Sst Chodl
+XKR4,Sst Chodl
+ATP2B4,Sst Chodl
+FOXO1,Sst Chodl
+MYRIP,Sst Chodl
+ADAM10,Sst Chodl
+CALY,Sst Chodl
+POSTN,Sst Chodl
+RSU1,Sst Chodl
+DGKI,Sst Chodl
+PRSS23,Sst Chodl
+TGS1,Sst Chodl
+IGFBP7,Sst Chodl
+CA12,Sst Chodl
+GDA,Sst Chodl
+FLNB,Sst Chodl
+GALNT10,Sst Chodl
+PTCHD1,Sst Chodl
+CERS5,Sst Chodl
+BMPR2,Sst Chodl
+KIF26B,Sst Chodl
+SOS2,Sst Chodl
+IQCA1,Sst Chodl
+CTDSPL,Sst Chodl
+PGM2L1,Sst Chodl
+SLC36A4,Sst Chodl
+PDZRN4,Sst Chodl
+GPRIN3,Sst Chodl
+NEO1,Sst Chodl
+JPH1,Sst Chodl
+FCHO2,Sst Chodl
+CDH7,Sst Chodl
+KLF12,Sst Chodl
+GFRA1,Sst Chodl
+KIF21A,Sst Chodl
+WNT5A,Sst Chodl
+FGFR1,Sst Chodl
+SH3GLB1,Sst Chodl
+GUCY1A2,Sst Chodl
+MCAM,Sst Chodl
+DPYSL2,Sst Chodl
+ADAMTS12,Sst Chodl
+CAMKMT,Sst Chodl
+NTN4,Sst Chodl
+HERPUD2,Sst Chodl
+TRIM2,Sst Chodl
+SPOPL,Sst Chodl
+PDE1A,Sst
+WLS,Sst
+MAP3K5,Sst
+FLT3,Sst
+DAPK1,Sst
+COL25A1,Sst
+CHN1,Sst
+RAPGEF5,Sst
+GRID2,Sst
+LIMCH1,Sst
+PAWR,Sst
+CRB1,Sst
+SPATS2L,Sst
+PCLO,Sst
+RIMS2,Sst
+GAB1,Sst
+AUTS2,Sst
+TENM3,Sst
+GALNT14,Sst
+FARP1,Sst
+EPHB6,Sst
+ZNF704,Sst
+SPARCL1,Sst
+FRMD3,Sst
+AAK1,Sst
+GAP43,Sst
+KLHL5,Sst
+CADPS,Sst
+PRKG2,Sst
+SNAP25,Sst
+11-Sep,Sst
+KCNMB2,Sst
+TANC1,Sst
+PAN3,Sst
+VSNL1,Sst
+ARHGAP32,Sst
+KCNA3,Sst
+EXOC6,Sst
+FRMD6,Sst
+UST,Sst
+DTNA,Sst
+NTRK2,Sst
+PTPRT,Sst
+LRFN5,Sst
+TIAM1,Sst
+PTPRG,Sst
+FAM155A,Sst
+TRIM9,Sst
+DNM3,Sst
+THRB,Sst
+DKK2,Sst
+ADAMTS17,Pvalb
+TENM1,Pvalb
+SLC9A9,Pvalb
+ADCY1,Pvalb
+GAS2,Pvalb
+CADPS,Pvalb
+NAV3,Pvalb
+FHIT,Pvalb
+ERC2,Pvalb
+CLEC16A,Pvalb
+TRPC5,Pvalb
+GHR,Pvalb
+AGBL4,Pvalb
+FAM78B,Pvalb
+ST8SIA4,Pvalb
+AFF1,Pvalb
+DOCK11,Pvalb
+ADARB1,Pvalb
+DPP10,Pvalb
+DLC1,Pvalb
+LRRFIP1,Pvalb
+LRRTM4,Pvalb
+SLC4A10,Pvalb
+KHDRBS3,Pvalb
+SH3GL2,Pvalb
+FBLN7,Pvalb
+PAM,Pvalb
+SAT1,Pvalb
+FRMD5,Pvalb
+KHDRBS2,Pvalb
+DECR1,Pvalb
+RYR2,Pvalb
+ACYP2,Pvalb
+TDRD3,Pvalb
+CDK6,Pvalb
+ADCY8,Pvalb
+SATB1,Pvalb
+WIF1,Pvalb
+CLEC2L,Pvalb
+SNCG,Pvalb
+GOLIM4,Pvalb
+ASTN2,Pvalb
+MYH10,Pvalb
+CAPS2,Pvalb
+PDGFC,Pvalb
+RSPO2,Pvalb
+PLOD2,Pvalb
+VAV3,Pvalb
+WDPCP,Pvalb
+PCCA,Pvalb
+PPP2R2B,Pvalb
+ARHGAP20,Pvalb
+KCND2,Pvalb
+PKD2,Pvalb
+TAOK3,Pvalb
+GRIK3,Pvalb
+FHOD3,Pvalb
+FASTKD1,Pvalb
+SERPINI1,Pvalb
+MPC1,Pvalb
+NDST3,Pvalb
+MYO1B,Pvalb
+OSBPL10,Pvalb
+TBC1D5,Pvalb
+LDB2,Pvalb
+PLCE1,Pvalb
+GRK4,Pvalb
+UGP2,Pvalb
+RGS5,Pvalb
+PRKAG2,Pvalb
+KCNS3,Pvalb
+UNC5D,Pvalb
+TTLL11,Pvalb
+CLIP4,Pvalb
+MEIKIN,Pvalb
+RAB3IP,Pvalb
+MYRFL,Pvalb
+RASGRF2,Pvalb
+IL1RAP,Pvalb
+NXPH1,Pvalb
+FAM155A,Pvalb
+NT5DC1,Pvalb
+MROH1,Pvalb
+PIP4K2A,Pvalb
+LPCAT4,Pvalb
+STK39,Pvalb
+ACSL6,Pvalb
+BEND6,Pvalb
+KATNAL2,Pvalb
+ZNF804B,Pvalb
+FAM13A,Pvalb
+FLRT3,Pvalb
+SPATA6,Pvalb
+COL4A2,Pvalb
+NHS,Pvalb
+SORBS1,Pvalb
+XKR4,Lamp5
+PRR16,Lamp5
+PDE4D,Lamp5
+KIRREL,Lamp5
+ITGA11,Lamp5
+CACNA1E,Lamp5
+DPP10,Lamp5
+ELMO1,Lamp5
+PBX3,Lamp5
+RASA1,Lamp5
+RASSF3,Lamp5
+SSBP2,Lamp5
+SLC1A3,Lamp5
+CELF4,Lamp5
+ENOX1,Lamp5
+CCNH,Lamp5
+PLXDC2,Lamp5
+VRK1,Lamp5
+ZNF385B,Lamp5
+ATP10A,Lamp5
+NELL2,Lamp5
+RANBP17,Lamp5
+FAM13C,Lamp5
+PSD3,Lamp5
+LRRTM3,Lamp5
+GRK5,Lamp5
+RIMS2,Lamp5
+NUMB,Lamp5
+LUZP2,Sncg
+SLC1A2,Sncg
+NRG1,Sncg
+GRM8,Sncg
+GALNTL6,Sncg
+THSD7B,Sncg
+SEMA5A,Sncg
+MGAT4C,Sncg
+CACNA2D3,Sncg
+EPHA5,Sncg
+SSBP2,Sncg
+ATP2C1,Sncg
+KCNH7,Sncg
+LRRTM4,Sncg
+ADRA1B,Sncg
+SNTG1,Sncg
+NELL1,Sncg
+SLC35F3,Sncg
+PTPRO,Sncg
+MYO1B,Sncg
+ARHGAP18,Sncg
+CDH12,Sncg
+MCC,Sncg
+NCAM2,Sncg
+SLC8A1,Sncg
+LCORL,Sncg
+GRID1,Sncg
+PCBP3,Sncg
+HIVEP1,Sncg
+KIAA1211,Sncg
+THSD7A,Sncg
+RERG,Sncg
+NALCN,Sncg
+SNCAIP,Sncg
+KCNIP4,Vip
+SLC35F3,Vip
+CA10,Vip
+IQGAP2,Vip
+SYNE1,Vip
+PLXDC2,Vip
+MERTK,Vip
+SH3D19,Vip
+PRKD1,Vip
+CNTNAP5,Vip
+RNF150,Vip
+RASA1,Vip
+CCBE1,Vip
+AFF3,Vip
+LINGO2,Sst Chodl
+SGCD,Sst Chodl
+DACH2,Sst Chodl
+STK32B,Sst Chodl
+CELF2,Sst Chodl
+COL23A1,Sst Chodl
+RGS22,Sst Chodl
+SLC38A11,Sst Chodl
+TLN2,Sst Chodl
+COL8A1,Sst Chodl
+DLC1,Sst Chodl
+KCNH5,Sst Chodl
+1-Mar,Sst Chodl
+ZCRB1,Sst Chodl
+ABCC4,Sst Chodl
+LGI1,Sst Chodl
+DCX,Sst Chodl
+ABI3BP,Sst Chodl
+LMO7,Sst Chodl
+SYT9,Sst Chodl
+AUTS2,Sst Chodl
+FBXL7,Sst Chodl
+AKAP13,Sst Chodl
+SPTLC3,Sst Chodl
+DERA,Sst Chodl
+NEDD4,Sst Chodl
+PLCXD3,Sst Chodl
+EML5,Sst Chodl
+MMD2,Sst Chodl
+TMTC4,Sst Chodl
+EPHA4,Sst Chodl
+WWC2,Sst Chodl
+NEK10,Sst Chodl
+B4GALNT3,Sst Chodl
+MAPT,Sst Chodl
+TGFA,Sst Chodl
+FUT9,Sst Chodl
+RAPGEF6,Sst Chodl
+PKNOX1,Sst Chodl
+PSTPIP2,Sst Chodl
+PEAK1,Sst Chodl
+STK32A,Sst Chodl
+SDK2,Sst Chodl
+VAMP4,Sst Chodl
+NDRG1,Sst Chodl
+FSTL4,Sst Chodl
+MAP1B,Sst Chodl
+BSPRY,Sst Chodl
+NLK,Sst Chodl
+MFSD6,Sst Chodl
+AFF3,Sst Chodl
+CCDC6,Sst Chodl
+TRPC7,Sst Chodl
+SATB1,Sst Chodl
+USP54,Sst Chodl
+HIPK2,Sst Chodl
+CCDC158,Sst Chodl
+HCRTR2,Sst Chodl
+DIP2B,Sst Chodl
+RXFP1,Sst Chodl
+PPP2R2B,Sst Chodl
+BAIAP3,Sst Chodl
+MICU1,Sst Chodl
+PPP2R2C,Sst Chodl
+NEDD4L,Sst Chodl
+SLC43A2,Sst Chodl
+GK5,Sst Chodl
+GRIK2,Sst Chodl
+MPP5,Sst Chodl
+TRANK1,Sst Chodl
+BACH2,Sst Chodl
+ANXA5,Sst Chodl
+ASTN2,Sst Chodl
+ANK2,Sst Chodl
+FOXP1,Sst Chodl
+DLG5,Sst Chodl
+TRPS1,Sst Chodl
+COG5,Sst Chodl
+AGBL4,Sst Chodl
+SLC40A1,Sst Chodl
+PI4K2A,Sst Chodl
+ALMS1,Sst Chodl
+PPP1R14C,Sst Chodl
+BICD1,Sst Chodl
+CCDC175,Sst Chodl
+TNFRSF19,Sst Chodl
+KIAA0556,Sst Chodl
+HOOK1,Sst Chodl
+AKT3,Sst Chodl
+CREB3L2,Sst Chodl
+THADA,Sst Chodl
+ABCG2,Sst Chodl
+XRN1,Sst Chodl
+MYO9A,Sst Chodl
+FRMD4A,Sst Chodl
+ERI3,Sst Chodl
+ASCC3,Sst Chodl
+TGFBR3,Sst Chodl
+CYFIP2,Sst Chodl
+ANXA7,Sst Chodl
+TSPAN9,Sst Chodl
+SYT10,Sst Chodl
+ANXA4,Sst Chodl
+SRRM4,Sst Chodl
+MAP4K4,Sst Chodl
+TNIK,Sst Chodl
+GPR158,Sst Chodl
+N4BP2,Sst Chodl
+MORN5,Sst Chodl
+DPYSL5,Sst Chodl
+FGD3,Sst Chodl
+TENM2,Sst Chodl
+TNFRSF11A,Sst Chodl
+COPZ1,Sst Chodl
+GNAI1,Sst Chodl
+C11orf49,Sst Chodl
+MAOB,Sst Chodl
+PACSIN2,Sst Chodl
+DNAJC6,Sst Chodl
+IL18R1,Sst Chodl
+DOCK11,Sst Chodl
+GMDS,Sst Chodl
+PLA2R1,Sst Chodl
+DOPEY2,Sst Chodl
+DPH6,Sst Chodl
+ZBTB8OS,Sst Chodl
+TMCO4,Sst Chodl
+TTN,Sst Chodl
+PHKA1,Sst Chodl
+JPH3,Sst Chodl
+LACC1,Sst Chodl
+DMRTC1B,Sst Chodl
+SHISA9,Sst Chodl
+MORN4,Sst Chodl
+CALN1,Sst Chodl
+FHIT,Sst Chodl
+NOD1,Sst Chodl
+ACADSB,Sst Chodl
+ST6GAL1,Sst Chodl
+ST3GAL1,Sst Chodl
+PLXDC1,Sst Chodl
+CSGALNACT1,Sst Chodl
+SMAD2,Sst Chodl
+ALDH1L2,Sst Chodl
+DPY19L3,Sst Chodl
+ACYP2,Sst Chodl
+CACHD1,Sst Chodl
+MED15,Sst Chodl
+SORL1,Sst Chodl
+RASAL2,Sst Chodl
+VPS13B,Sst Chodl
+PCNX,Sst Chodl
+CUL3,Sst Chodl
+ZNRF2,Sst Chodl
+RCL1,Sst Chodl
+GBF1,Sst Chodl
+HMGCLL1,Sst Chodl
+GPATCH2,Sst Chodl
+SIL1,Sst Chodl
+GXYLT1,Sst Chodl
+BAZ1A,Sst Chodl
+RNASET2,Sst Chodl
+IKZF2,Sst Chodl
+CNTLN,Sst Chodl
+SEMA4B,Sst Chodl
+TSC22D1,Sst Chodl
+SGMS1,Sst Chodl
+WRN,Sst Chodl
+TSPYL2,Sst Chodl
+LEKR1,Sst Chodl
+HMP19,Sst Chodl
+PAK1,Sst Chodl
+NAP1L1,Sst Chodl
+SH3RF1,Sst Chodl
+EML1,Sst Chodl
+ALCAM,Sst Chodl
+KANK1,Sst Chodl
+ERN1,Sst Chodl
+IMMP2L,Sst Chodl
+CREM,Sst Chodl
+OSBPL10,Sst Chodl
+NPHP1,Sst Chodl
+ABI3BP,Sst
+ARHGAP10,Sst
+CDH8,Sst
+C1orf226,Sst
+PCDH15,Sst
+PHF20L1,Sst
+MAN2A1,Sst
+VSTM2B,Sst
+ST6GALNAC3,Sst
+GULP1,Sst
+TENM2,Sst
+DPP6,Sst
+PPP4R4,Sst
+PROM1,Sst
+OPCML,Sst
+PDE1C,Sst
+EPHA6,Pvalb
+PRRX1,Pvalb
+MIPOL1,Pvalb
+CTNNAL1,Pvalb
+PRKCA,Pvalb
+LRRC38,Pvalb
+SLC4A7,Pvalb
+SFMBT2,Pvalb
+PHACTR2,Pvalb
+PLD5,Pvalb
+SRRM3,Pvalb
+RAPGEF4,Pvalb
+WDR63,Pvalb
+TENM2,Pvalb
+MEF2A,Pvalb
+LYST,Pvalb
+AIFM3,Pvalb
+CNTNAP5,Pvalb
+TMEM178A,Pvalb
+ALK,Pvalb
+DNER,Pvalb
+HTR7,Pvalb
+NCOA3,Pvalb
+SLC25A40,Pvalb
+PDZRN3,Pvalb
+HAPLN4,Pvalb
+C8orf34,Lamp5
+TRPC5,Lamp5
+ADRA1A,Lamp5
+ZMAT4,Lamp5
+KCTD16,Lamp5
+KCNH7,Lamp5
+PAK7,Lamp5
+RGS7BP,Lamp5
+CHRNA7,Lamp5
+PARM1,Lamp5
+CRISPLD1,Lamp5
+PLD5,Lamp5
+CRTAC1,Lamp5
+IL1RAP,Lamp5
+GAD1,Lamp5
+ATXN1,Lamp5
+FSTL4,Lamp5
+ADAMTS17,Lamp5
+NAV3,Lamp5
+PTPRG,Lamp5
+QKI,Lamp5
+SEMA5A,Lamp5
+ROBO2,Lamp5
+OGFRL1,Lamp5
+RAPGEF4,Lamp5
+ADAMTSL1,Lamp5
+ZBTB16,Lamp5
+NECAB1,Lamp5
+MPDZ,Lamp5
+PDE11A,Lamp5
+KCTD6,Lamp5
+AK5,Lamp5
+NDNF,Lamp5
+FRMPD4,Lamp5
+ELMOD1,Lamp5
+KCNQ5,Lamp5
+LGI1,Lamp5
+MYO3B,Lamp5
+MMP17,Lamp5
+CHD3,Lamp5
+SEMA3C,Lamp5
+CDKL5,Lamp5
+RORA,Lamp5
+HS3ST4,Lamp5
+OSBPL8,Lamp5
+UST,Lamp5
+MLIP,Lamp5
+LDLRAD4,Lamp5
+SORL1,Lamp5
+ZNF804B,Lamp5
+ARPP21,Lamp5
+CPLX3,Lamp5
+APBA1,Lamp5
+GLP2R,Lamp5
+LMO7,Lamp5
+AGPAT4,Lamp5
+CDH11,Lamp5
+SPOCK3,Lamp5
+NMNAT2,Lamp5
+RASGRF1,Lamp5
+RASAL2,Lamp5
+SNAP25,Lamp5
+PRKCA,Lamp5
+NRG2,Lamp5
+NRXN3,Sncg
+CADPS2,Sncg
+SLC44A5,Sncg
+GRIP1,Sncg
+SYNE1,Sncg
+COL25A1,Sncg
+MEGF10,Sncg
+TRPM3,Sncg
+FREM1,Sncg
+3-Mar,Sncg
+ADAM12,Sncg
+NR3C2,Sncg
+NPAS1,Sncg
+CPLX2,Sncg
+CELF4,Sncg
+KCNIP1,Sncg
+APP,Sncg
+KHDRBS2,Sncg
+SEMA3C,Sncg
+UNC5B,Sncg
+SGCD,Sncg
+KCNN2,Sncg
+STK32C,Sncg
+SLC35F1,Sncg
+CDK14,Sncg
+GLP2R,Sncg
+JAM2,Sncg
+ZEB2,Sncg
+ELMOD1,Sncg
+KCNH1,Sncg
+SORCS2,Sncg
+PRKD1,Sncg
+BRINP3,Sncg
+IGF1,Sncg
+SDK2,Sncg
+GNAO1,Sncg
+SYN2,Sncg
+LIX1,Sncg
+SCML4,Sncg
+SNCA,Sncg
+GPHN,Sncg
+LARP1B,Sncg
+NETO1,Sncg
+CELF6,Sncg
+ST7,Sncg
+PCLO,Sncg
+MAMLD1,Sncg
+DNER,Sncg
+TP53I11,Sncg
+APBA1,Sncg
+CDH2,Sncg
+ENOX1,Sncg
+COL19A1,Sncg
+CACNB2,Sncg
+SOCS5,Sncg
+NR2F2,Sncg
+KCTD12,Sncg
+SYT6,Sncg
+GNG4,Sncg
+FXYD6,Sncg
+CPNE2,Sncg
+KCTD16,Sncg
+PHF20L1,Sncg
+SEZ6,Sncg
+LDB2,Sncg
+HTR3A,Sncg
+HIPK2,Sncg
+GULP1,Sncg
+PDE1A,Sncg
+NPY1R,Sncg
+HTR2C,Sncg
+EGLN3,Sncg
+LHFPL3,Sncg
+KLHL29,Sncg
+HTR7,Sncg
+RAMP1,Sncg
+CHST1,Sncg
+PCDH20,Sncg
+CLIC4,Sncg
+CACNG4,Sncg
+TNIK,Sncg
+ADARB1,Sncg
+SERPINE2,Sncg
+GALNT14,Sncg
+MGAT5B,Sncg
+ENHO,Sncg
+GNB4,Sncg
+FABP5,Sncg
+PDE11A,Sncg
+GPRIN3,Sncg
+METAP1D,Sncg
+ARHGAP24,Sncg
+DENND2A,Sncg
+FAM163A,Sncg
+GLDN,Sncg
+NAP1L5,Sncg
+BMP3,Sncg
+PDE7B,Sncg
+PTPRF,Sncg
+TNS1,Sncg
+SOBP,Sncg
+HRH2,Sncg
+CDH6,Sncg
+RGMB,Sncg
+NBEA,Sncg
+TENM4,Sncg
+PPFIA2,Sncg
+C1GALT1,Sncg
+NRIP3,Sncg
+TEAD1,Sncg
+CD81,Sncg
+HS6ST3,Vip
+KCNB2,Vip
+NBEA,Vip
+PDE4D,Vip
+GRIK4,Vip
+LIMCH1,Vip
+AP1S2,Vip
+DENND2A,Vip
+GPD1,Vip
+DYNC1I1,Vip
+CRH,Vip
+SLC35F4,Vip
+PENK,Vip
+SLC2A13,Vip
+GRID1,Vip
+IGSF3,Vip
+CDH20,Vip
+CAMK2A,Vip
+SLC44A5,Vip
+FSTL4,Vip
+FXYD6,Vip
+ABLIM1,Vip
+NRXN2,Vip
+KCNQ5,Vip
+ZNF536,Vip
+TMEM200A,Vip
+PIK3R1,Vip
+NPY1R,Vip
+TIAM1,Vip
+VSTM2L,Vip
+ASIC1,Vip
+SVIL,Vip
+GALNT14,Vip
+ANK3,Vip
+HTR2C,Vip
+SEZ6,Vip
+KCNN2,Vip
+SEMA5B,Vip
+GRPR,Vip
+GRM8,Vip
+ADCY2,Vip
+ENAH,Vip
+SLC1A2,Vip
+DLX1,Vip
+BRINP3,Vip
+RGS10,Vip
+GRIA2,Vip
+WNT5B,Vip
+PDZRN4,Vip
+CACNB2,Vip
+MAN1A1,Sst Chodl
+PTN,Sst Chodl
+CPNE4,Sst Chodl
+COL25A1,Sst Chodl
+TRPM3,Sst Chodl
+SLC4A4,Sst Chodl
+LRRTM4,Sst Chodl
+MPP7,Sst Chodl
+HS3ST5,Sst Chodl
+DPP6,Sst Chodl
+ZMIZ1,Sst Chodl
+FNDC1,Sst Chodl
+DMD,Sst Chodl
+KCND2,Sst Chodl
+THSD7B,Sst Chodl
+ELMO1,Sst Chodl
+MAPK10,Sst Chodl
+ADAMTS3,Sst Chodl
+LOC728392,Sst Chodl
+LYST,Sst Chodl
+STARD5,Sst Chodl
+RFTN1,Sst Chodl
+PXYLP1,Sst Chodl
+EML6,Sst Chodl
+CACNA2D3,Sst Chodl
+VWC2L,Sst Chodl
+B3GAT1,Sst Chodl
+FAM184A,Sst Chodl
+PCP4,Sst Chodl
+COLEC12,Sst Chodl
+CTNNA2,Sst Chodl
+CDH4,Sst Chodl
+WWC1,Sst Chodl
+EPHA5,Sst Chodl
+PCDH9,Sst Chodl
+ACSL1,Sst Chodl
+INPP4B,Sst Chodl
+EXT1,Sst Chodl
+KCNN3,Sst Chodl
+SFRP1,Sst Chodl
+BACE2,Sst Chodl
+STXBP6,Sst Chodl
+POU3F2,Sst Chodl
+PBX1,Sst Chodl
+LYPD6B,Sst Chodl
+CDH18,Sst Chodl
+FXYD6,Sst Chodl
+PREX1,Sst Chodl
+MYO5B,Sst Chodl
+TMEM117,Sst Chodl
+RESP18,Sst Chodl
+VSTM2B,Sst Chodl
+UCHL1,Sst Chodl
+SYT6,Sst Chodl
+KCND3,Sst Chodl
+BBS9,Sst Chodl
+ADRA1A,Sst Chodl
+ASH1L,Sst Chodl
+RFFL,Sst Chodl
+KCNK10,Sst Chodl
+RGS17,Sst Chodl
+TSHZ2,Sst Chodl
+FRMD3,Sst Chodl
+MYO16,Sst Chodl
+SYT16,Sst Chodl
+ADAMTS16,Sst Chodl
+ST6GAL2,Sst Chodl
+PTPRU,Sst Chodl
+GRIN3A,Sst Chodl
+SYT1,Sst Chodl
+PDE4B,Sst Chodl
+SRGAP2,Sst Chodl
+CERS6,Sst Chodl
+DRD1,Sst Chodl
+NCAM1,Sst Chodl
+DAP3,Sst Chodl
+MDM1,Sst Chodl
+EPHA3,Sst Chodl
+DLGAP2,Sst Chodl
+APBB2,Sst Chodl
+CHD9,Sst Chodl
+STMN2,Sst Chodl
+DPY19L1,Sst Chodl
+CDH13,Sst Chodl
+SYT14,Sst Chodl
+DSCAM,Sst Chodl
+PCDH18,Sst Chodl
+DNAH9,Sst Chodl
+S100A10,Sst Chodl
+ZBTB7C,Sst Chodl
+DGKB,Sst Chodl
+KCNT2,Sst Chodl
+APBA2,Sst Chodl
+FRY,Sst Chodl
+PLXNA2,Sst Chodl
+CACNB2,Sst Chodl
+TIMP2,Sst Chodl
+DOCK10,Sst Chodl
+CYGB,Sst Chodl
+ANKFN1,Sst Chodl
+EPN2,Sst Chodl
+PIK3CB,Sst Chodl
+SH3GL3,Sst Chodl
+COL11A1,Sst Chodl
+TRHDE,Sst Chodl
+ST6GALNAC2,Sst Chodl
+NRSN2,Sst Chodl
+SMARCA2,Sst Chodl
+PRUNE2,Sst Chodl
+SOX2,Sst Chodl
+SLC7A3,Sst Chodl
+HS3ST2,Sst Chodl
+ZCCHC12,Sst Chodl
+ARHGEF18,Sst Chodl
+SAMD12,Sst Chodl
+LRRC7,Sst Chodl
+REEP1,Sst Chodl
+IL1RAPL1,Sst Chodl
+RIN2,Sst Chodl
+LYPD6,Sst Chodl
+IZUMO4,Sst Chodl
+RIMBP2,Sst Chodl
+PCED1B,Sst Chodl
+GRIK3,Sst Chodl
+MRAP2,Sst Chodl
+NXPH1,Sst Chodl
+PLEKHA7,Sst Chodl
+BRINP2,Sst Chodl
+ILDR2,Sst Chodl
+SNX29,Sst Chodl
+NTRK2,Sst Chodl
+RPS6KA3,Sst Chodl
+RAP1GAP2,Sst Chodl
+GARNL3,Sst Chodl
+SCCPDH,Sst Chodl
+CASK,Sst Chodl
+CNIH3,Sst Chodl
+PRKAG2,Sst Chodl
+DOCK9,Sst Chodl
+ACHE,Sst Chodl
+CLIC1,Sst Chodl
+FRMD4B,Sst
+CERS6,Sst
+TMCC3,Sst
+PRKCG,Sst
+CADM2,Sst
+RAB3B,Sst
+PARK2,Sst
+LRRC7,Sst
+UNC13C,Sst
+LYPD6B,Sst
+CDH13,Sst
+SEMA6D,Sst
+LSAMP,Sst
+GRM7,Sst
+LYPD6,Sst
+SEMA3A,Sst
+CHRM3,Sst
+ASIC2,Sst
+RBP4,Sst
+MKX,Sst
+SH3KBP1,Sst
+KLF5,Sst
+ANO3,Sst
+LAMA4,Sst
+SPON1,Sst
+GLCE,Sst
+RBMS1,Sst
+ELFN1,Sst
+GDA,Sst
+SASH1,Sst
+FRMD5,Sst
+CALB1,Sst
+DLGAP2,Sst
+PTPRR,Sst
+MPPED1,Sst
+UTRN,Sst
+ADCY2,Sst
+KCNQ3,Sst
+GARNL3,Sst
+CNTNAP5,Sst
+PBX1,Sst
+NRIP1,Sst
+RELN,Sst
+ARHGAP6,Sst
+KIAA1324L,Sst
+NAV2,Sst
+CNTN1,Sst
+KCNMB4,Sst
+FGF14,Sst
+SERPINI1,Sst
+PTCHD4,Sst
+RGS9,Sst
+MASP1,Sst
+RGS17,Sst
+GRM3,Sst
+CACNA2D2,Sst
+PPP2R2B,Sst
+RAB27B,Sst
+VCL,Sst
+ANKRD44,Sst
+ERC2,Sst
+TMEM91,Sst
+KCND2,Sst
+P3H2,Sst
+MAFB,Sst
+SLC8A3,Sst
+XYLT1,Sst
+CAMK1D,Sst
+MCC,Sst
+EFNA5,Sst
+GABRA3,Sst
+TMEM44,Sst
+CNTNAP4,Pvalb
+ME3,Pvalb
+MAN1C1,Pvalb
+NEK7,Pvalb
+DOCK4,Pvalb
+SLC35F3,Pvalb
+TMEM132D,Pvalb
+OPRD1,Pvalb
+DGKI,Pvalb
+PLA2G3,Pvalb
+MYO1E,Pvalb
+TNR,Pvalb
+GPR176,Pvalb
+PHLDA1,Pvalb
+FRMPD1,Pvalb
+PTPRE,Pvalb
+TMEM44,Pvalb
+KCNH7,Pvalb
+SRRM4,Pvalb
+ARHGAP5,Pvalb
+ST3GAL6,Pvalb
+PACSIN2,Pvalb
+CAMTA1,Pvalb
+SPECC1,Pvalb
+KLHL32,Pvalb
+ITPR1,Pvalb
+HUNK,Pvalb
+SLIT3,Pvalb
+ST5,Pvalb
+ARL15,Pvalb
+KCNA1,Pvalb
+PKP4,Pvalb
+STARD9,Pvalb
+KCNJ3,Pvalb
+STAMBPL1,Pvalb
+CUX1,Pvalb
+CACNA1A,Pvalb
+IQGAP2,Pvalb
+MANBA,Pvalb
+OSBPL1A,Pvalb
+SORBS2,Pvalb
+GABRG3,Pvalb
+EXOC4,Pvalb
+RTN4RL1,Pvalb
+GRIA1,Pvalb
+ZDHHC14,Pvalb
+BCAN,Pvalb
+MYO6,Pvalb
+MAN1A2,Pvalb
+GOT1,Pvalb
+TTC39B,Pvalb
+USP25,Pvalb
+CDH18,Pvalb
+FAM81A,Pvalb
+LNX1,Pvalb
+CEP83,Pvalb
+CORO6,Pvalb
+PRSS23,Pvalb
+MPPED2,Pvalb
+LGI2,Pvalb
+ARHGAP26,Pvalb
+KCNC3,Pvalb
+WASF3,Pvalb
+RARB,Pvalb
+ANKRD29,Pvalb
+PLCH2,Pvalb
+ATP13A3,Pvalb
+RCAN2,Pvalb
+CIT,Pvalb
+STRBP,Pvalb
+MSI2,Pvalb
+CPEB3,Pvalb
+COX6A2,Pvalb
+DIP2A,Pvalb
+FUT9,Pvalb
+CAP2,Pvalb
+NEBL,Pvalb
+WWOX,Pvalb
+RBMS3,Pvalb
+PPIP5K2,Pvalb
+RBFOX1,Pvalb
+ZFYVE9,Pvalb
+HS3ST1,Pvalb
+CACNG2,Pvalb
+MSRB3,Pvalb
+SNPH,Pvalb
+BTBD3,Pvalb
+DGKH,Pvalb
+SH3RF3,Pvalb
+SSBP2,Pvalb
+ADAMTSL5,Pvalb
+UTRN,Pvalb
+PLEKHH2,Pvalb
+ST6GALNAC5,Pvalb
+ELAVL2,Pvalb
+UBE3A,Pvalb
+NCEH1,Pvalb
+ANKRD33B,Pvalb
+CHRM2,Pvalb
+KLF3,Pvalb
+ATP1B1,Pvalb
+APBB2,Pvalb
+WIPF3,Pvalb
+GABRA1,Pvalb
+GPRC5B,Pvalb

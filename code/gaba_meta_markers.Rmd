@@ -15,6 +15,41 @@ library(dplyr)
 library(ggplot2)
 ```
 
+Checking out some supplemental tables from Bakken 2021: https://pmc.ncbi.nlm.nih.gov/articles/PMC8494640/#Fig9
+This was the original human, marmoset, mouse consensus taxonomies
+These tables are the marker genes used in subclass annotations
+
+```{r}
+#Cluster markers for human
+supp_table_4 = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/other_paper_supps/bakken_2021/Supplementary_Table_4.csv')
+
+#Cluster markers for mouse
+supp_table_5 = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/other_paper_supps/bakken_2021/Supplementary_Table_5.csv')
+supp_table_5
+#Cluster markers for marmoset
+supp_table_6 = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/other_paper_supps/bakken_2021/Supplementary_Table_6.csv')
+
+
+
+
+#Markers across species 
+supp_table_7 = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/other_paper_supps/bakken_2021/Supplementary_Table_7.csv')
+
+table(supp_table_7$cluster)
+supp_table_7 %>% filter(cluster == 'Sncg' )
+
+
+supp_table_8 = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/other_paper_supps/bakken_2021/Supplementary_Table_8.csv')
+supp_table_8
+supp_table_8 %>% filter(gene == 'SNCG')
+
+
+
+```
+
+
+
+
 
 
 
