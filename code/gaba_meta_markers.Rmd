@@ -890,11 +890,6 @@ ggplot(mouse_de_stats, aes(x = log2(fold_change), y = auroc, label = gene_label)
 ```
 
 
-
-
-
-
-
 ```{r}
 
 ortho_mouse_subclass_meta_markers %>% filter(gene == 'LHX6')
@@ -907,6 +902,95 @@ ortho_mouse_subclass_meta_markers %>% filter(gene == 'LHX6')
 primate_subclass_meta_markers %>% filter(gene == 'LHX6')
 
 ```
+
+
+And how about meta-markers across all the species for subclass annotations
+
+
+```{r}
+all_species_markers = list(
+    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz"),
+    tasic18 = read_markers("metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("metamarkers/ortho_markers_macosko_wba.csv.gz")
+)
+
+
+all_species_markers$human_10x$cell_type[all_species_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$human_ss$cell_type[all_species_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$chimp_10x$cell_type[all_species_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$chimp_ss$cell_type[all_species_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$gorilla_10x$cell_type[all_species_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$gorilla_ss$cell_type[all_species_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$macaca_10x$cell_type[all_species_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$marmoset_10x$cell_type[all_species_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+```
+
+```{r}
+conserved_subclass_meta_markers = make_meta_markers(all_species_markers, detailed_stats = TRUE)
+
+conserved_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+```
+
+
+```{r}
+
+all_cell_types = c('Pvalb','Chandelier','Sst','Sst Chodl','Lamp5','Lamp5 Lhx6','Vip', 'Pax6', 'Sncg')
+
+for(i in 1:length(all_cell_types)){
+
+  current_cell_type = all_cell_types[i]
+  de_stats = conserved_subclass_meta_markers %>% filter(cell_type == current_cell_type)
+  
+  
+  human_check = de_stats$human_10x | de_stats$human_ss
+  chimp_check = de_stats$chimp_10x | de_stats$chimp_ss
+  gorilla_check = de_stats$gorilla_10x | de_stats$gorilla_ss
+  macaca_check = de_stats$macaca_10x
+  marmoset_check = de_stats$marmoset_10x
+  mouse_check = rowSums(de_stats[ ,c('tasic18','zeng_10x_cells','zeng_10x_nuclei','zeng_smart_cells','zeng_smart_nuclei',
+                                     'zeng_10xv2_wba','zeng_10xv3_wba','macosko_wba')]) >= 1
+  
+  
+  cross_species_de_check = human_check & chimp_check & gorilla_check & macaca_check & marmoset_check & mouse_check
+  
+  de_stats$gene_label = de_stats$gene
+  de_stats$gene_label[!cross_species_de_check] = ''
+  de_stats$cross_species_de = as.character(cross_species_de_check)
+  
+  de_stats = de_stats %>% arrange(desc(cross_species_de))
+  
+  g1 = ggplot(de_stats, aes(x = log2(fold_change), y = auroc, label = gene_label)) + 
+    geom_point(aes(color = cross_species_de, alpha = cross_species_de)) + 
+    geom_label_repel(max.overlaps = Inf,min.segment.length = 0, nudge_x = 5, direction = "both", force = 10) +
+    scale_color_manual(values = c('TRUE' = 'red', 'FALSE' = 'black') ) +
+    scale_alpha_manual(values = c('TRUE' = 1, 'FALSE' = .25) ) +
+    ggtitle(sprintf('Cross-mammal DE: %s', current_cell_type))
+  
+  print(g1)
+    
+}
+```
+
+
+
+
+
 
 
 
