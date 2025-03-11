@@ -403,55 +403,62 @@ Add the consensus cluster label and then filter out cells not in a consensus clu
 
 index = match(human_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
 human_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
 human_10x = human_10x[ ,!is.na(human_10x$consensus_cluster_label)]
 
 index = match(human_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
 human_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
 human_ss = human_ss[ ,!is.na(human_ss$consensus_cluster_label)]
 
 
 index = match(chimp_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
 chimp_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
 chimp_10x = chimp_10x[ ,!is.na(chimp_10x$consensus_cluster_label)]
 
 index = match(chimp_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
 chimp_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
 chimp_ss = chimp_ss[ ,!is.na(chimp_ss$consensus_cluster_label)]
 
 
 index = match(gorilla_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
 gorilla_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
 gorilla_10x = gorilla_10x[ ,!is.na(gorilla_10x$consensus_cluster_label)]
 
 index = match(gorilla_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
 gorilla_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
 gorilla_ss = gorilla_ss[ ,!is.na(gorilla_ss$consensus_cluster_label)]
 
 
 index = match(macaca_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
 macaca_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+macaca_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
 macaca_10x = macaca_10x[ ,!is.na(macaca_10x$consensus_cluster_label)]
 
 index = match(marmoset_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
 marmoset_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+marmoset_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
 marmoset_10x = marmoset_10x[ ,!is.na(marmoset_10x$consensus_cluster_label)]
 
 gc()
-
 ```
 
 
 ```{r}
 #Human
 #Change metdata columns to match other datasets
-human_10x$subclass_label = human_10x$confirmed_subclass
+#human_10x$subclass_label = human_10x$confirmed_subclass
 human_10x$cluster_label = human_10x$consensus_cluster_label
 
 keep_meta = colData(human_10x)[ , c('subclass_label','cluster_label')]
 colData(human_10x)= keep_meta
 
 #Change metadata columns to match other datasets
-human_ss$subclass_label = human_ss$confirmed_subclass
+#human_ss$subclass_label = human_ss$confirmed_subclass
 human_ss$cluster_label = human_ss$consensus_cluster_label
 
 keep_meta = colData(human_ss)[ , c('subclass_label','cluster_label')]
@@ -460,14 +467,14 @@ colData(human_ss)= keep_meta
 
 #Chimp
 #Change metdata columns to match other datasets
-chimp_10x$subclass_label = chimp_10x$confirmed_subclass
+#chimp_10x$subclass_label = chimp_10x$confirmed_subclass
 chimp_10x$cluster_label = chimp_10x$consensus_cluster_label
 
 keep_meta = colData(chimp_10x)[ , c('subclass_label','cluster_label')]
 colData(chimp_10x)= keep_meta
 
 #Change metadata columns to match other datasets
-chimp_ss$subclass_label = chimp_ss$confirmed_subclass
+#chimp_ss$subclass_label = chimp_ss$confirmed_subclass
 chimp_ss$cluster_label = chimp_ss$consensus_cluster_label
 
 keep_meta = colData(chimp_ss)[ , c('subclass_label','cluster_label')]
@@ -475,14 +482,14 @@ colData(chimp_ss)= keep_meta
 
 #gorilla
 #Change metdata columns to match other datasets
-gorilla_10x$subclass_label = gorilla_10x$confirmed_subclass
+#gorilla_10x$subclass_label = gorilla_10x$confirmed_subclass
 gorilla_10x$cluster_label = gorilla_10x$consensus_cluster_label
 
 keep_meta = colData(gorilla_10x)[ , c('subclass_label','cluster_label')]
 colData(gorilla_10x)= keep_meta
 
 #Change metadata columns to match other datasets
-gorilla_ss$subclass_label = gorilla_ss$confirmed_subclass
+#gorilla_ss$subclass_label = gorilla_ss$confirmed_subclass
 gorilla_ss$cluster_label = gorilla_ss$consensus_cluster_label
 
 keep_meta = colData(gorilla_ss)[ , c('subclass_label','cluster_label')]
@@ -491,7 +498,7 @@ colData(gorilla_ss)= keep_meta
 
 #macaca
 #Change metdata columns to match other datasets
-macaca_10x$subclass_label = macaca_10x$confirmed_subclass
+#macaca_10x$subclass_label = macaca_10x$confirmed_subclass
 macaca_10x$cluster_label = macaca_10x$consensus_cluster_label
 
 keep_meta = colData(macaca_10x)[ , c('subclass_label','cluster_label')]
@@ -499,7 +506,7 @@ colData(macaca_10x)= keep_meta
 
 #marmoset
 #Change metdata columns to match other datasets
-marmoset_10x$subclass_label = marmoset_10x$confirmed_subclass
+#marmoset_10x$subclass_label = marmoset_10x$confirmed_subclass
 marmoset_10x$cluster_label = marmoset_10x$consensus_cluster_label
 
 keep_meta = colData(marmoset_10x)[ , c('subclass_label','cluster_label')]

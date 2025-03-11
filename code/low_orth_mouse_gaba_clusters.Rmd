@@ -493,6 +493,9 @@ dev.off()
 
 ```
 
+The difference between the max cell-type markers and the next highest cell-type markers is a lot smaller in the low orthologous clusters
+It's saying the same thing as the MetaNeighbor results really. The low orthologous clusters are more of a mix of different subclasses.
+
 
 ```{r}
 
@@ -514,6 +517,358 @@ ggplot(stat_df, aes(x = orthology, y = diff_next_best)) + geom_boxplot()
 ```
 
 
+Load up the primate data, DO NOT exclude the non-consensus primate clusters
+Looking to see if there are better matches for some of the mouse clusters in the non-consensus primate clusters
+
+
+```{r}
+
+human_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_10x_gaba.rds')
+human_ss = readRDS( file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_ss_gaba.rds')
+
+chimp_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_10x_gaba.rds')
+chimp_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_ss_gaba.rds')
+
+gorilla_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_10x_gaba.rds')
+gorilla_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_ss_gaba.rds')
+
+macaca_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/macaca_data_10x_gaba.rds')
+
+marmoset_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
+
+```
+
+
+```{r}
+
+primate_cluster_mappings = data.table::fread('../data/cross_species_mapping_cls86.csv')
+primate_cluster_mappings
+
+primate_cluster_mappings %>% filter(cross_species_cluster == 'lamp5_sncg_vip|7')
+
+```
+
+
+
+Add the consensus cluster label and then filter out cells not in a consensus cluster
+```{r}
+
+index = match(human_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_10x$cluster_label = primate_cluster_mappings$cluster_label[index]
+human_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_10x$consensus_cluster = primate_cluster_mappings$consensus_cluster[index]
+na_index = is.na(human_10x$consensus_cluster_label)
+human_10x$consensus_cluster_label[na_index] = human_10x$cluster_label[na_index]
+human_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+table(human_10x$subclass_label == human_10x$confirmed_subclass)
+table(as.data.frame(colData(human_10x)) %>% filter(subclass_label != confirmed_subclass) %>% pull(cross_species_cluster))
+
+
+
+
+index = match(human_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_ss$cluster_label = primate_cluster_mappings$cluster_label[index]
+human_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_ss$consensus_cluster = primate_cluster_mappings$consensus_cluster[index]
+na_index = is.na(human_ss$consensus_cluster_label)
+human_ss$consensus_cluster_label[na_index] = human_ss$cluster_label[na_index]
+human_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+table(human_ss$subclass_label == human_ss$confirmed_subclass)
+table(as.data.frame(colData(human_ss)) %>% filter(subclass_label != confirmed_subclass) %>% pull(cross_species_cluster))
+
+
+
+index = match(chimp_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_10x$cluster_label = primate_cluster_mappings$cluster_label[index]
+chimp_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_10x$consensus_cluster = primate_cluster_mappings$consensus_cluster[index]
+na_index = is.na(chimp_10x$consensus_cluster_label)
+chimp_10x$consensus_cluster_label[na_index] = chimp_10x$cluster_label[na_index]
+chimp_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+table(chimp_10x$subclass_label == chimp_10x$confirmed_subclass)
+table(as.data.frame(colData(chimp_10x)) %>% filter(subclass_label != confirmed_subclass) %>% pull(cross_species_cluster))
+
+
+index = match(chimp_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_ss$cluster_label = primate_cluster_mappings$cluster_label[index]
+chimp_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_ss$consensus_cluster = primate_cluster_mappings$consensus_cluster[index]
+na_index = is.na(chimp_ss$consensus_cluster_label)
+chimp_ss$consensus_cluster_label[na_index] = chimp_ss$cluster_label[na_index]
+chimp_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+table(chimp_ss$subclass_label == chimp_ss$confirmed_subclass)
+table(as.data.frame(colData(chimp_ss)) %>% filter(subclass_label != confirmed_subclass) %>% pull(cross_species_cluster))
+
+
+index = match(gorilla_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_10x$cluster_label = primate_cluster_mappings$cluster_label[index]
+gorilla_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_10x$consensus_cluster = primate_cluster_mappings$consensus_cluster[index]
+na_index = is.na(gorilla_10x$consensus_cluster_label)
+gorilla_10x$consensus_cluster_label[na_index] = gorilla_10x$cluster_label[na_index]
+gorilla_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+table(gorilla_10x$subclass_label == gorilla_10x$confirmed_subclass)
+table(as.data.frame(colData(gorilla_10x)) %>% filter(subclass_label != confirmed_subclass) %>% pull(cross_species_cluster))
+
+
+index = match(gorilla_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_ss$cluster_label = primate_cluster_mappings$cluster_label[index]
+gorilla_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_ss$consensus_cluster = primate_cluster_mappings$consensus_cluster[index]
+na_index = is.na(gorilla_ss$consensus_cluster_label)
+gorilla_ss$consensus_cluster_label[na_index] = gorilla_ss$cluster_label[na_index]
+gorilla_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+table(gorilla_ss$subclass_label == gorilla_ss$confirmed_subclass)
+table(as.data.frame(colData(gorilla_ss)) %>% filter(subclass_label != confirmed_subclass) %>% pull(cross_species_cluster))
+
+
+
+index = match(macaca_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+macaca_10x$cluster_label = primate_cluster_mappings$cluster_label[index]
+macaca_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+macaca_10x$consensus_cluster = primate_cluster_mappings$consensus_cluster[index]
+na_index = is.na(macaca_10x$consensus_cluster_label)
+macaca_10x$consensus_cluster_label[na_index] = macaca_10x$cluster_label[na_index]
+macaca_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+table(macaca_10x$subclass_label == macaca_10x$confirmed_subclass)
+table(as.data.frame(colData(macaca_10x)) %>% filter(subclass_label != confirmed_subclass) %>% pull(cross_species_cluster))
+
+
+index = match(marmoset_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+marmoset_10x$cluster_label = primate_cluster_mappings$cluster_label[index]
+marmoset_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+marmoset_10x$consensus_cluster = primate_cluster_mappings$consensus_cluster[index]
+na_index = is.na(marmoset_10x$consensus_cluster_label)
+marmoset_10x$consensus_cluster_label[na_index] = marmoset_10x$cluster_label[na_index]
+marmoset_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+table(marmoset_10x$subclass_label == marmoset_10x$confirmed_subclass)
+table(as.data.frame(colData(marmoset_10x)) %>% filter(subclass_label != confirmed_subclass) %>% pull(cross_species_cluster))
+
+as.data.frame(colData(macaca_10x)) %>% filter(subclass_label != confirmed_subclass) %>% 
+  group_by(confirmed_subclass, subclass_label) %>% summarise(n = n())
+
+
+
+```
+
+
+```{r}
+#Human
+#Change metdata columns to match other datasets
+human_10x$subclass_label = human_10x$confirmed_subclass
+human_10x$cluster_label = human_10x$consensus_cluster_label
+
+keep_meta = colData(human_10x)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
+colData(human_10x)= keep_meta
+
+#Change metadata columns to match other datasets
+human_ss$subclass_label = human_ss$confirmed_subclass
+human_ss$cluster_label = human_ss$consensus_cluster_label
+
+keep_meta = colData(human_ss)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
+colData(human_ss)= keep_meta
+
+
+#Chimp
+#Change metdata columns to match other datasets
+chimp_10x$subclass_label = chimp_10x$confirmed_subclass
+chimp_10x$cluster_label = chimp_10x$consensus_cluster_label
+
+keep_meta = colData(chimp_10x)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
+colData(chimp_10x)= keep_meta
+
+#Change metadata columns to match other datasets
+chimp_ss$subclass_label = chimp_ss$confirmed_subclass
+chimp_ss$cluster_label = chimp_ss$consensus_cluster_label
+
+keep_meta = colData(chimp_ss)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
+colData(chimp_ss)= keep_meta
+
+#gorilla
+#Change metdata columns to match other datasets
+gorilla_10x$subclass_label = gorilla_10x$confirmed_subclass
+gorilla_10x$cluster_label = gorilla_10x$consensus_cluster_label
+
+keep_meta = colData(gorilla_10x)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
+colData(gorilla_10x)= keep_meta
+
+#Change metadata columns to match other datasets
+gorilla_ss$subclass_label = gorilla_ss$confirmed_subclass
+gorilla_ss$cluster_label = gorilla_ss$consensus_cluster_label
+
+keep_meta = colData(gorilla_ss)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
+colData(gorilla_ss)= keep_meta
+
+
+#macaca
+#Change metdata columns to match other datasets
+macaca_10x$subclass_label = macaca_10x$confirmed_subclass
+macaca_10x$cluster_label = macaca_10x$consensus_cluster_label
+
+keep_meta = colData(macaca_10x)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
+colData(macaca_10x)= keep_meta
+
+#marmoset
+#Change metdata columns to match other datasets
+marmoset_10x$subclass_label = marmoset_10x$confirmed_subclass
+marmoset_10x$cluster_label = marmoset_10x$consensus_cluster_label
+
+keep_meta = colData(marmoset_10x)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
+colData(marmoset_10x)= keep_meta
+
+
+```
+
+
+
+Now run MetaNeighbor with mouse clusters against primate clusters including the non-consensus clusters
+```{r}
+
+tasic18$subclass_label = rep(NA, length = ncol(tasic18))
+tasic18$consensus_cluster = rep(NA, length = ncol(tasic18))
+tasic18$cluster_label = tasic18$cell_cluster
+
+zeng_10x_cells$subclass_label = rep(NA, length = ncol(zeng_10x_cells))
+zeng_10x_cells$consensus_cluster = rep(NA, length = ncol(zeng_10x_cells))
+zeng_10x_cells$cluster_label = zeng_10x_cells$cell_cluster
+
+zeng_10x_nuclei$subclass_label = rep(NA, length = ncol(zeng_10x_nuclei))
+zeng_10x_nuclei$consensus_cluster = rep(NA, length = ncol(zeng_10x_nuclei))
+zeng_10x_nuclei$cluster_label = zeng_10x_nuclei$cell_cluster
+
+zeng_smart_nuclei$subclass_label = rep(NA, length = ncol(zeng_smart_nuclei))
+zeng_smart_nuclei$consensus_cluster = rep(NA, length = ncol(zeng_smart_nuclei))
+zeng_smart_nuclei$cluster_label = zeng_smart_nuclei$cell_cluster
+
+zeng_smart_cells$subclass_label = rep(NA, length = ncol(zeng_smart_cells))
+zeng_smart_cells$consensus_cluster = rep(NA, length = ncol(zeng_smart_cells))
+zeng_smart_cells$cluster_label = zeng_smart_cells$cell_cluster
+
+zeng_10xv2_wba$subclass_label = rep(NA, length = ncol(zeng_10xv2_wba))
+zeng_10xv2_wba$consensus_cluster = rep(NA, length = ncol(zeng_10xv2_wba))
+zeng_10xv2_wba$cluster_label = zeng_10xv2_wba$cell_cluster
+
+zeng_10xv3_wba$subclass_label = rep(NA, length = ncol(zeng_10xv3_wba))
+zeng_10xv3_wba$consensus_cluster = rep(NA, length = ncol(zeng_10xv3_wba))
+zeng_10xv3_wba$cluster_label = zeng_10xv3_wba$cell_cluster
+
+macosko_wba$subclass_label = rep(NA, length = ncol(macosko_wba))
+macosko_wba$consensus_cluster = rep(NA, length = ncol(macosko_wba))
+macosko_wba$cluster_label = macosko_wba$cell_cluster
+```
+
+
+
+
+
+```{r}
+
+all_mammal_sce = list(
+  human_10x = human_10x,
+  human_ss = human_ss,
+  chimp_10x = chimp_10x, 
+  chimp_ss = chimp_ss,
+  gorilla_10x = gorilla_10x, 
+  gorilla_ss = gorilla_ss,
+  marmoset_10x = marmoset_10x,
+  macaca_10x = macaca_10x,
+  tasic18 = tasic18,
+  zeng_10x_cells = zeng_10x_cells,
+  zeng_10x_nuclei = zeng_10x_nuclei,
+  zeng_smart_cells = zeng_smart_cells,
+  zeng_smart_nuclei = zeng_smart_nuclei,
+  zeng_10xv2_wba = zeng_10xv2_wba,
+  zeng_10xv3_wba = zeng_10xv3_wba,
+  macosko_wba = macosko_wba
+)
+
+
+```
+
+
+Total primate and mouse cells is 595,300
+
+```{r}
+
+merged_mammal_sce = mergeSCE(all_mammal_sce)
+dim(merged_mammal_sce)
+
+rm(all_mammal_sce)
+gc()
+
+colData(merged_mammal_sce)[1:10, ]
+```
+
+
+Get highly variable genes
+```{r}
+start = Sys.time()
+global_hvgs = variableGenes(dat = merged_mammal_sce, exp_labels = merged_mammal_sce$study_id, min_recurrence = 8)
+length(global_hvgs)
+Sys.time() - start
+
+```
+
+Use the top 1000
+```{r}
+global_hvgs = global_hvgs[1:1000]
+```
+
+
+```{r}
+start = Sys.time()
+all_mouse_clust_primate_clust_best_hits = MetaNeighborUS(var_genes = global_hvgs, 
+                              dat = merged_mammal_sce, 
+                              study_id = merged_mammal_sce$study_id,
+                              cell_type = merged_mammal_sce$cluster_label,
+                              fast_version = T,
+                              one_vs_best = T, symmetric_output = F)
+
+
+Sys.time() - start
+
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/all_clusters_across_mammal_1vsbest.pdf',
+    useDingbats = F, height = 25, width = 25)
+plotHeatmap(all_mouse_clust_primate_clust_best_hits, cex = .2)
+dev.off()
+
+```
+
+
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C',
+                           'none' = 'grey')
+
+```
+
+
+prepping metadata for plotting
+
+```{r}
+all_metadata = as.data.frame(colData(merged_mammal_sce))
+
+
+all_metadata$study_cluster = paste(all_metadata$study, gsub('|', '.', all_metadata$cluster_label, fixed = T), sep = '|')
+
+primate_metadata = all_metadata %>% filter(grepl('human', study_id) | grepl('chimp', study_id) | grepl('gorilla', study_id) | grepl('macaca', study_id) | grepl('marmoset', study_id) ) %>% filter(!duplicated(study_cluster))
+
+
+primate_metadata$subclass_label[primate_metadata$subclass_label == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+
+```
 
 
 
@@ -521,25 +876,64 @@ ggplot(stat_df, aes(x = orthology, y = diff_next_best)) + geom_boxplot()
 
 
 
+```{r}
+
+r_names = rownames(all_mouse_clust_primate_clust_best_hits)
+r_index = grepl('human', r_names) | grepl('chimp', r_names) | grepl('gorilla', r_names) | grepl('macaca', r_names) | grepl('marmoset', r_names) 
+c_index = !r_index
+
+test_metasubclass_hits = all_mouse_clust_primate_clust_best_hits[r_index, c_index]
+
+rowSums(is.na(test_metasubclass_hits)) == ncol(test_metasubclass_hits)
+
+
+m = test_metasubclass_hits 
+#Cluster first, need to swap NAs to 0 for clustering
+m[is.na(m)] <- 0
+row_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-m), method = "ward.D2"))
+col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(m)), method = "ward.D2"))
+
+
+#And the primate subclass colors
+index = match(rownames(test_metasubclass_hits), primate_metadata$study_cluster)
+
+primate_subclass = primate_metadata$subclass_label[index]
+primate_consensus = primate_metadata$consensus_cluster[index]
+
+row_ha = rowAnnotation(primate_subclass = primate_subclass,
+                       primate_consensus = primate_consensus,
+                              col = list(primate_subclass = celltype_color_palette,
+                                         primate_consensus = c('yes' = 'black', 'no' = 'grey')))
+
+
+auroc_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+
+ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8), 
+                        left_annotation = row_ha)
+ht_mc = draw(ht_mc)
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/all_clust_mouse_primate_heatmap.pdf',
+    useDingbats = F, height = 20, width = 20)
+ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 4), 
+                        left_annotation = row_ha)
+ht_mc = draw(ht_mc)
+
+
+dev.off()
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```
 
 
 
