@@ -1,0 +1,554 @@
+
+Checking out the low ortholgous clusters in the mouse data, and how they fit into the conserved subclass annotations.
+
+How distinct are they from the conserved subclasses?
+What does the performance look like when using the conserved MetaMarkers to annotate these cells?
+
+
+
+
+```{r}
+library(SingleCellExperiment)
+library(MetaMarkers)
+library(dplyr)
+library(ggplot2)
+library(ComplexHeatmap)
+
+
+```
+
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C',
+                           'Serpinf1' = '#A45FBF')
+
+
+```
+
+First load up the dataset markers, the cross-species metamarkers, and then grab the lists of conserved metamarkers per subclass
+
+
+```{r}
+
+
+all_species_markers = list(
+    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz"),
+    tasic18 = read_markers("metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("metamarkers/ortho_markers_macosko_wba.csv.gz")
+)
+
+
+all_species_markers$human_10x$cell_type[all_species_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$human_ss$cell_type[all_species_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$chimp_10x$cell_type[all_species_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$chimp_ss$cell_type[all_species_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$gorilla_10x$cell_type[all_species_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$gorilla_ss$cell_type[all_species_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$macaca_10x$cell_type[all_species_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$marmoset_10x$cell_type[all_species_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+conserved_subclass_meta_markers = make_meta_markers(all_species_markers, detailed_stats = TRUE)
+
+conserved_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+```
+
+
+```{r}
+
+get_conserved_MetaMarkers = function(meta_markers_df, celltype){
+  
+  celltype_de = filter(meta_markers_df, cell_type == celltype)
+  
+  human_check = celltype_de$human_10x | celltype_de$human_ss
+  chimp_check = celltype_de$chimp_10x | celltype_de$chimp_ss
+  gorilla_check = celltype_de$gorilla_10x | celltype_de$gorilla_ss
+  macaca_check = celltype_de$macaca_10x
+  marmoset_check = celltype_de$marmoset_10x
+  mouse_check = rowSums(celltype_de[ ,c('tasic18','zeng_10x_cells','zeng_10x_nuclei','zeng_smart_cells','zeng_smart_nuclei',
+                                     'zeng_10xv2_wba','zeng_10xv3_wba','macosko_wba')]) >= 1
+  
+  
+  cross_species_de_check = human_check & chimp_check & gorilla_check & macaca_check & marmoset_check & mouse_check
+  
+  conserved_markers = celltype_de$gene[cross_species_de_check]
+  
+  return(conserved_markers)
+}
+
+
+cons_chandelier_markers = get_conserved_MetaMarkers(conserved_subclass_meta_markers, 'Chandelier')
+cons_chandelier_markers = conserved_subclass_meta_markers %>% filter(cell_type == 'Chandelier' & gene %in% cons_chandelier_markers)
+
+cons_pvalb_markers = get_conserved_MetaMarkers(conserved_subclass_meta_markers, 'Pvalb')
+cons_pvalb_markers = conserved_subclass_meta_markers %>% filter(cell_type == 'Pvalb' & gene %in% cons_pvalb_markers)
+
+cons_sst_markers = get_conserved_MetaMarkers(conserved_subclass_meta_markers, 'Sst')
+cons_sst_markers = conserved_subclass_meta_markers %>% filter(cell_type == 'Sst' & gene %in% cons_sst_markers)
+
+cons_sst_chodl_markers = get_conserved_MetaMarkers(conserved_subclass_meta_markers, 'Sst Chodl')
+cons_sst_chodl_markers = conserved_subclass_meta_markers %>% filter(cell_type == 'Sst Chodl' & gene %in% cons_sst_chodl_markers)
+
+cons_vip_markers = get_conserved_MetaMarkers(conserved_subclass_meta_markers, 'Vip')
+cons_vip_markers = conserved_subclass_meta_markers %>% filter(cell_type == 'Vip' & gene %in% cons_vip_markers)
+
+cons_sncg_markers = get_conserved_MetaMarkers(conserved_subclass_meta_markers, 'Sncg')
+cons_sncg_markers = conserved_subclass_meta_markers %>% filter(cell_type == 'Sncg' & gene %in% cons_sncg_markers)
+
+cons_pax6_markers = get_conserved_MetaMarkers(conserved_subclass_meta_markers, 'Pax6')
+cons_pax6_markers = conserved_subclass_meta_markers %>% filter(cell_type == 'Pax6' & gene %in% cons_pax6_markers)
+
+cons_lamp5_markers = get_conserved_MetaMarkers(conserved_subclass_meta_markers, 'Lamp5')
+cons_lamp5_markers = conserved_subclass_meta_markers %>% filter(cell_type == 'Lamp5' & gene %in% cons_lamp5_markers)
+
+cons_lamp5_lhx6_markers = get_conserved_MetaMarkers(conserved_subclass_meta_markers, 'Lamp5 Lhx6')
+cons_lamp5_lhx6_markers = conserved_subclass_meta_markers %>% filter(cell_type == 'Lamp5 Lhx6' & gene %in% cons_lamp5_lhx6_markers)
+
+all_cons_MetaMarkers = do.call('rbind', list(cons_chandelier_markers, cons_pvalb_markers, cons_sst_markers, cons_sst_chodl_markers, 
+                     cons_vip_markers, cons_lamp5_markers, cons_sncg_markers, cons_pax6_markers, cons_lamp5_lhx6_markers))
+
+all_cons_MetaMarkers
+
+```
+
+
+And this is the mapping between the primate subclasses and the mouse data, with the low/high orthology annotations
+
+
+```{r}
+
+load(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/avg_mouse_clust_primate_subclass_mappings_gaba.Rdata')
+max_avg_mapping
+
+```
+
+
+
+
+
+And the mouse data with all primate subclass and orthology annotations
+
+```{r}
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba_primate_MN.rds')
+zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba_primate_MN.rds')
+zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba_primate_MN.rds')
+zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba_primate_MN.rds')
+zeng_10xv2_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba_primate_MN.rds')
+zeng_10xv3_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv3_gaba_primate_MN.rds')
+macosko_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba_primate_MN.rds')
+```
+
+
+Testing out a quick doublet check with scdblfinder
+
+```{r}
+
+library(scDblFinder)
+start = Sys.time()
+tasic18 <- scDblFinder(tasic18, clusters = 'cell_cluster')
+Sys.time() - start
+
+zeng_10x_cells <- scDblFinder(zeng_10x_cells, clusters = 'cell_cluster')
+
+zeng_10x_nuclei <- scDblFinder(zeng_10x_nuclei, clusters = 'cell_cluster')
+
+zeng_smart_nuclei <- scDblFinder(zeng_smart_nuclei, clusters = 'cell_cluster')
+
+zeng_smart_cells <- scDblFinder(zeng_smart_cells, clusters = 'cell_cluster')
+
+zeng_10xv2_wba <- scDblFinder(zeng_10xv2_wba, clusters = 'cell_cluster')
+
+zeng_10xv3_wba <- scDblFinder(zeng_10xv3_wba, clusters = 'cell_cluster')
+
+macosko_wba <- scDblFinder(macosko_wba, clusters = 'cell_cluster')
+
+table(tasic18$orthology, tasic18$scDblFinder.class)
+table(zeng_10x_cells$orthology, zeng_10x_cells$scDblFinder.class)
+table(zeng_10x_nuclei$orthology, zeng_10x_nuclei$scDblFinder.class)
+table(zeng_smart_nuclei$orthology, zeng_smart_nuclei$scDblFinder.class)
+table(zeng_smart_cells$orthology, zeng_smart_cells$scDblFinder.class)
+table(zeng_10xv2_wba$orthology, zeng_10xv2_wba$scDblFinder.class)
+table(zeng_10xv3_wba$orthology, zeng_10xv3_wba$scDblFinder.class)
+table(macosko_wba$orthology, macosko_wba$scDblFinder.class)
+```
+
+
+
+
+```{r}
+
+
+current_metadata = as.data.frame(colData(tasic18))
+
+
+current_metadata %>% group_by(primate_subclass, orthology, scDblFinder.class) %>% summarise(n = n())
+
+ggplot(current_metadata, aes(x = orthology, y = log10(nCount))) + geom_violin(scale = 'width') +
+  facet_wrap(~primate_subclass)
+
+ggplot(current_metadata, aes(x = orthology, y = nFeature)) + geom_violin(scale = 'width') +
+  facet_wrap(~primate_subclass)
+
+
+
+
+table(current_metadata$orthology, current_metadata$scDblFinder.class)
+
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+conserved_subclass_meta_markers = make_meta_markers(all_species_markers[names(all_species_markers) != 'tasic18'], detailed_stats = TRUE)
+
+#Predict celltypes with MetaMarkers
+#ct_scores = score_cells(log1p(cpm(tasic18)), all_cons_MetaMarkers)
+
+ct_scores = score_cells(log1p(cpm(tasic18)), conserved_subclass_meta_markers %>% filter(rank <= 50))
+
+ct_enrichment = compute_marker_enrichment(ct_scores)
+dim(ct_enrichment)
+
+#Max normalizing each cell-type enrichment
+ct_enrichment_norm = t(apply(ct_enrichment, 1, function(u) u/max(u)))
+
+ct_pred = assign_cells(ct_scores)
+
+tasic18$MM_predicted_subclass = ct_pred$predicted
+
+tasic18$MM_chandelier_enrich_score = ct_enrichment_norm['all|Chandelier', ]
+tasic18$MM_pvalb_enrich_score = ct_enrichment_norm['all|Pvalb', ]
+tasic18$MM_sst_enrich_score = ct_enrichment_norm['all|Sst', ]
+tasic18$MM_sst_chodl_enrich_score = ct_enrichment_norm['all|Sst Chodl', ]
+tasic18$MM_vip_enrich_score = ct_enrichment_norm['all|Vip', ]
+tasic18$MM_lamp5_enrich_score = ct_enrichment_norm['all|Lamp5', ]
+tasic18$MM_sncg_enrich_score = ct_enrichment_norm['all|Sncg', ]
+tasic18$MM_pax6_enrich_score = ct_enrichment_norm['all|Pax6', ]
+tasic18$MM_lamp5_lhx6_enrich_score = ct_enrichment_norm['all|Lamp5 Lhx6', ]
+
+scater::plotReducedDim(tasic18, dimred = 'UMAP', color_by = 'orthology') + 
+  ggtitle('Orthology annotations') 
+
+scater::plotReducedDim(tasic18, dimred = 'UMAP', color_by = 'primate_subclass') + scale_color_manual(values=celltype_color_palette) + 
+  ggtitle('Primate subclass annotations') 
+
+scater::plotReducedDim(tasic18, dimred = 'UMAP', color_by = 'MM_predicted_subclass') + scale_color_manual(values=celltype_color_palette) + 
+  ggtitle('MM predicted subclass annotations') 
+
+scater::plotReducedDim(tasic18, dimred = 'UMAP', color_by = 'MM_lamp5_enrich_score') +
+  ggtitle('Primate subclass annotations') 
+
+scater::plotReducedDim(tasic18, dimred = 'UMAP', color_by = 'MM_sncg_enrich_score') +
+  ggtitle('Primate subclass annotations') 
+
+scater::plotReducedDim(tasic18, dimred = 'UMAP', color_by = 'MM_lamp5_lhx6_enrich_score') +
+  ggtitle('Primate subclass annotations') 
+
+scater::plotReducedDim(tasic18, dimred = 'UMAP', color_by = 'MM_vip_enrich_score') +
+  ggtitle('Primate subclass annotations') 
+
+scater::plotReducedDim(tasic18, dimred = 'UMAP', color_by = 'MM_pax6_enrich_score') +
+  ggtitle('Primate subclass annotations') 
+
+
+conserved_subclass_meta_markers = make_meta_markers(all_species_markers[names(all_species_markers) != 'zeng_10x_cells'], detailed_stats = TRUE)
+
+#Predict celltypes with MetaMarkers
+#ct_scores = score_cells(log1p(cpm(zeng_10x_cells)), all_cons_MetaMarkers)
+
+ct_scores = score_cells(log1p(cpm(zeng_10x_cells)), conserved_subclass_meta_markers %>% filter(rank <= 50))
+
+ct_enrichment = compute_marker_enrichment(ct_scores)
+dim(ct_enrichment)
+
+#Max normalizing each cell-type enrichment
+ct_enrichment_norm = t(apply(ct_enrichment, 1, function(u) u/max(u)))
+
+ct_pred = assign_cells(ct_scores)
+
+zeng_10x_cells$MM_predicted_subclass = ct_pred$predicted
+
+zeng_10x_cells$MM_chandelier_enrich_score = ct_enrichment_norm['all|Chandelier', ]
+zeng_10x_cells$MM_pvalb_enrich_score = ct_enrichment_norm['all|Pvalb', ]
+zeng_10x_cells$MM_sst_enrich_score = ct_enrichment_norm['all|Sst', ]
+zeng_10x_cells$MM_sst_chodl_enrich_score = ct_enrichment_norm['all|Sst Chodl', ]
+zeng_10x_cells$MM_vip_enrich_score = ct_enrichment_norm['all|Vip', ]
+zeng_10x_cells$MM_lamp5_enrich_score = ct_enrichment_norm['all|Lamp5', ]
+zeng_10x_cells$MM_sncg_enrich_score = ct_enrichment_norm['all|Sncg', ]
+zeng_10x_cells$MM_pax6_enrich_score = ct_enrichment_norm['all|Pax6', ]
+zeng_10x_cells$MM_lamp5_lhx6_enrich_score = ct_enrichment_norm['all|Lamp5 Lhx6', ]
+
+scater::plotReducedDim(zeng_10x_cells, dimred = 'UMAP', color_by = 'orthology') + 
+  ggtitle('Orthology annotations') 
+
+scater::plotReducedDim(zeng_10x_cells, dimred = 'UMAP', color_by = 'primate_subclass') + scale_color_manual(values=celltype_color_palette) + 
+  ggtitle('Primate subclass annotations') 
+
+scater::plotReducedDim(zeng_10x_cells, dimred = 'UMAP', color_by = 'MM_predicted_subclass') + scale_color_manual(values=celltype_color_palette) + 
+  ggtitle('MM predicted subclass annotations') 
+
+scater::plotReducedDim(zeng_10x_cells, dimred = 'UMAP', color_by = 'MM_lamp5_enrich_score') +
+  ggtitle('Primate subclass annotations') 
+
+scater::plotReducedDim(zeng_10x_cells, dimred = 'UMAP', color_by = 'MM_sncg_enrich_score') +
+  ggtitle('Primate subclass annotations') 
+
+scater::plotReducedDim(zeng_10x_cells, dimred = 'UMAP', color_by = 'MM_lamp5_lhx6_enrich_score') +
+  ggtitle('Primate subclass annotations') 
+
+scater::plotReducedDim(zeng_10x_cells, dimred = 'UMAP', color_by = 'MM_vip_enrich_score') +
+  ggtitle('Primate subclass annotations') 
+
+scater::plotReducedDim(zeng_10x_cells, dimred = 'UMAP', color_by = 'MM_pax6_enrich_score') +
+  ggtitle('Primate subclass annotations') 
+
+
+```
+
+
+
+
+
+
+For each mouse dataset, make cross-species metamarkers excluding that dataset
+Compute the normalized MetaMarker enrichment scores per cluster
+  MetaMarkers computes the average expression of each MetaMarker gene set within each cell
+  It's enrichment score is the average exp within the cell / average expression across all cells
+  Max normalize the enrichment score to compare across cell-type marker sets
+  And then to summarize at the cluster level, compute centroids of that Max-normalized enrichment score
+
+And then cluster across all the datasets to compare
+
+```{r}
+
+get_cluster_MM_centroids = function(sce_obj, dataset_name, marker_list, num_markers){
+  
+  #Cross-species metamarkers excluding the current dataset
+  conserved_subclass_meta_markers = make_meta_markers(marker_list[names(marker_list) != dataset_name], detailed_stats = TRUE)
+
+  #Predict celltypes with MetaMarkers
+  ct_scores = score_cells(log1p(cpm(sce_obj)), conserved_subclass_meta_markers %>% filter(rank <= num_markers))
+  ct_enrichment = compute_marker_enrichment(ct_scores)
+  #Max normalizing each cell-type enrichment
+  ct_enrichment_norm = t(apply(ct_enrichment, 1, function(u) u/max(u)))
+  
+  #Computing the centroids
+  ct_enrichment_norm  = as.data.frame(t(ct_enrichment_norm )) %>% mutate(clusters = sce_obj$cell_cluster)
+  centroids = ct_enrichment_norm  %>% group_by(clusters) %>% summarize(across(which(colnames(ct_enrichment_norm)!= 'clusters'), mean)) %>% as.data.frame()
+  #Get back into genes on rows and subclass on columns
+  rownames(centroids) = centroids$clusters
+  centroids = t(centroids[ ,2:ncol(centroids)])
+  
+  colnames(centroids) = paste(dataset_name, colnames(centroids), sep = '|')
+  
+  return(centroids)
+}
+
+```
+
+```{r}
+
+n_mark = 100
+
+centroids_1 = get_cluster_MM_centroids(tasic18, 'tasic18', all_species_markers, num_markers = n_mark  )
+
+centroids_2 = get_cluster_MM_centroids(zeng_10x_cells, 'zeng_10x_cells', all_species_markers, num_markers = n_mark )
+
+centroids_3 = get_cluster_MM_centroids(zeng_10x_nuclei, 'zeng_10x_nuclei', all_species_markers, num_markers = n_mark )
+
+centroids_4 = get_cluster_MM_centroids(zeng_smart_cells, 'zeng_smart_cells', all_species_markers, num_markers = n_mark )
+
+centroids_5 = get_cluster_MM_centroids(zeng_smart_nuclei, 'zeng_smart_nuclei', all_species_markers, num_markers = n_mark  )
+
+centroids_6 = get_cluster_MM_centroids(zeng_10xv2_wba, 'zeng_10xv2_wba', all_species_markers, num_markers = n_mark )
+
+centroids_7 = get_cluster_MM_centroids(zeng_10xv3_wba, 'zeng_10xv3_wba', all_species_markers, num_markers = n_mark )
+
+centroids_8 = get_cluster_MM_centroids(macosko_wba, 'macosko_wba', all_species_markers, num_markers = n_mark )
+
+
+
+
+```
+
+Various color schemes for the heatmap
+
+```{r}
+auroc_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+
+study_colors = MetBrewer::met.brewer("Veronese", n=8, type="continuous")
+study_colors = study_colors[1:8] 
+names(study_colors) = names(table(max_avg_mapping$study))
+
+mn_auroc_col_fun = circlize::colorRamp2(c(.5, 1), c( "white", "red"))
+
+```
+
+
+```{r}
+
+
+all_centroids = do.call('cbind', list(centroids_1, centroids_2, centroids_3, centroids_4, centroids_5, centroids_6, centroids_7, centroids_8))
+
+
+#Make a row dendrogram across all the data, so it's the same ordering across the high and low orthology split
+row_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-all_centroids), method = "ward.D2"))
+
+#now make a high orthology heatmap and a low orthology heatmap
+
+index = match(colnames(all_centroids), max_avg_mapping$mouse_mcluster)
+clust_orth = max_avg_mapping$orthology[index]
+
+orth_index = clust_orth == 'high_orthology'
+
+high_col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(all_centroids[ ,orth_index])), method = "ward.D2"))
+low_col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(all_centroids[ ,!orth_index])), method = "ward.D2"))
+
+high_index = match(colnames(all_centroids[ , orth_index]), max_avg_mapping$mouse_mcluster)
+
+clust_orth = max_avg_mapping$orthology[high_index]
+study = max_avg_mapping$study[high_index]
+primate_subclass = max_avg_mapping$primate_subclass[high_index]
+mean_MN_subclass = max_avg_mapping$mean_subclass[high_index]
+high_col_annot = HeatmapAnnotation(cluster_orthology = clust_orth, 
+                                   mean_MN_subclass = mean_MN_subclass,
+                                   study = study,
+                                   primate_subclass = primate_subclass,
+                                   show_annotation_name = F, 
+                             col = list(cluster_orthology = c('high_orthology' = 'black', 'low_orthology' = 'grey'),
+                                         study = study_colors,
+                                        primate_subclass = celltype_color_palette,
+                                        mean_MN_subclass = mn_auroc_col_fun))
+
+high_heatmap = ComplexHeatmap::Heatmap(all_centroids[ ,orth_index], name = 'centroid', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(high_col_dendrogram), cluster_columns = high_col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8),
+                        top_annotation = high_col_annot,
+                        show_column_names = F)
+
+
+low_index = match(colnames(all_centroids[ , !orth_index]), max_avg_mapping$mouse_mcluster)
+
+clust_orth = max_avg_mapping$orthology[low_index]
+study = max_avg_mapping$study[low_index]
+primate_subclass = max_avg_mapping$primate_subclass[low_index]
+mean_MN_subclass = max_avg_mapping$mean_subclass[low_index]
+low_col_annot = HeatmapAnnotation(cluster_orthology = clust_orth, 
+                                  mean_MN_subclass = mean_MN_subclass,
+                                   study = study,
+                                   primate_subclass = primate_subclass,
+                             col = list(cluster_orthology = c('high_orthology' = 'black', 'low_orthology' = 'grey'),
+                                         study = study_colors,
+                                        primate_subclass = celltype_color_palette,
+                                        mean_MN_subclass = mn_auroc_col_fun))
+
+low_heatmap = ComplexHeatmap::Heatmap(all_centroids[ ,!orth_index], name = 'centroid', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(low_col_dendrogram), cluster_columns = low_col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8),
+                        top_annotation = low_col_annot,
+                        show_column_names = F)
+
+
+comb_heatmap = draw(high_heatmap + low_heatmap)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/low_ortho/all_MM_centroid_scores.pdf', useDingbats = F, height = 6, width = 15)
+comb_heatmap
+dev.off()
+
+
+```
+
+
+```{r}
+
+
+cluster_vars = apply(all_centroids, 2, 'var' )
+cluster_maxes = apply(all_centroids, 2, 'max' )
+cluster_next_best = apply(all_centroids, 2, function(x) sort(x,partial=length(x)-1)[length(x)-1]  )
+
+diff_max_and_next_best = cluster_maxes - cluster_next_best
+
+index = match(colnames(all_centroids), max_avg_mapping$mouse_mcluster)
+
+stat_df = data.frame(cluster = colnames(all_centroids), var_exp = cluster_vars, 
+                     diff_next_best = diff_max_and_next_best,
+                     orthology = max_avg_mapping$orthology[index], 
+                     primate_subclass = max_avg_mapping$primate_subclass[index] )
+
+ggplot(stat_df, aes(x = orthology, y = diff_next_best)) + geom_boxplot()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

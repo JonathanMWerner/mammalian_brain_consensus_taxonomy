@@ -2114,7 +2114,10 @@ macosko_meta_df %>% group_by(cell_subclass, cell_cluster) %>% summarise(n = n())
 
 #Leons mapping
 
+leon_mapping = data.table::fread('/vault/lfrench/whole_mouse_brain/results/full_run_ZengAWS.metaclust_subclass1698355202/top_hits.0.99.csv')
+leon_mapping
 
+max_avg_mapping %>% filter(orthology == 'low_orthology') %>% arrange(meta_cluster) 
 
 
 ```

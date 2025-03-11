@@ -73,14 +73,16 @@ primate_subclass are the orthologous annotations
 ```{r}
 
 
-tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
-zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
-zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
-zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
-zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
-zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
-zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
-macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
+
+
+#tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+#zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
+#zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
+#zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
+#zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
+#zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
+#zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
+#macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
 
 gc()
 
@@ -185,15 +187,20 @@ construct_cell_taxonomy = function(sc_exp, dataset_name, marker_list, num_marker
   #Hierarchical clusting on the correlation distance matrix
   hclust_avg <- hclust(as.dist(1-centroid_corr), method = 'ward.D2')
   
-  dataset_subclasses = as.data.frame(colData(sc_exp)[ ,c('cell_subclass','cell_cluster','primate_subclass')])
+  dataset_subclasses = as.data.frame(colData(sc_exp)[ ,c('cell_subclass','cell_cluster','primate_subclass', 'orthology')])
   dataset_subclasses = dataset_subclasses %>% filter(!duplicated(cell_cluster))
   
   clust_index = match(colnames(centroid_corr), dataset_subclasses$cell_cluster)
   original_subclass = dataset_subclasses$cell_subclass[clust_index]
   orthologous_subclass = dataset_subclasses$primate_subclass[clust_index]
+  cluster_orth = dataset_subclasses$orthology[clust_index]
   
-  column_ha = HeatmapAnnotation(original_subclass = original_subclass, orthologous_subclass = orthologous_subclass,
-                                col = list(original_subclass = celltype_color_palette, orthologous_subclass = celltype_color_palette ),
+  column_ha = HeatmapAnnotation(original_subclass = original_subclass, 
+                                orthologous_subclass = orthologous_subclass,
+                                cluster_orth = cluster_orth,
+                                col = list(original_subclass = celltype_color_palette, 
+                                           orthologous_subclass = celltype_color_palette,
+                                           cluster_orth = c('high_orthology' = 'black', 'low_orthology' = 'grey')),
                                 show_legend = c("orthologous_subclass" = FALSE))
   
   
@@ -223,6 +230,10 @@ tasic_taxonomy = construct_cell_taxonomy(tasic18, 'tasic18', cluster_markers, nu
 
 tasic_taxonomy[['centroid_corr']]
 
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/taxonomies/tasic18.pdf', useDingbats = F, height = 8, width = 10)
+tasic_taxonomy[['centroid_corr']]
+dev.off()
+
 ```
 
 ```{r}
@@ -230,6 +241,11 @@ tasic_taxonomy[['centroid_corr']]
 zeng_10x_cells_taxonomy = construct_cell_taxonomy(zeng_10x_cells, 'zeng_10x_cells', cluster_markers, num_markers = 50 )
 
 zeng_10x_cells_taxonomy[['centroid_corr']]
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/taxonomies/zeng_10x_cells.pdf', useDingbats = F, height = 8, width = 10)
+zeng_10x_cells_taxonomy[['centroid_corr']]
+dev.off()
 
 ```
 
@@ -240,6 +256,10 @@ zeng_10x_nuclei_taxonomy = construct_cell_taxonomy(zeng_10x_nuclei, 'zeng_10x_nu
 
 zeng_10x_nuclei_taxonomy[['centroid_corr']]
 
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/taxonomies/zeng_10x_nuclei.pdf', useDingbats = F, height = 8, width = 10)
+zeng_10x_nuclei_taxonomy[['centroid_corr']]
+dev.off()
+
 ```
 
 ```{r}
@@ -247,6 +267,10 @@ zeng_10x_nuclei_taxonomy[['centroid_corr']]
 zeng_smart_cells_taxonomy = construct_cell_taxonomy(zeng_smart_cells, 'zeng_smart_cells', cluster_markers, num_markers = 50 )
 
 zeng_smart_cells_taxonomy[['centroid_corr']]
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/taxonomies/zeng_smart_cells.pdf', useDingbats = F, height = 8, width = 10)
+zeng_smart_cells_taxonomy[['centroid_corr']]
+dev.off()
 
 ```
 
@@ -256,6 +280,10 @@ zeng_smart_cells_taxonomy[['centroid_corr']]
 zeng_smart_nuclei_taxonomy = construct_cell_taxonomy(zeng_smart_nuclei, 'zeng_smart_nuclei', cluster_markers, num_markers = 50 )
 
 zeng_smart_nuclei_taxonomy[['centroid_corr']]
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/taxonomies/zeng_smart_nuclei.pdf', useDingbats = F, height = 8, width = 10)
+zeng_smart_nuclei_taxonomy[['centroid_corr']]
+dev.off()
 
 ```
 
@@ -267,6 +295,10 @@ zeng_10xv2_wba_taxonomy = construct_cell_taxonomy(zeng_10xv2_wba, 'zeng_10xv2_wb
 
 zeng_10xv2_wba_taxonomy[['centroid_corr']]
 
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/taxonomies/zeng_10xv2_wba.pdf', useDingbats = F, height = 8, width = 10)
+zeng_10xv2_wba_taxonomy[['centroid_corr']]
+dev.off()
+
 ```
 
 ```{r}
@@ -274,6 +306,10 @@ zeng_10xv2_wba_taxonomy[['centroid_corr']]
 zeng_10xv3_wba_taxonomy = construct_cell_taxonomy(zeng_10xv3_wba, 'zeng_10xv3_wba', cluster_markers, num_markers = 50 )
 
 zeng_10xv3_wba_taxonomy[['centroid_corr']]
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/taxonomies/zeng_10xv3_wba.pdf', useDingbats = F, height = 8, width = 10)
+zeng_10xv3_wba_taxonomy[['centroid_corr']]
+dev.off()
 
 ```
 
@@ -283,6 +319,10 @@ macosko_wba_taxonomy = construct_cell_taxonomy(macosko_wba, 'macosko_wba', clust
 
 macosko_wba_taxonomy[['centroid_corr']]
 
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/taxonomies/macosko_wba.pdf', useDingbats = F, height = 8, width = 10)
+macosko_wba_taxonomy[['centroid_corr']]
+dev.off()
 ```
 
 
