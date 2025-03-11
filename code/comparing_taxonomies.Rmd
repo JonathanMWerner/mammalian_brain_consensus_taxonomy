@@ -72,17 +72,14 @@ cell_subclass is the original subclass annotations
 primate_subclass are the orthologous annotations
 ```{r}
 
-
-
-
-#tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
-#zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
-#zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
-#zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
-#zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
-#zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
-#zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
-#macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
+zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
+zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
+zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
+zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
+zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
+macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
 
 gc()
 
@@ -193,14 +190,12 @@ construct_cell_taxonomy = function(sc_exp, dataset_name, marker_list, num_marker
   clust_index = match(colnames(centroid_corr), dataset_subclasses$cell_cluster)
   original_subclass = dataset_subclasses$cell_subclass[clust_index]
   orthologous_subclass = dataset_subclasses$primate_subclass[clust_index]
-  cluster_orth = dataset_subclasses$orthology[clust_index]
+  #cluster_orth = dataset_subclasses$orthology[clust_index]
   
   column_ha = HeatmapAnnotation(original_subclass = original_subclass, 
                                 orthologous_subclass = orthologous_subclass,
-                                cluster_orth = cluster_orth,
                                 col = list(original_subclass = celltype_color_palette, 
-                                           orthologous_subclass = celltype_color_palette,
-                                           cluster_orth = c('high_orthology' = 'black', 'low_orthology' = 'grey')),
+                                           orthologous_subclass = celltype_color_palette),
                                 show_legend = c("orthologous_subclass" = FALSE))
   
   

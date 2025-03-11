@@ -740,7 +740,7 @@ primate_cluster_meta_markers = read_meta_markers( "metamarkers/primate_cluster_m
 
 
 ```{r}
-primate_cluster_meta_markers %>% filter(gene == 'PAX6')
+primate_cluster_meta_markers %>% filter(gene == 'SNCG')
 
 ```
 

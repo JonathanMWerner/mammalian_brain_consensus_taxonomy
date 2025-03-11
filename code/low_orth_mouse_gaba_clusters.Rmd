@@ -38,7 +38,6 @@ First load up the dataset markers, the cross-species metamarkers, and then grab 
 
 ```{r}
 
-
 all_species_markers = list(
     human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
     human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
