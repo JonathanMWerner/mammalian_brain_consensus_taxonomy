@@ -2235,7 +2235,7 @@ gc()
 ```
 
 ```{r}
-options(future.globals.maxSize = 750 * 1024^2)
+options(future.globals.maxSize = 1000 * 1024^2)
 
 ```
 

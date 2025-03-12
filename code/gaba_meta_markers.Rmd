@@ -454,14 +454,14 @@ gc()
 #human_10x$subclass_label = human_10x$confirmed_subclass
 human_10x$cluster_label = human_10x$consensus_cluster_label
 
-keep_meta = colData(human_10x)[ , c('subclass_label','cluster_label')]
+keep_meta = colData(human_10x)[ , c('subclass_label','confirmed_subclass','cluster_label')]
 colData(human_10x)= keep_meta
 
 #Change metadata columns to match other datasets
 #human_ss$subclass_label = human_ss$confirmed_subclass
 human_ss$cluster_label = human_ss$consensus_cluster_label
 
-keep_meta = colData(human_ss)[ , c('subclass_label','cluster_label')]
+keep_meta = colData(human_ss)[ , c('subclass_label','confirmed_subclass','cluster_label')]
 colData(human_ss)= keep_meta
 
 
@@ -470,14 +470,14 @@ colData(human_ss)= keep_meta
 #chimp_10x$subclass_label = chimp_10x$confirmed_subclass
 chimp_10x$cluster_label = chimp_10x$consensus_cluster_label
 
-keep_meta = colData(chimp_10x)[ , c('subclass_label','cluster_label')]
+keep_meta = colData(chimp_10x)[ , c('subclass_label','confirmed_subclass','cluster_label')]
 colData(chimp_10x)= keep_meta
 
 #Change metadata columns to match other datasets
 #chimp_ss$subclass_label = chimp_ss$confirmed_subclass
 chimp_ss$cluster_label = chimp_ss$consensus_cluster_label
 
-keep_meta = colData(chimp_ss)[ , c('subclass_label','cluster_label')]
+keep_meta = colData(chimp_ss)[ , c('subclass_label','confirmed_subclass','cluster_label')]
 colData(chimp_ss)= keep_meta
 
 #gorilla
@@ -485,14 +485,14 @@ colData(chimp_ss)= keep_meta
 #gorilla_10x$subclass_label = gorilla_10x$confirmed_subclass
 gorilla_10x$cluster_label = gorilla_10x$consensus_cluster_label
 
-keep_meta = colData(gorilla_10x)[ , c('subclass_label','cluster_label')]
+keep_meta = colData(gorilla_10x)[ , c('subclass_label','confirmed_subclass','cluster_label')]
 colData(gorilla_10x)= keep_meta
 
 #Change metadata columns to match other datasets
 #gorilla_ss$subclass_label = gorilla_ss$confirmed_subclass
 gorilla_ss$cluster_label = gorilla_ss$consensus_cluster_label
 
-keep_meta = colData(gorilla_ss)[ , c('subclass_label','cluster_label')]
+keep_meta = colData(gorilla_ss)[ , c('subclass_label','confirmed_subclass','cluster_label')]
 colData(gorilla_ss)= keep_meta
 
 
@@ -501,7 +501,7 @@ colData(gorilla_ss)= keep_meta
 #macaca_10x$subclass_label = macaca_10x$confirmed_subclass
 macaca_10x$cluster_label = macaca_10x$consensus_cluster_label
 
-keep_meta = colData(macaca_10x)[ , c('subclass_label','cluster_label')]
+keep_meta = colData(macaca_10x)[ , c('subclass_label','confirmed_subclass','cluster_label')]
 colData(macaca_10x)= keep_meta
 
 #marmoset
@@ -509,7 +509,7 @@ colData(macaca_10x)= keep_meta
 #marmoset_10x$subclass_label = marmoset_10x$confirmed_subclass
 marmoset_10x$cluster_label = marmoset_10x$consensus_cluster_label
 
-keep_meta = colData(marmoset_10x)[ , c('subclass_label','cluster_label')]
+keep_meta = colData(marmoset_10x)[ , c('subclass_label','confirmed_subclass','cluster_label')]
 colData(marmoset_10x)= keep_meta
 
 
@@ -525,6 +525,7 @@ length(table(human_ss$cluster_label))
 
 ```
 
+Make metamarkers using the supplemental table subclass labels
 
 
 ```{r}
@@ -563,6 +564,48 @@ export_markers(markers_macaca_10x, "metamarkers/markers_macaca_10x.csv")
 export_markers(markers_marmoset_10x, "metamarkers/markers_marmoset_10x.csv")
 
 ```
+
+
+And then make metamarkers using the confirmed_subclass_labels
+
+
+```{r}
+
+
+
+conf_markers_human_10x = compute_markers(assay(human_10x, "cpm"), human_10x$confirmed_subclass)
+conf_markers_human_ss = compute_markers(assay(human_ss, "cpm"), human_ss$confirmed_subclass)
+
+conf_markers_chimp_10x = compute_markers(assay(chimp_10x, "cpm"), chimp_10x$confirmed_subclass)
+conf_markers_chimp_ss = compute_markers(assay(chimp_ss, "cpm"), chimp_ss$confirmed_subclass)
+
+conf_markers_gorilla_10x = compute_markers(assay(gorilla_10x, "cpm"), gorilla_10x$confirmed_subclass)
+conf_markers_gorilla_ss = compute_markers(assay(gorilla_ss, "cpm"), gorilla_ss$confirmed_subclass)
+
+conf_markers_macaca_10x = compute_markers(assay(macaca_10x, "cpm"), macaca_10x$confirmed_subclass)
+
+conf_markers_marmoset_10x = compute_markers(assay(marmoset_10x, "cpm"), marmoset_10x$confirmed_subclass)
+
+
+
+
+```
+
+
+
+```{r}
+
+export_markers(conf_markers_human_10x, "metamarkers/conf_markers_human_10x.csv")
+export_markers(conf_markers_human_ss, "metamarkers/conf_markers_human_ss.csv")
+export_markers(conf_markers_chimp_10x, "metamarkers/conf_markers_chimp_10x.csv")
+export_markers(conf_markers_chimp_ss, "metamarkers/conf_markers_chimp_ss.csv")
+export_markers(conf_markers_gorilla_10x, "metamarkers/conf_markers_gorilla_10x.csv")
+export_markers(conf_markers_gorilla_ss, "metamarkers/conf_markers_gorilla_ss.csv")
+export_markers(conf_markers_macaca_10x, "metamarkers/conf_markers_macaca_10x.csv")
+export_markers(conf_markers_marmoset_10x, "metamarkers/conf_markers_marmoset_10x.csv")
+
+```
+
 
 
 Primate Metamarkers

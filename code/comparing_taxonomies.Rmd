@@ -190,12 +190,14 @@ construct_cell_taxonomy = function(sc_exp, dataset_name, marker_list, num_marker
   clust_index = match(colnames(centroid_corr), dataset_subclasses$cell_cluster)
   original_subclass = dataset_subclasses$cell_subclass[clust_index]
   orthologous_subclass = dataset_subclasses$primate_subclass[clust_index]
-  #cluster_orth = dataset_subclasses$orthology[clust_index]
+  cluster_orth = dataset_subclasses$orthology[clust_index]
   
   column_ha = HeatmapAnnotation(original_subclass = original_subclass, 
                                 orthologous_subclass = orthologous_subclass,
+                                cluster_orth = cluster_orth,
                                 col = list(original_subclass = celltype_color_palette, 
-                                           orthologous_subclass = celltype_color_palette),
+                                           orthologous_subclass = celltype_color_palette,
+                                           cluster_orth = c('high_orthology' = 'black', 'low_orthology' = 'grey')),
                                 show_legend = c("orthologous_subclass" = FALSE))
   
   
@@ -219,7 +221,7 @@ construct_cell_taxonomy = function(sc_exp, dataset_name, marker_list, num_marker
 
 ```{r}
 
-tasic_taxonomy = construct_cell_taxonomy(tasic18, 'tasic18', cluster_markers, num_markers = 50 )
+tasic_taxonomy = construct_cell_taxonomy(tasic18, 'tasic18', cluster_markers, num_markers = 500 )
 
 #plot(tasic_taxonomy[['dendro']], main = 'tasic', xlab = 'Interneuron clusters', hang = -1)
 
@@ -233,7 +235,7 @@ dev.off()
 
 ```{r}
 
-zeng_10x_cells_taxonomy = construct_cell_taxonomy(zeng_10x_cells, 'zeng_10x_cells', cluster_markers, num_markers = 50 )
+zeng_10x_cells_taxonomy = construct_cell_taxonomy(zeng_10x_cells, 'zeng_10x_cells', cluster_markers, num_markers = 500 )
 
 zeng_10x_cells_taxonomy[['centroid_corr']]
 
@@ -247,7 +249,7 @@ dev.off()
 
 ```{r}
 
-zeng_10x_nuclei_taxonomy = construct_cell_taxonomy(zeng_10x_nuclei, 'zeng_10x_nuclei', cluster_markers, num_markers = 50 )
+zeng_10x_nuclei_taxonomy = construct_cell_taxonomy(zeng_10x_nuclei, 'zeng_10x_nuclei', cluster_markers, num_markers = 500 )
 
 zeng_10x_nuclei_taxonomy[['centroid_corr']]
 
@@ -259,7 +261,7 @@ dev.off()
 
 ```{r}
 
-zeng_smart_cells_taxonomy = construct_cell_taxonomy(zeng_smart_cells, 'zeng_smart_cells', cluster_markers, num_markers = 50 )
+zeng_smart_cells_taxonomy = construct_cell_taxonomy(zeng_smart_cells, 'zeng_smart_cells', cluster_markers, num_markers = 500 )
 
 zeng_smart_cells_taxonomy[['centroid_corr']]
 
@@ -272,7 +274,7 @@ dev.off()
 
 ```{r}
 
-zeng_smart_nuclei_taxonomy = construct_cell_taxonomy(zeng_smart_nuclei, 'zeng_smart_nuclei', cluster_markers, num_markers = 50 )
+zeng_smart_nuclei_taxonomy = construct_cell_taxonomy(zeng_smart_nuclei, 'zeng_smart_nuclei', cluster_markers, num_markers = 500 )
 
 zeng_smart_nuclei_taxonomy[['centroid_corr']]
 
@@ -286,7 +288,7 @@ dev.off()
 
 ```{r}
 
-zeng_10xv2_wba_taxonomy = construct_cell_taxonomy(zeng_10xv2_wba, 'zeng_10xv2_wba', cluster_markers, num_markers = 50 )
+zeng_10xv2_wba_taxonomy = construct_cell_taxonomy(zeng_10xv2_wba, 'zeng_10xv2_wba', cluster_markers, num_markers = 500 )
 
 zeng_10xv2_wba_taxonomy[['centroid_corr']]
 
@@ -298,7 +300,7 @@ dev.off()
 
 ```{r}
 
-zeng_10xv3_wba_taxonomy = construct_cell_taxonomy(zeng_10xv3_wba, 'zeng_10xv3_wba', cluster_markers, num_markers = 50 )
+zeng_10xv3_wba_taxonomy = construct_cell_taxonomy(zeng_10xv3_wba, 'zeng_10xv3_wba', cluster_markers, num_markers = 500 )
 
 zeng_10xv3_wba_taxonomy[['centroid_corr']]
 
@@ -310,7 +312,7 @@ dev.off()
 
 ```{r}
 
-macosko_wba_taxonomy = construct_cell_taxonomy(macosko_wba, 'macosko_wba', cluster_markers, num_markers = 50 )
+macosko_wba_taxonomy = construct_cell_taxonomy(macosko_wba, 'macosko_wba', cluster_markers, num_markers = 500 )
 
 macosko_wba_taxonomy[['centroid_corr']]
 

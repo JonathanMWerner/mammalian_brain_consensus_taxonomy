@@ -351,10 +351,15 @@ And then cluster across all the datasets to compare
 
 ```{r}
 
-get_cluster_MM_centroids = function(sce_obj, dataset_name, marker_list, num_markers){
+get_cluster_MM_centroids = function(sce_obj, dataset_name, species = NA, marker_list, num_markers, species_filt = F){
   
-  #Cross-species metamarkers excluding the current dataset
-  conserved_subclass_meta_markers = make_meta_markers(marker_list[names(marker_list) != dataset_name], detailed_stats = TRUE)
+  #Cross-species metamarkers excluding the current species
+  if(species_filt){
+    species_marker_index = !grepl(species, names(marker_list) )
+    conserved_subclass_meta_markers = make_meta_markers(marker_list[species_marker_index], detailed_stats = TRUE)
+  }else{ #Exclude the specific dataset
+    conserved_subclass_meta_markers = make_meta_markers(marker_list[names(marker_list) != dataset_name], detailed_stats = TRUE)
+  }
 
   #Predict celltypes with MetaMarkers
   ct_scores = score_cells(log1p(cpm(sce_obj)), conserved_subclass_meta_markers %>% filter(rank <= num_markers))
@@ -535,6 +540,8 @@ macaca_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/da
 
 marmoset_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
 
+
+
 ```
 
 
@@ -543,13 +550,40 @@ marmoset_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/
 primate_cluster_mappings = data.table::fread('../data/cross_species_mapping_cls86.csv')
 primate_cluster_mappings
 
-primate_cluster_mappings %>% filter(cross_species_cluster == 'lamp5_sncg_vip|7')
+primate_cluster_mappings %>% filter(cross_species_cluster == 'lamp5_sncg_vip|3')
+
+primate_cluster_mappings %>% filter(consensus_cluster_label == 'Pax6, Sncg|6')
 
 ```
 
+Find the cross-species clusters where the confirmed_subclass in the data does not match up the subclass label in the cross-species-mapping table
+
+human_10x and human_ss and gorilla_10x and gorilla_ss and macaca_10x:
+lamp5_sncg_vip|7: confirmed_subclass is Pax6, subclass_label is Sncg
+lamp5_sncg_vip|9: confirmed_subclass is Sncg, subclass_label is Vip
+
+chimp_10x, chimp_ss:
+same as human and gorilla and macaca
+lamp5_sncg_vip|3: confirmed_subclass is Sncg, subclass_label is Lamp5
+
+marmoset_10x:
+same as human and gorilla and macaca
+lamp5_sncg_vip|6: confirmed_subclass is Sncg, subclass_label is Pax6
+```{r}
+
+index = match(macaca_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+
+macaca_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+table(macaca_10x$subclass_label == macaca_10x$confirmed_subclass)
+table(as.data.frame(colData(macaca_10x)) %>% filter(subclass_label != confirmed_subclass) %>% pull(cross_species_cluster))
+
+index = macaca_10x$confirmed_subclass != macaca_10x$subclass_label
+table(macaca_10x$confirmed_subclass[index], macaca_10x$subclass_label[index] )
 
 
-Add the consensus cluster label and then filter out cells not in a consensus cluster
+```
+
+Add the consensus cluster label
 ```{r}
 
 index = match(human_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
@@ -561,7 +595,6 @@ human_10x$consensus_cluster_label[na_index] = human_10x$cluster_label[na_index]
 human_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
 table(human_10x$subclass_label == human_10x$confirmed_subclass)
 table(as.data.frame(colData(human_10x)) %>% filter(subclass_label != confirmed_subclass) %>% pull(cross_species_cluster))
-
 
 
 
@@ -647,21 +680,777 @@ as.data.frame(colData(macaca_10x)) %>% filter(subclass_label != confirmed_subcla
   group_by(confirmed_subclass, subclass_label) %>% summarise(n = n())
 
 
+human_10x$subclass_label[human_10x$subclass_label == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+human_ss$subclass_label[human_ss$subclass_label == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+chimp_10x$subclass_label[chimp_10x$subclass_label == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+chimp_ss$subclass_label[chimp_ss$subclass_label == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+gorilla_10x$subclass_label[gorilla_10x$subclass_label == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+gorilla_ss$subclass_label[gorilla_ss$subclass_label == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+macaca_10x$subclass_label[macaca_10x$subclass_label == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+marmoset_10x$subclass_label[marmoset_10x$subclass_label == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+human_10x$confirmed_subclass[human_10x$confirmed_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+human_ss$confirmed_subclass[human_ss$confirmed_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+chimp_10x$confirmed_subclass[chimp_10x$confirmed_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+chimp_ss$confirmed_subclass[chimp_ss$confirmed_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+gorilla_10x$confirmed_subclass[gorilla_10x$confirmed_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+gorilla_ss$confirmed_subclass[gorilla_ss$confirmed_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+macaca_10x$confirmed_subclass[macaca_10x$confirmed_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+marmoset_10x$confirmed_subclass[marmoset_10x$confirmed_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+```
+
+
+Check out the centroids of marker expression when looking over species
+
+```{r}
+all_primate_markers = list(
+    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
+)
+
+
+all_primate_markers$human_10x$cell_type[all_primate_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$human_ss$cell_type[all_primate_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$chimp_10x$cell_type[all_primate_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$chimp_ss$cell_type[all_primate_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$gorilla_10x$cell_type[all_primate_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$gorilla_ss$cell_type[all_primate_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$macaca_10x$cell_type[all_primate_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$marmoset_10x$cell_type[all_primate_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+all_conf_primate_markers = list(
+    human_10x = read_markers("metamarkers/conf_markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/conf_markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/conf_markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/conf_markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/conf_markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/conf_markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/conf_markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/conf_markers_marmoset_10x.csv.gz")
+)
+
+
+all_conf_primate_markers$human_10x$cell_type[all_conf_primate_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_conf_primate_markers$human_ss$cell_type[all_conf_primate_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_conf_primate_markers$chimp_10x$cell_type[all_conf_primate_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_conf_primate_markers$chimp_ss$cell_type[all_conf_primate_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_conf_primate_markers$gorilla_10x$cell_type[all_conf_primate_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_conf_primate_markers$gorilla_ss$cell_type[all_conf_primate_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_conf_primate_markers$macaca_10x$cell_type[all_conf_primate_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_conf_primate_markers$marmoset_10x$cell_type[all_conf_primate_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+
+
+```
+
+This is using subclass labels from the supp. table to make subclass metamarkers
+```{r}
+auroc_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+
+#Compute the centoids
+n_mark = 100
+
+human_10x$cell_cluster = human_10x$consensus_cluster_label
+centroids_human_10x = get_cluster_MM_centroids(human_10x, 'human_10x', 'human', all_primate_markers, num_markers = n_mark, species_filt = T  )
+#Metadata for heatmap annotations
+meta_human_10x = as.data.frame(colData(human_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+human_ss$cell_cluster = human_ss$consensus_cluster_label
+centroids_human_ss = get_cluster_MM_centroids(human_ss, 'human_ss', 'human', all_primate_markers, num_markers = n_mark , species_filt = T  )
+#Metadata for heatmap annotations
+meta_human_ss = as.data.frame(colData(human_ss)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+#chimp
+chimp_10x$cell_cluster = chimp_10x$consensus_cluster_label
+centroids_chimp_10x = get_cluster_MM_centroids(chimp_10x, 'chimp_10x', 'chimp', all_primate_markers, num_markers = n_mark, species_filt = T   )
+#Metadata for heatmap annotations
+meta_chimp_10x = as.data.frame(colData(chimp_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+chimp_ss$cell_cluster = chimp_ss$consensus_cluster_label
+centroids_chimp_ss = get_cluster_MM_centroids(chimp_ss, 'chimp_ss', 'chimp', all_primate_markers, num_markers = n_mark , species_filt = T  )
+#Metadata for heatmap annotations
+meta_chimp_ss = as.data.frame(colData(chimp_ss)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+#gorilla
+gorilla_10x$cell_cluster = gorilla_10x$consensus_cluster_label
+centroids_gorilla_10x = get_cluster_MM_centroids(gorilla_10x, 'gorilla_10x', 'gorilla', all_primate_markers, num_markers = n_mark , species_filt = T  )
+#Metadata for heatmap annotations
+meta_gorilla_10x = as.data.frame(colData(gorilla_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+gorilla_ss$cell_cluster = gorilla_ss$consensus_cluster_label
+centroids_gorilla_ss = get_cluster_MM_centroids(gorilla_ss, 'gorilla_ss',  'gorilla', all_primate_markers, num_markers = n_mark, species_filt = T   )
+#Metadata for heatmap annotations
+meta_gorilla_ss = as.data.frame(colData(gorilla_ss)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+#macaca
+macaca_10x$cell_cluster = macaca_10x$consensus_cluster_label
+centroids_macaca_10x = get_cluster_MM_centroids(macaca_10x, 'macaca_10x',  'macaca', all_primate_markers, num_markers = n_mark, species_filt = T   )
+#Metadata for heatmap annotations
+meta_macaca_10x = as.data.frame(colData(macaca_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(species_tech = 'macaca_10x') %>%
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+#marmoset
+marmoset_10x$cell_cluster = marmoset_10x$consensus_cluster_label
+centroids_marmoset_10x = get_cluster_MM_centroids(marmoset_10x, 'marmoset_10x',  'marmoset', all_primate_markers, num_markers = n_mark, species_filt = T   )
+#Metadata for heatmap annotations
+meta_marmoset_10x = as.data.frame(colData(marmoset_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+
+
+#combine centroids and get the row dendrogram across all columns
+all_centroids = do.call('cbind', list(centroids_human_10x, centroids_human_ss, 
+                                      centroids_chimp_10x, centroids_chimp_ss,
+                                      centroids_gorilla_10x, centroids_gorilla_ss,
+                                      centroids_macaca_10x, centroids_marmoset_10x))
+
+row_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-all_centroids), method = "ward.D2"))
+
+#Get the dataset metadata for the column annotations
+index = match(colnames(centroids_human_10x), meta_human_10x$temp_label)
+species_tech_human_10x = meta_human_10x$species_tech[index]
+cluster_orth_human_10x = meta_human_10x$consensus_cluster[index]
+subclass_human_10x = meta_human_10x$subclass_label[index]
+conf_subclass_human_10x = meta_human_10x$confirmed_subclass[index]
+
+index = match(colnames(centroids_human_ss), meta_human_ss$temp_label)
+species_tech_human_ss = meta_human_ss$species_tech[index]
+cluster_orth_human_ss = meta_human_ss$consensus_cluster[index]
+subclass_human_ss = meta_human_ss$subclass_label[index]
+conf_subclass_human_ss = meta_human_ss$confirmed_subclass[index]
+
+index = match(colnames(centroids_chimp_10x), meta_chimp_10x$temp_label)
+species_tech_chimp_10x = meta_chimp_10x$species_tech[index]
+cluster_orth_chimp_10x = meta_chimp_10x$consensus_cluster[index]
+subclass_chimp_10x = meta_chimp_10x$subclass_label[index]
+conf_subclass_chimp_10x = meta_chimp_10x$confirmed_subclass[index]
+
+index = match(colnames(centroids_chimp_ss), meta_chimp_ss$temp_label)
+species_tech_chimp_ss = meta_chimp_ss$species_tech[index]
+cluster_orth_chimp_ss = meta_chimp_ss$consensus_cluster[index]
+subclass_chimp_ss = meta_chimp_ss$subclass_label[index]
+conf_subclass_chimp_ss= meta_chimp_ss$confirmed_subclass[index]
+
+index = match(colnames(centroids_gorilla_10x), meta_gorilla_10x$temp_label)
+species_tech_gorilla_10x = meta_gorilla_10x$species_tech[index]
+cluster_orth_gorilla_10x = meta_gorilla_10x$consensus_cluster[index]
+subclass_gorilla_10x = meta_gorilla_10x$subclass_label[index]
+conf_subclass_gorilla_10x = meta_gorilla_10x$confirmed_subclass[index]
+
+index = match(colnames(centroids_gorilla_ss), meta_gorilla_ss$temp_label)
+species_tech_gorilla_ss = meta_gorilla_ss$species_tech[index]
+cluster_orth_gorilla_ss = meta_gorilla_ss$consensus_cluster[index]
+subclass_gorilla_ss = meta_gorilla_ss$subclass_label[index]
+conf_subclass_gorilla_ss = meta_gorilla_ss$confirmed_subclass[index]
+
+index = match(colnames(centroids_macaca_10x), meta_macaca_10x$temp_label)
+species_tech_macaca_10x = meta_macaca_10x$species_tech[index]
+cluster_orth_macaca_10x = meta_macaca_10x$consensus_cluster[index]
+subclass_macaca_10x = meta_macaca_10x$subclass_label[index]
+conf_subclass_macaca_10x = meta_macaca_10x$confirmed_subclass[index]
+
+index = match(colnames(centroids_marmoset_10x), meta_marmoset_10x$temp_label)
+species_tech_marmoset_10x = meta_marmoset_10x$species_tech[index]
+cluster_orth_marmoset_10x = meta_marmoset_10x$consensus_cluster[index]
+subclass_marmoset_10x = meta_marmoset_10x$subclass_label[index]
+conf_subclass_marmoset_10x = meta_marmoset_10x$confirmed_subclass[index]
+
+
+
+all_species_tech = c(species_tech_human_10x, species_tech_human_ss, 
+                     species_tech_chimp_10x, species_tech_chimp_ss,
+                     species_tech_gorilla_10x, species_tech_gorilla_ss,
+                     species_tech_macaca_10x, species_tech_marmoset_10x)
+all_cluster_orth = c(cluster_orth_human_10x, cluster_orth_human_ss, 
+                     cluster_orth_chimp_10x, cluster_orth_chimp_ss,
+                     cluster_orth_gorilla_10x, cluster_orth_gorilla_ss,
+                     cluster_orth_macaca_10x, cluster_orth_marmoset_10x)
+all_subclass = c(subclass_human_10x, subclass_human_ss, 
+                 subclass_chimp_10x, subclass_chimp_ss,
+                 subclass_gorilla_10x, subclass_gorilla_ss,
+                 subclass_macaca_10x, subclass_marmoset_10x)
+all_conf_subclass = c(conf_subclass_human_10x, conf_subclass_human_ss, 
+                 conf_subclass_chimp_10x, conf_subclass_chimp_ss,
+                 conf_subclass_gorilla_10x, conf_subclass_gorilla_ss,
+                 conf_subclass_macaca_10x, conf_subclass_marmoset_10x)
+
+orth_index = all_cluster_orth == 'yes'
+
+#Make a high orth and a low orth heatmap
+high_col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(all_centroids[ ,orth_index])), method = "ward.D2"))
+low_col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(all_centroids[ ,!orth_index])), method = "ward.D2"))
+
+
+
+high_col_annot = HeatmapAnnotation(species_tech = all_species_tech[orth_index],
+                              cluster_orth = all_cluster_orth[orth_index],
+                              subclass = all_subclass[orth_index],
+                              conf_subclass = all_conf_subclass[orth_index],
+                              col = list(cluster_orth = c('yes' = 'black', 'no' = 'grey'),
+                                         subclass = celltype_color_palette,
+                                         conf_subclass = celltype_color_palette))
+
+
+high_primate_heatmap = ComplexHeatmap::Heatmap(all_centroids[ ,orth_index], name = 'centroid', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(high_col_dendrogram), cluster_columns = high_col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8),
+                        show_column_names = T,
+                        top_annotation = high_col_annot)
+
+low_col_annot = HeatmapAnnotation(species_tech = all_species_tech[!orth_index],
+                              cluster_orth = all_cluster_orth[!orth_index],
+                              subclass = all_subclass[!orth_index],
+                              conf_subclass = all_conf_subclass[!orth_index],
+                              col = list(cluster_orth = c('yes' = 'black', 'no' = 'grey'),
+                                         subclass = celltype_color_palette,
+                                         conf_subclass = celltype_color_palette))
+
+
+low_primate_heatmap = ComplexHeatmap::Heatmap(all_centroids[ ,!orth_index], name = 'centroid', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(low_col_dendrogram), cluster_columns = low_col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8),
+                        show_column_names = T,
+                        top_annotation = low_col_annot)
+
+
+
+
+primate_heatmap = draw(high_primate_heatmap + low_primate_heatmap)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/low_ortho/primate_MM_centroids.pdf', 
+    useDingbats = F, height = 6, width = 15)
+primate_heatmap 
+dev.off()
+
+```
+
+
+This is using subclass labels from the data to make metamarkers, the confirmed_subclass in the metadata
+```{r}
+auroc_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+
+#Compute the centoids
+n_mark = 100
+
+human_10x$cell_cluster = human_10x$consensus_cluster_label
+centroids_human_10x = get_cluster_MM_centroids(human_10x, 'human_10x',  'human', all_conf_primate_markers, num_markers = n_mark, species_filt = T   )
+#Metadata for heatmap annotations
+meta_human_10x = as.data.frame(colData(human_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+human_ss$cell_cluster = human_ss$consensus_cluster_label
+centroids_human_ss = get_cluster_MM_centroids(human_ss, 'human_ss',  'human', all_conf_primate_markers, num_markers = n_mark , species_filt = T  )
+#Metadata for heatmap annotations
+meta_human_ss = as.data.frame(colData(human_ss)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+#chimp
+chimp_10x$cell_cluster = chimp_10x$consensus_cluster_label
+centroids_chimp_10x = get_cluster_MM_centroids(chimp_10x, 'chimp_10x',  'chimp', all_conf_primate_markers, num_markers = n_mark, species_filt = T   )
+#Metadata for heatmap annotations
+meta_chimp_10x = as.data.frame(colData(chimp_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+chimp_ss$cell_cluster = chimp_ss$consensus_cluster_label
+centroids_chimp_ss = get_cluster_MM_centroids(chimp_ss, 'chimp_ss',  'chimp', all_conf_primate_markers, num_markers = n_mark, species_filt = T   )
+#Metadata for heatmap annotations
+meta_chimp_ss = as.data.frame(colData(chimp_ss)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+#gorilla
+gorilla_10x$cell_cluster = gorilla_10x$consensus_cluster_label
+centroids_gorilla_10x = get_cluster_MM_centroids(gorilla_10x, 'gorilla_10x',  'gorilla', all_conf_primate_markers, num_markers = n_mark, species_filt = T   )
+#Metadata for heatmap annotations
+meta_gorilla_10x = as.data.frame(colData(gorilla_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+gorilla_ss$cell_cluster = gorilla_ss$consensus_cluster_label
+centroids_gorilla_ss = get_cluster_MM_centroids(gorilla_ss, 'gorilla_ss',  'gorilla',all_conf_primate_markers, num_markers = n_mark, species_filt = T   )
+#Metadata for heatmap annotations
+meta_gorilla_ss = as.data.frame(colData(gorilla_ss)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+#macaca
+macaca_10x$cell_cluster = macaca_10x$consensus_cluster_label
+centroids_macaca_10x = get_cluster_MM_centroids(macaca_10x, 'macaca_10x',  'macaca',all_conf_primate_markers, num_markers = n_mark , species_filt = T  )
+#Metadata for heatmap annotations
+meta_macaca_10x = as.data.frame(colData(macaca_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(species_tech = 'macaca_10x') %>%
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+#marmoset
+marmoset_10x$cell_cluster = marmoset_10x$consensus_cluster_label
+centroids_marmoset_10x = get_cluster_MM_centroids(marmoset_10x, 'marmoset_10x',  'marmoset', all_conf_primate_markers, num_markers = n_mark, species_filt = T   )
+#Metadata for heatmap annotations
+meta_marmoset_10x = as.data.frame(colData(marmoset_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+
+
+#combine centroids and get the row dendrogram across all columns
+all_centroids = do.call('cbind', list(centroids_human_10x, centroids_human_ss, 
+                                      centroids_chimp_10x, centroids_chimp_ss,
+                                      centroids_gorilla_10x, centroids_gorilla_ss,
+                                      centroids_macaca_10x, centroids_marmoset_10x))
+
+row_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-all_centroids), method = "ward.D2"))
+
+#Get the dataset metadata for the column annotations
+index = match(colnames(centroids_human_10x), meta_human_10x$temp_label)
+species_tech_human_10x = meta_human_10x$species_tech[index]
+cluster_orth_human_10x = meta_human_10x$consensus_cluster[index]
+subclass_human_10x = meta_human_10x$subclass_label[index]
+conf_subclass_human_10x = meta_human_10x$confirmed_subclass[index]
+
+index = match(colnames(centroids_human_ss), meta_human_ss$temp_label)
+species_tech_human_ss = meta_human_ss$species_tech[index]
+cluster_orth_human_ss = meta_human_ss$consensus_cluster[index]
+subclass_human_ss = meta_human_ss$subclass_label[index]
+conf_subclass_human_ss = meta_human_ss$confirmed_subclass[index]
+
+index = match(colnames(centroids_chimp_10x), meta_chimp_10x$temp_label)
+species_tech_chimp_10x = meta_chimp_10x$species_tech[index]
+cluster_orth_chimp_10x = meta_chimp_10x$consensus_cluster[index]
+subclass_chimp_10x = meta_chimp_10x$subclass_label[index]
+conf_subclass_chimp_10x = meta_chimp_10x$confirmed_subclass[index]
+
+index = match(colnames(centroids_chimp_ss), meta_chimp_ss$temp_label)
+species_tech_chimp_ss = meta_chimp_ss$species_tech[index]
+cluster_orth_chimp_ss = meta_chimp_ss$consensus_cluster[index]
+subclass_chimp_ss = meta_chimp_ss$subclass_label[index]
+conf_subclass_chimp_ss= meta_chimp_ss$confirmed_subclass[index]
+
+index = match(colnames(centroids_gorilla_10x), meta_gorilla_10x$temp_label)
+species_tech_gorilla_10x = meta_gorilla_10x$species_tech[index]
+cluster_orth_gorilla_10x = meta_gorilla_10x$consensus_cluster[index]
+subclass_gorilla_10x = meta_gorilla_10x$subclass_label[index]
+conf_subclass_gorilla_10x = meta_gorilla_10x$confirmed_subclass[index]
+
+index = match(colnames(centroids_gorilla_ss), meta_gorilla_ss$temp_label)
+species_tech_gorilla_ss = meta_gorilla_ss$species_tech[index]
+cluster_orth_gorilla_ss = meta_gorilla_ss$consensus_cluster[index]
+subclass_gorilla_ss = meta_gorilla_ss$subclass_label[index]
+conf_subclass_gorilla_ss = meta_gorilla_ss$confirmed_subclass[index]
+
+index = match(colnames(centroids_macaca_10x), meta_macaca_10x$temp_label)
+species_tech_macaca_10x = meta_macaca_10x$species_tech[index]
+cluster_orth_macaca_10x = meta_macaca_10x$consensus_cluster[index]
+subclass_macaca_10x = meta_macaca_10x$subclass_label[index]
+conf_subclass_macaca_10x = meta_macaca_10x$confirmed_subclass[index]
+
+index = match(colnames(centroids_marmoset_10x), meta_marmoset_10x$temp_label)
+species_tech_marmoset_10x = meta_marmoset_10x$species_tech[index]
+cluster_orth_marmoset_10x = meta_marmoset_10x$consensus_cluster[index]
+subclass_marmoset_10x = meta_marmoset_10x$subclass_label[index]
+conf_subclass_marmoset_10x = meta_marmoset_10x$confirmed_subclass[index]
+
+
+
+all_species_tech = c(species_tech_human_10x, species_tech_human_ss, 
+                     species_tech_chimp_10x, species_tech_chimp_ss,
+                     species_tech_gorilla_10x, species_tech_gorilla_ss,
+                     species_tech_macaca_10x, species_tech_marmoset_10x)
+all_cluster_orth = c(cluster_orth_human_10x, cluster_orth_human_ss, 
+                     cluster_orth_chimp_10x, cluster_orth_chimp_ss,
+                     cluster_orth_gorilla_10x, cluster_orth_gorilla_ss,
+                     cluster_orth_macaca_10x, cluster_orth_marmoset_10x)
+all_subclass = c(subclass_human_10x, subclass_human_ss, 
+                 subclass_chimp_10x, subclass_chimp_ss,
+                 subclass_gorilla_10x, subclass_gorilla_ss,
+                 subclass_macaca_10x, subclass_marmoset_10x)
+all_conf_subclass = c(conf_subclass_human_10x, conf_subclass_human_ss, 
+                 conf_subclass_chimp_10x, conf_subclass_chimp_ss,
+                 conf_subclass_gorilla_10x, conf_subclass_gorilla_ss,
+                 conf_subclass_macaca_10x, conf_subclass_marmoset_10x)
+
+orth_index = all_cluster_orth == 'yes'
+
+#Make a high orth and a low orth heatmap
+high_col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(all_centroids[ ,orth_index])), method = "ward.D2"))
+low_col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(all_centroids[ ,!orth_index])), method = "ward.D2"))
+
+
+
+high_col_annot = HeatmapAnnotation(species_tech = all_species_tech[orth_index],
+                              cluster_orth = all_cluster_orth[orth_index],
+                              subclass = all_subclass[orth_index],
+                              conf_subclass = all_conf_subclass[orth_index],
+                              col = list(cluster_orth = c('yes' = 'black', 'no' = 'grey'),
+                                         subclass = celltype_color_palette,
+                                         conf_subclass = celltype_color_palette))
+
+
+high_primate_heatmap = ComplexHeatmap::Heatmap(all_centroids[ ,orth_index], name = 'centroid', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(high_col_dendrogram), cluster_columns = high_col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8),
+                        show_column_names = T,
+                        top_annotation = high_col_annot)
+
+low_col_annot = HeatmapAnnotation(species_tech = all_species_tech[!orth_index],
+                              cluster_orth = all_cluster_orth[!orth_index],
+                              subclass = all_subclass[!orth_index],
+                              conf_subclass = all_conf_subclass[!orth_index],
+                              col = list(cluster_orth = c('yes' = 'black', 'no' = 'grey'),
+                                         subclass = celltype_color_palette,
+                                         conf_subclass = celltype_color_palette))
+
+
+low_primate_heatmap = ComplexHeatmap::Heatmap(all_centroids[ ,!orth_index], name = 'centroid', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(low_col_dendrogram), cluster_columns = low_col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8),
+                        show_column_names = T,
+                        top_annotation = low_col_annot)
+
+
+
+
+primate_heatmap = draw(high_primate_heatmap + low_primate_heatmap)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/low_ortho/conf_subclass_primate_MM_centroids.pdf', 
+    useDingbats = F, height = 6, width = 15)
+primate_heatmap 
+dev.off()
+
+```
+
+
+This is using subclass labels from the supp. table to make subclass metamarkers
+```{r}
+auroc_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+
+#Compute the centoids
+n_mark = 100
+
+human_10x$cell_cluster = human_10x$consensus_cluster_label
+centroids_human_10x = get_cluster_MM_centroids(human_10x, 'human_10x', 'human', all_species_markers, num_markers = n_mark  )
+#Metadata for heatmap annotations
+meta_human_10x = as.data.frame(colData(human_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+human_ss$cell_cluster = human_ss$consensus_cluster_label
+centroids_human_ss = get_cluster_MM_centroids(human_ss, 'human_ss', 'human', all_species_markers, num_markers = n_mark  )
+#Metadata for heatmap annotations
+meta_human_ss = as.data.frame(colData(human_ss)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+#chimp
+chimp_10x$cell_cluster = chimp_10x$consensus_cluster_label
+centroids_chimp_10x = get_cluster_MM_centroids(chimp_10x, 'chimp_10x', 'chimp', all_species_markers, num_markers = n_mark  )
+#Metadata for heatmap annotations
+meta_chimp_10x = as.data.frame(colData(chimp_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+chimp_ss$cell_cluster = chimp_ss$consensus_cluster_label
+centroids_chimp_ss = get_cluster_MM_centroids(chimp_ss, 'chimp_ss', 'chimp', all_species_markers, num_markers = n_mark  )
+#Metadata for heatmap annotations
+meta_chimp_ss = as.data.frame(colData(chimp_ss)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+#gorilla
+gorilla_10x$cell_cluster = gorilla_10x$consensus_cluster_label
+centroids_gorilla_10x = get_cluster_MM_centroids(gorilla_10x, 'gorilla_10x', 'gorilla', all_species_markers, num_markers = n_mark  )
+#Metadata for heatmap annotations
+meta_gorilla_10x = as.data.frame(colData(gorilla_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+gorilla_ss$cell_cluster = gorilla_ss$consensus_cluster_label
+centroids_gorilla_ss = get_cluster_MM_centroids(gorilla_ss, 'gorilla_ss',  'gorilla', all_species_markers, num_markers = n_mark  )
+#Metadata for heatmap annotations
+meta_gorilla_ss = as.data.frame(colData(gorilla_ss)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+#macaca
+macaca_10x$cell_cluster = macaca_10x$consensus_cluster_label
+centroids_macaca_10x = get_cluster_MM_centroids(macaca_10x, 'macaca_10x',  'macaca', all_species_markers, num_markers = n_mark  )
+#Metadata for heatmap annotations
+meta_macaca_10x = as.data.frame(colData(macaca_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(species_tech = 'macaca_10x') %>%
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+#marmoset
+marmoset_10x$cell_cluster = marmoset_10x$consensus_cluster_label
+centroids_marmoset_10x = get_cluster_MM_centroids(marmoset_10x, 'marmoset_10x',  'marmoset', all_species_markers, num_markers = n_mark  )
+#Metadata for heatmap annotations
+meta_marmoset_10x = as.data.frame(colData(marmoset_10x)) %>% filter(!duplicated(consensus_cluster_label)) %>% 
+  mutate(temp_label = paste(species_tech, consensus_cluster_label, sep = '|'))
+
+
+
+#combine centroids and get the row dendrogram across all columns
+all_centroids = do.call('cbind', list(centroids_human_10x, centroids_human_ss, 
+                                      centroids_chimp_10x, centroids_chimp_ss,
+                                      centroids_gorilla_10x, centroids_gorilla_ss,
+                                      centroids_macaca_10x, centroids_marmoset_10x))
+
+row_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-all_centroids), method = "ward.D2"))
+
+#Get the dataset metadata for the column annotations
+index = match(colnames(centroids_human_10x), meta_human_10x$temp_label)
+species_tech_human_10x = meta_human_10x$species_tech[index]
+cluster_orth_human_10x = meta_human_10x$consensus_cluster[index]
+subclass_human_10x = meta_human_10x$subclass_label[index]
+conf_subclass_human_10x = meta_human_10x$confirmed_subclass[index]
+
+index = match(colnames(centroids_human_ss), meta_human_ss$temp_label)
+species_tech_human_ss = meta_human_ss$species_tech[index]
+cluster_orth_human_ss = meta_human_ss$consensus_cluster[index]
+subclass_human_ss = meta_human_ss$subclass_label[index]
+conf_subclass_human_ss = meta_human_ss$confirmed_subclass[index]
+
+index = match(colnames(centroids_chimp_10x), meta_chimp_10x$temp_label)
+species_tech_chimp_10x = meta_chimp_10x$species_tech[index]
+cluster_orth_chimp_10x = meta_chimp_10x$consensus_cluster[index]
+subclass_chimp_10x = meta_chimp_10x$subclass_label[index]
+conf_subclass_chimp_10x = meta_chimp_10x$confirmed_subclass[index]
+
+index = match(colnames(centroids_chimp_ss), meta_chimp_ss$temp_label)
+species_tech_chimp_ss = meta_chimp_ss$species_tech[index]
+cluster_orth_chimp_ss = meta_chimp_ss$consensus_cluster[index]
+subclass_chimp_ss = meta_chimp_ss$subclass_label[index]
+conf_subclass_chimp_ss= meta_chimp_ss$confirmed_subclass[index]
+
+index = match(colnames(centroids_gorilla_10x), meta_gorilla_10x$temp_label)
+species_tech_gorilla_10x = meta_gorilla_10x$species_tech[index]
+cluster_orth_gorilla_10x = meta_gorilla_10x$consensus_cluster[index]
+subclass_gorilla_10x = meta_gorilla_10x$subclass_label[index]
+conf_subclass_gorilla_10x = meta_gorilla_10x$confirmed_subclass[index]
+
+index = match(colnames(centroids_gorilla_ss), meta_gorilla_ss$temp_label)
+species_tech_gorilla_ss = meta_gorilla_ss$species_tech[index]
+cluster_orth_gorilla_ss = meta_gorilla_ss$consensus_cluster[index]
+subclass_gorilla_ss = meta_gorilla_ss$subclass_label[index]
+conf_subclass_gorilla_ss = meta_gorilla_ss$confirmed_subclass[index]
+
+index = match(colnames(centroids_macaca_10x), meta_macaca_10x$temp_label)
+species_tech_macaca_10x = meta_macaca_10x$species_tech[index]
+cluster_orth_macaca_10x = meta_macaca_10x$consensus_cluster[index]
+subclass_macaca_10x = meta_macaca_10x$subclass_label[index]
+conf_subclass_macaca_10x = meta_macaca_10x$confirmed_subclass[index]
+
+index = match(colnames(centroids_marmoset_10x), meta_marmoset_10x$temp_label)
+species_tech_marmoset_10x = meta_marmoset_10x$species_tech[index]
+cluster_orth_marmoset_10x = meta_marmoset_10x$consensus_cluster[index]
+subclass_marmoset_10x = meta_marmoset_10x$subclass_label[index]
+conf_subclass_marmoset_10x = meta_marmoset_10x$confirmed_subclass[index]
+
+
+
+all_species_tech = c(species_tech_human_10x, species_tech_human_ss, 
+                     species_tech_chimp_10x, species_tech_chimp_ss,
+                     species_tech_gorilla_10x, species_tech_gorilla_ss,
+                     species_tech_macaca_10x, species_tech_marmoset_10x)
+all_cluster_orth = c(cluster_orth_human_10x, cluster_orth_human_ss, 
+                     cluster_orth_chimp_10x, cluster_orth_chimp_ss,
+                     cluster_orth_gorilla_10x, cluster_orth_gorilla_ss,
+                     cluster_orth_macaca_10x, cluster_orth_marmoset_10x)
+all_subclass = c(subclass_human_10x, subclass_human_ss, 
+                 subclass_chimp_10x, subclass_chimp_ss,
+                 subclass_gorilla_10x, subclass_gorilla_ss,
+                 subclass_macaca_10x, subclass_marmoset_10x)
+all_conf_subclass = c(conf_subclass_human_10x, conf_subclass_human_ss, 
+                 conf_subclass_chimp_10x, conf_subclass_chimp_ss,
+                 conf_subclass_gorilla_10x, conf_subclass_gorilla_ss,
+                 conf_subclass_macaca_10x, conf_subclass_marmoset_10x)
+
+orth_index = all_cluster_orth == 'yes'
+
+#Make a high orth and a low orth heatmap
+high_col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(all_centroids[ ,orth_index])), method = "ward.D2"))
+low_col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(all_centroids[ ,!orth_index])), method = "ward.D2"))
+
+
+
+high_col_annot = HeatmapAnnotation(species_tech = all_species_tech[orth_index],
+                              cluster_orth = all_cluster_orth[orth_index],
+                              subclass = all_subclass[orth_index],
+                              conf_subclass = all_conf_subclass[orth_index],
+                              col = list(cluster_orth = c('yes' = 'black', 'no' = 'grey'),
+                                         subclass = celltype_color_palette,
+                                         conf_subclass = celltype_color_palette))
+
+
+high_primate_heatmap = ComplexHeatmap::Heatmap(all_centroids[ ,orth_index], name = 'centroid', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(high_col_dendrogram), cluster_columns = high_col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8),
+                        show_column_names = T,
+                        top_annotation = high_col_annot)
+
+low_col_annot = HeatmapAnnotation(species_tech = all_species_tech[!orth_index],
+                              cluster_orth = all_cluster_orth[!orth_index],
+                              subclass = all_subclass[!orth_index],
+                              conf_subclass = all_conf_subclass[!orth_index],
+                              col = list(cluster_orth = c('yes' = 'black', 'no' = 'grey'),
+                                         subclass = celltype_color_palette,
+                                         conf_subclass = celltype_color_palette))
+
+
+low_primate_heatmap = ComplexHeatmap::Heatmap(all_centroids[ ,!orth_index], name = 'centroid', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(low_col_dendrogram), cluster_columns = low_col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8),
+                        show_column_names = T,
+                        top_annotation = low_col_annot)
+
+
+
+
+primate_heatmap = draw(high_primate_heatmap + low_primate_heatmap)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/low_ortho/all_mammal_MM_primate_centroids.pdf', 
+    useDingbats = F, height = 6, width = 15)
+primate_heatmap 
+dev.off()
+
+```
+
+
+
+
+
+
+
+
+```{r}
+
+as.data.frame(colData(chimp_10x))%>% 
+  group_by(cross_species_cluster, consensus_cluster_label, subclass_label, cluster_label, cluster, confirmed_subclass) %>% summarise(n = n())
+
+
+as.data.frame(colData(chimp_ss))%>% 
+  group_by(cross_species_cluster, consensus_cluster_label, subclass_label, cluster_label, cluster, confirmed_subclass) %>% summarise(n = n())
+
 
 ```
 
 
 ```{r}
+
+as.data.frame(colData(human_10x))%>% 
+  group_by(cross_species_cluster, consensus_cluster_label, subclass_label, cluster_label, cluster, confirmed_subclass) %>% summarise(n = n())
+
+
+as.data.frame(colData(human_ss))%>% 
+  group_by(cross_species_cluster, consensus_cluster_label, subclass_label, cluster_label, cluster, confirmed_subclass) %>% summarise(n = n())
+
+
+as.data.frame(colData(marmoset_10x))%>% 
+  group_by(cross_species_cluster, consensus_cluster_label, subclass_label, cluster_label, cluster, confirmed_subclass) %>% summarise(n = n())
+
+
+```
+
+
+comparing to the CZI versions of the data
+
+```{r}
+
+human_czi = zellkonverter::readH5AD('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/czi_primate_data/human_czi.h5ad')
+human_czi
+
+
+as.data.frame(colData(human_czi)) %>% filter(Neighborhood %in% c('lamp5_sncg_vip','sst_sst_chodl_pvalb')) %>% 
+  group_by(assay) %>% summarise(n = n())
+
+dim(human_10x)
+dim(human_ss)
+
+czi_human_10x_meta = as.data.frame(colData(human_czi)) %>% filter(Neighborhood %in% c('lamp5_sncg_vip','sst_sst_chodl_pvalb') &
+                                                                    assay == "10x 3' v3")
+czi_human_ss_meta = as.data.frame(colData(human_czi)) %>% filter(Neighborhood %in% c('lamp5_sncg_vip','sst_sst_chodl_pvalb') &
+                                                                    assay == "Smart-seq v4")
+
+
+table(rownames(czi_human_10x_meta) == human_10x$sample_id)
+table(czi_human_10x_meta$nCount_RNA == human_10x$nCount_RNA)
+table(czi_human_10x_meta$nFeature_RNA == human_10x$nFeature_RNA)
+
+
+
+czi_human_10x_meta = czi_human_10x_meta %>% select(Cluster, Neighborhood, Subclass, CrossSpeciesCluster)
+human_10x_meta = as.data.frame(colData(human_10x)) %>% select(neighborhood, confirmed_subclass, cluster, cluster_label, subclass_label, cross_species_cluster )
+
+
+all_human_meta = cbind(czi_human_10x_meta, human_10x_meta  )
+
+
+all_human_meta 
+
+all_human_meta %>% group_by(CrossSpeciesCluster, cross_species_cluster) %>% summarise(n=n()) 
+
+all_human_meta %>% group_by(Cluster, cluster) %>% summarise(n=n()) %>% 
+  mutate(check_same = Cluster == cluster) %>% group_by(check_same) %>% summarise(n = n())
+
+all_human_meta %>% group_by(Neighborhood, neighborhood) %>% summarise(n=n()) %>% 
+  mutate(check_same = Neighborhood == neighborhood) %>% group_by(check_same) %>% summarise(n = n())
+
+all_human_meta %>% group_by(Subclass, confirmed_subclass) %>% summarise(n=n()) %>% 
+  mutate(check_same = Subclass == confirmed_subclass) %>% group_by(check_same) %>% summarise(n = n())
+
+all_human_meta %>% group_by(Subclass, subclass_label) %>% summarise(n=n()) %>% 
+  mutate(check_same = Subclass == subclass_label) %>% group_by(check_same) %>% summarise(n = n())
+
+
+all_human_meta %>% group_by(cluster, confirmed_subclass) %>% summarise(n = n())
+
+all_human_meta %>% group_by(cluster, cluster_label) %>% summarise(n = n())
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
 #Human
 #Change metdata columns to match other datasets
-human_10x$subclass_label = human_10x$confirmed_subclass
+#human_10x$subclass_label = human_10x$confirmed_subclass
 human_10x$cluster_label = human_10x$consensus_cluster_label
 
 keep_meta = colData(human_10x)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
 colData(human_10x)= keep_meta
 
 #Change metadata columns to match other datasets
-human_ss$subclass_label = human_ss$confirmed_subclass
+#human_ss$subclass_label = human_ss$confirmed_subclass
 human_ss$cluster_label = human_ss$consensus_cluster_label
 
 keep_meta = colData(human_ss)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
@@ -670,14 +1459,14 @@ colData(human_ss)= keep_meta
 
 #Chimp
 #Change metdata columns to match other datasets
-chimp_10x$subclass_label = chimp_10x$confirmed_subclass
+#chimp_10x$subclass_label = chimp_10x$confirmed_subclass
 chimp_10x$cluster_label = chimp_10x$consensus_cluster_label
 
 keep_meta = colData(chimp_10x)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
 colData(chimp_10x)= keep_meta
 
 #Change metadata columns to match other datasets
-chimp_ss$subclass_label = chimp_ss$confirmed_subclass
+#chimp_ss$subclass_label = chimp_ss$confirmed_subclass
 chimp_ss$cluster_label = chimp_ss$consensus_cluster_label
 
 keep_meta = colData(chimp_ss)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
@@ -685,14 +1474,14 @@ colData(chimp_ss)= keep_meta
 
 #gorilla
 #Change metdata columns to match other datasets
-gorilla_10x$subclass_label = gorilla_10x$confirmed_subclass
+#gorilla_10x$subclass_label = gorilla_10x$confirmed_subclass
 gorilla_10x$cluster_label = gorilla_10x$consensus_cluster_label
 
 keep_meta = colData(gorilla_10x)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
 colData(gorilla_10x)= keep_meta
 
 #Change metadata columns to match other datasets
-gorilla_ss$subclass_label = gorilla_ss$confirmed_subclass
+#gorilla_ss$subclass_label = gorilla_ss$confirmed_subclass
 gorilla_ss$cluster_label = gorilla_ss$consensus_cluster_label
 
 keep_meta = colData(gorilla_ss)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
@@ -701,7 +1490,7 @@ colData(gorilla_ss)= keep_meta
 
 #macaca
 #Change metdata columns to match other datasets
-macaca_10x$subclass_label = macaca_10x$confirmed_subclass
+#macaca_10x$subclass_label = macaca_10x$confirmed_subclass
 macaca_10x$cluster_label = macaca_10x$consensus_cluster_label
 
 keep_meta = colData(macaca_10x)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
@@ -709,7 +1498,7 @@ colData(macaca_10x)= keep_meta
 
 #marmoset
 #Change metdata columns to match other datasets
-marmoset_10x$subclass_label = marmoset_10x$confirmed_subclass
+#marmoset_10x$subclass_label = marmoset_10x$confirmed_subclass
 marmoset_10x$cluster_label = marmoset_10x$consensus_cluster_label
 
 keep_meta = colData(marmoset_10x)[ , c('subclass_label','cluster_label', 'consensus_cluster')]
