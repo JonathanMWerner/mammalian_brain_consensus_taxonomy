@@ -581,6 +581,9 @@ index = macaca_10x$confirmed_subclass != macaca_10x$subclass_label
 table(macaca_10x$confirmed_subclass[index], macaca_10x$subclass_label[index] )
 
 
+table(human_10x$cluster %in% primate_cluster_mappings$cluster_label)
+
+
 ```
 
 Add the consensus cluster label
@@ -747,6 +750,42 @@ all_conf_primate_markers$gorilla_10x$cell_type[all_conf_primate_markers$gorilla_
 all_conf_primate_markers$gorilla_ss$cell_type[all_conf_primate_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
 all_conf_primate_markers$macaca_10x$cell_type[all_conf_primate_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
 all_conf_primate_markers$marmoset_10x$cell_type[all_conf_primate_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+
+
+library(ggridges)
+temp_MM = make_meta_markers(all_primate_markers, detailed_stats = T)
+
+stats_for_plotting = temp_MM %>% filter(rank <= 50)
+cell_type_order = stats_for_plotting %>% group_by(cell_type) %>% summarise(order_stat = mean(auroc)) %>% arrange(desc(order_stat)) %>% pull(cell_type)
+stats_for_plotting$cell_type = factor(stats_for_plotting$cell_type , levels = c(cell_type_order))
+ggplot(stats_for_plotting, aes(x = auroc, y = cell_type)) + geom_density_ridges()
+
+
+cell_type_order = stats_for_plotting %>% group_by(cell_type) %>% summarise(order_stat = mean(log2(fold_change))) %>% arrange(desc(order_stat)) %>% pull(cell_type)
+stats_for_plotting$cell_type = factor(stats_for_plotting$cell_type , levels = c(cell_type_order))
+ggplot(stats_for_plotting, aes(x = log2(fold_change), y = cell_type)) + geom_density_ridges()
+
+
+
+cell_type_order = stats_for_plotting %>% group_by(cell_type) %>% summarise(order_stat = mean(log2(fold_change_detection))) %>% 
+  arrange(desc(order_stat)) %>% pull(cell_type)
+stats_for_plotting$cell_type = factor(stats_for_plotting$cell_type , levels = c(cell_type_order))
+ggplot(stats_for_plotting, aes(x = log2(fold_change_detection), y = cell_type)) + geom_density_ridges()
+
+cell_type_order = stats_for_plotting %>% group_by(cell_type) %>% summarise(order_stat = mean(precision, na.rm = T)) %>% arrange(desc(order_stat)) %>% pull(cell_type)
+stats_for_plotting$cell_type = factor(stats_for_plotting$cell_type , levels = c(cell_type_order))
+ggplot(stats_for_plotting, aes(x = precision, y = cell_type)) + geom_density_ridges()
+
+cell_type_order = stats_for_plotting %>% group_by(cell_type) %>% summarise(order_stat = mean(recall, na.rm = T)) %>% arrange(desc(order_stat)) %>% pull(cell_type)
+stats_for_plotting$cell_type = factor(stats_for_plotting$cell_type , levels = c(cell_type_order))
+ggplot(stats_for_plotting, aes(x = recall, y = cell_type)) + geom_density_ridges()
+
+cell_type_order = stats_for_plotting %>% group_by(cell_type) %>% summarise(order_stat = mean(log10(expression+1), na.rm = T)) %>% 
+  arrange(desc(order_stat)) %>% pull(cell_type)
+stats_for_plotting$cell_type = factor(stats_for_plotting$cell_type , levels = c(cell_type_order))
+ggplot(stats_for_plotting, aes(x = log10(expression+1), y = cell_type)) + geom_density_ridges()
 
 
 

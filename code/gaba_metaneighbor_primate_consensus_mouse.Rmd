@@ -2329,9 +2329,11 @@ DimPlot(interneuron.combined, group.by = 'cell_subclass', cols = celltype_color_
 DimPlot(interneuron.combined, group.by = 'primate_subclass', cols = celltype_color_palette) + 
   ggtitle('Orthologous primate subclass')
 ```
+
+
+
+
 Co-expression of PAX6 and SNCG
-
-
 
 ```{r}
 interneuron.combined@active.assay
@@ -2440,6 +2442,8 @@ ggplot(primate_sub_comp_df, aes(fill=study, y=n, x=primate_subclass)) +
 
 ggplot(mouse_sub_comp_df, aes(fill=study, y=n, x=cell_subclass)) + 
     geom_bar(position="fill", stat="identity") + ylab('% cell-type') + ggtitle('Study contribution to original subclasses')
+
+primate_sub_comp_df %>% group_by(primate_subclass) %>% summarise(n = n()) 
 
 ```
 
