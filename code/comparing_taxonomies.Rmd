@@ -157,7 +157,7 @@ cluster_markers = list(
 
 ```{r}
 
-construct_cell_taxonomy = function(sc_exp, dataset_name, marker_list, num_markers = 50){
+construct_cell_taxonomy = function(sc_exp, dataset_name, marker_list, num_markers = 50, clust_method = 'average'){
 
   
   current_dataset_markers = marker_list[[dataset_name]]
@@ -182,7 +182,7 @@ construct_cell_taxonomy = function(sc_exp, dataset_name, marker_list, num_marker
   centroid_corr = cor(centroids, method = 'spearman')
   
   #Hierarchical clusting on the correlation distance matrix
-  hclust_avg <- hclust(as.dist(1-centroid_corr), method = 'ward.D2')
+  hclust_avg <- hclust(as.dist(1-centroid_corr), method = clust_method)
   
   dataset_subclasses = as.data.frame(colData(sc_exp)[ ,c('cell_subclass','cell_cluster','primate_subclass', 'orthology')])
   dataset_subclasses = dataset_subclasses %>% filter(!duplicated(cell_cluster))
@@ -221,7 +221,7 @@ construct_cell_taxonomy = function(sc_exp, dataset_name, marker_list, num_marker
 
 ```{r}
 
-tasic_taxonomy = construct_cell_taxonomy(tasic18, 'tasic18', cluster_markers, num_markers = 500 )
+tasic_taxonomy = construct_cell_taxonomy(tasic18, 'tasic18', cluster_markers, num_markers = 50 )
 
 #plot(tasic_taxonomy[['dendro']], main = 'tasic', xlab = 'Interneuron clusters', hang = -1)
 
@@ -233,9 +233,15 @@ dev.off()
 
 ```
 
+
+
+
+
+
+
 ```{r}
 
-zeng_10x_cells_taxonomy = construct_cell_taxonomy(zeng_10x_cells, 'zeng_10x_cells', cluster_markers, num_markers = 500 )
+zeng_10x_cells_taxonomy = construct_cell_taxonomy(zeng_10x_cells, 'zeng_10x_cells', cluster_markers, num_markers = 50 )
 
 zeng_10x_cells_taxonomy[['centroid_corr']]
 
@@ -249,7 +255,7 @@ dev.off()
 
 ```{r}
 
-zeng_10x_nuclei_taxonomy = construct_cell_taxonomy(zeng_10x_nuclei, 'zeng_10x_nuclei', cluster_markers, num_markers = 500 )
+zeng_10x_nuclei_taxonomy = construct_cell_taxonomy(zeng_10x_nuclei, 'zeng_10x_nuclei', cluster_markers, num_markers = 50 )
 
 zeng_10x_nuclei_taxonomy[['centroid_corr']]
 
@@ -261,7 +267,7 @@ dev.off()
 
 ```{r}
 
-zeng_smart_cells_taxonomy = construct_cell_taxonomy(zeng_smart_cells, 'zeng_smart_cells', cluster_markers, num_markers = 500 )
+zeng_smart_cells_taxonomy = construct_cell_taxonomy(zeng_smart_cells, 'zeng_smart_cells', cluster_markers, num_markers = 50 )
 
 zeng_smart_cells_taxonomy[['centroid_corr']]
 
@@ -274,7 +280,7 @@ dev.off()
 
 ```{r}
 
-zeng_smart_nuclei_taxonomy = construct_cell_taxonomy(zeng_smart_nuclei, 'zeng_smart_nuclei', cluster_markers, num_markers = 500 )
+zeng_smart_nuclei_taxonomy = construct_cell_taxonomy(zeng_smart_nuclei, 'zeng_smart_nuclei', cluster_markers, num_markers = 50 )
 
 zeng_smart_nuclei_taxonomy[['centroid_corr']]
 
@@ -288,7 +294,7 @@ dev.off()
 
 ```{r}
 
-zeng_10xv2_wba_taxonomy = construct_cell_taxonomy(zeng_10xv2_wba, 'zeng_10xv2_wba', cluster_markers, num_markers = 500 )
+zeng_10xv2_wba_taxonomy = construct_cell_taxonomy(zeng_10xv2_wba, 'zeng_10xv2_wba', cluster_markers, num_markers = 50 )
 
 zeng_10xv2_wba_taxonomy[['centroid_corr']]
 
@@ -300,7 +306,7 @@ dev.off()
 
 ```{r}
 
-zeng_10xv3_wba_taxonomy = construct_cell_taxonomy(zeng_10xv3_wba, 'zeng_10xv3_wba', cluster_markers, num_markers = 500 )
+zeng_10xv3_wba_taxonomy = construct_cell_taxonomy(zeng_10xv3_wba, 'zeng_10xv3_wba', cluster_markers, num_markers = 50)
 
 zeng_10xv3_wba_taxonomy[['centroid_corr']]
 
@@ -312,7 +318,7 @@ dev.off()
 
 ```{r}
 
-macosko_wba_taxonomy = construct_cell_taxonomy(macosko_wba, 'macosko_wba', cluster_markers, num_markers = 500 )
+macosko_wba_taxonomy = construct_cell_taxonomy(macosko_wba, 'macosko_wba', cluster_markers, num_markers = 50 )
 
 macosko_wba_taxonomy[['centroid_corr']]
 
@@ -386,9 +392,6 @@ length(use_genes)
 
 
 
-
-
-
 ```{r}
 
 #Expression data for that list
@@ -407,7 +410,7 @@ centroids = t(centroids[ ,2:ncol(centroids)])
 centroid_corr = cor(centroids, method = 'spearman')
 
 #Hierarchical clusting on the correlation distance matrix
-hclust_avg <- hclust(as.dist(1-centroid_corr), method = 'ward.D2')
+hclust_avg <- hclust(as.dist(1-centroid_corr), method = 'average')
 
 dataset_subclasses = interneuron.combined[[]][ , c('cell_subclass','cell_cluster','primate_subclass', 'study')]
 dataset_subclasses = dataset_subclasses %>% filter(!duplicated(cell_cluster))
@@ -440,7 +443,14 @@ cent_hm = ComplexHeatmap::Heatmap(centroid_corr, col = corr_cols, name = 'spearm
 cent_hm = ComplexHeatmap::draw(cent_hm)
 
 
-
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/taxonomies/integrated_neurons.pdf', useDingbats = F, height = 8, width = 10)
+cent_hm = ComplexHeatmap::Heatmap(centroid_corr, col = corr_cols, name = 'spearman' ,
+                                  cluster_columns = hclust_avg,
+                                  cluster_rows = hclust_avg,
+                                  top_annotation = column_ha, column_title = 'integrated_interneurons',
+                                  show_row_dend = F, show_row_names = F, show_column_names = F)
+cent_hm = ComplexHeatmap::draw(cent_hm)
+dev.off()
 
 
 
@@ -452,11 +462,47 @@ cent_hm = ComplexHeatmap::draw(cent_hm)
 
 
 
+Make a sankey diagram of the original to new orthologous subclass mappings
 
 
+```{r}
+
+library(ggsankey)
+
+```
 
 
+```{r}
 
+sankey_interneuron_df = interneuron.combined[[]] %>% rename(original_subclass = cell_subclass, orthologous_subclass = primate_subclass) %>%
+  ggsankey::make_long(original_subclass,orthologous_subclass)
+
+```
+
+```{r}
+
+
+sankey_interneuron_df$node = factor(sankey_interneuron_df$node, levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+                                                                           'Vip','Sncg','Pax6','Lamp5','Lamp5 Lhx6'))
+sankey_interneuron_df$next_node = factor(sankey_interneuron_df$next_node, levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+                                                                                     'Vip','Sncg','Pax6','Lamp5','Lamp5 Lhx6'))
+
+ggplot(sankey_interneuron_df, aes(x = x, 
+               next_x = next_x, 
+               node = node, 
+               next_node = next_node,
+               fill = factor(node),
+               label = node)) +
+  geom_sankey(flow.alpha = 0.5, node.color = 1) +
+  geom_sankey_label(size = 3, color = 1 , show.legend = F) +
+  scale_fill_manual(values = celltype_color_palette) +
+  theme_sankey(base_size = 16) +
+  guides(fill = guide_legend(title = "Subclass"))
+
+ggsave(filename = 'gaba_original_to_orthologous_subclass_sankey.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/taxonomies/',
+       useDingbats = F, height = 5, width = 6, device = 'pdf')
+
+```
 
 
 

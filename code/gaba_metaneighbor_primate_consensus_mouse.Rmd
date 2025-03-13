@@ -2240,7 +2240,7 @@ options(future.globals.maxSize = 1000 * 1024^2)
 ```
 
 
-FindIntegrationAnchors took almost 6.6 hours
+FindIntegrationAnchors took almost 8 hours
 
 ```{r}
 
@@ -2323,11 +2323,47 @@ load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_fil
 
 ```{r}
 
-DimPlot(interneuron.combined, group.by = 'study')
-DimPlot(interneuron.combined, group.by = 'cell_subclass', cols = celltype_color_palette) + 
+interneuron.combined$cell_subclass[interneuron.combined$cell_subclass == 'Serpinf1'] = 'Vip'
+
+
+
+p1 = DimPlot(interneuron.combined, group.by = 'study')
+p2 = DimPlot(interneuron.combined, group.by = 'cell_subclass', cols = celltype_color_palette) + 
   ggtitle('Original mouse subclass')
-DimPlot(interneuron.combined, group.by = 'primate_subclass', cols = celltype_color_palette) + 
+p3 = DimPlot(interneuron.combined, group.by = 'primate_subclass', cols = celltype_color_palette) + 
   ggtitle('Orthologous primate subclass')
+
+p1
+p2
+p3
+
+DefaultAssay(object = interneuron.combined) = 'integrated'
+p4 = FeaturePlot(interneuron.combined, features = 'SNCG', slot = 'scale.data') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+
+p5 = FeaturePlot(interneuron.combined, features = 'PAX6', slot = 'scale.data') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+
+
+ggsave(plot = p1, filename = 'integrated_interneuron_umap_study.pdf', device = 'pdf', 
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 4, width = 6)
+ggsave(plot = p2, filename = 'integrated_interneuron_umap_original_sub.pdf', device = 'pdf', 
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 4, width = 6)
+ggsave(plot = p3, filename = 'integrated_interneuron_umap_orthologous_sub.pdf', device = 'pdf', 
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 4, width = 6)
+
+ggsave(plot = p4, filename = 'integrated_interneuron_umap_sncg_zscore.pdf', device = 'pdf', 
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 4, width = 6)
+
+ggsave(plot = p5, filename = 'integrated_interneuron_umap_pax6_zscore.pdf', device = 'pdf', 
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 4, width = 6)
+
+
 ```
 
 
@@ -2336,12 +2372,13 @@ DimPlot(interneuron.combined, group.by = 'primate_subclass', cols = celltype_col
 Co-expression of PAX6 and SNCG
 
 ```{r}
+interneuron.combined@assays$integrated
 interneuron.combined@active.assay
-DefaultAssay(object = interneuron.combined) = 'originalexp'
-FeaturePlot(interneuron.combined, features = c("PAX6", "SNCG"), blend = TRUE, slot = 'data')
-FeaturePlot(interneuron.combined, features = c("PAX6"), slot = 'data')
+DefaultAssay(object = interneuron.combined) = 'integrated'
+#FeaturePlot(interneuron.combined, features = c("PAX6", "SNCG"), blend = TRUE, slot = 'data')
+#FeaturePlot(interneuron.combined, features = c("PAX6"), slot = 'data')
 
-c('SNCG','NR2F2','SDK2','THSD7B','PAX6', 'CCK', 'FREM1', 'EPS8', 'PRKD3', 'STAC') %in% rownames(interneuron.combined@assays$integrated@meta.features)
+#c('SNCG','NR2F2','SDK2','THSD7B','PAX6', 'CCK', 'FREM1', 'EPS8', 'PRKD3', 'STAC') %in% rownames(interneuron.combined@assays$integrated@meta.features)
 
 interneuron.combined@reductions$umap@assay.used
 
@@ -2368,32 +2405,42 @@ temp_exp_df = data.frame(original_subclass = interneuron.combined$cell_subclass 
                          unc5c_zscore = interneuron.combined@assays$integrated@scale.data[ 'UNC5C', ])
 
 
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = original_subclass)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_manual(values = celltype_color_palette)
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = orthologous_subclass)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_manual(values = celltype_color_palette)
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = sncg_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = thsd7b_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = nr2f2_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = sdk2_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = prkd3_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = stac_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = pax6_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = cck_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = frem1_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = eps8_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = original_subclass)) + geom_point(size = .25, alpha = .5) + 
+#   scale_color_manual(values = celltype_color_palette)
+# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = orthologous_subclass)) + geom_point(size = .25, alpha = .5) + 
+#   scale_color_manual(values = celltype_color_palette)
+p_sncg = ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = sncg_zscore)) + 
+  ggrastr::rasterise(geom_point(size = .25, alpha = .5)) + 
+   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 ) +
+  theme_classic()
+# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = thsd7b_zscore)) + geom_point(size = .25, alpha = .5) + 
+#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = nr2f2_zscore)) + geom_point(size = .25, alpha = .5) + 
+#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = sdk2_zscore)) + geom_point(size = .25, alpha = .5) + 
+#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = prkd3_zscore)) + geom_point(size = .25, alpha = .5) + 
+#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = stac_zscore)) + geom_point(size = .25, alpha = .5) + 
+#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+p_pax6 = ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = pax6_zscore)) + 
+  ggrastr::rasterise(geom_point(size = .25, alpha = .5)) + 
+   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 ) +
+  theme_classic()
+# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = cck_zscore)) + geom_point(size = .25, alpha = .5) + 
+#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = frem1_zscore)) + geom_point(size = .25, alpha = .5) + 
+#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = eps8_zscore)) + geom_point(size = .25, alpha = .5) + 
+#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
 
+ggsave(plot = p_sncg, filename = 'sncg_zscore_integrate_inter_umap.pdf', device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 4, width = 6 )
 
+ggsave(plot = p_pax6, filename = 'pax6_zscore_integrate_inter_umap.pdf', device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 4, width = 6 )
 
 
 
