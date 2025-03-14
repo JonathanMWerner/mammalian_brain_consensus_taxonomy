@@ -1,0 +1,166 @@
+
+
+
+Quick comparison of the primate metadata from various sources
+Looking at the subclass label mismatches to figure out what is going on.
+
+data originating from the gillis labs FTP site. The confirmed_subclass, neighborhood, and confirmed_cluster all match the Subclass, Neighborhood, Cluster metadata from the same data deposited on CZI 
+https://cellxgene.cziscience.com/collections/4dca242c-d302-4dba-a68f-4c61e7bad553
+
+
+```{r}
+
+human_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_10x_gaba.rds')
+human_ss = readRDS( file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_ss_gaba.rds')
+
+chimp_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_10x_gaba.rds')
+chimp_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_ss_gaba.rds')
+
+gorilla_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_10x_gaba.rds')
+gorilla_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_ss_gaba.rds')
+
+macaca_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/macaca_data_10x_gaba.rds')
+
+marmoset_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
+
+```
+
+This is supplemental table 6 from the Jorstad paper
+https://pmc.ncbi.nlm.nih.gov/articles/PMC10659116/#ABS1
+
+According to Hamsini, the 'metaneighbor_cluster' here maps to the 'cross-species_cluster' in the FTP data 
+And the 'within_species_clusters' here maps to the 'confirmed_cluster' labels in the FTP data
+```{r}
+
+jorstad_supp6_meta = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/data/jorstad_S6_cross_species_cluster_mapping.csv')
+
+jorstad_supp6_meta
+
+
+
+```
+
+
+And this is the separate dendrogram table Hamsini shared where I first noticed the disagreements between these subclass labels and the confirmed subclass labels in the FTP data. I originally used the cross_species_cluster labels to map between the two
+
+```{r}
+
+primate_cluster_mappings = data.table::fread('../data/cross_species_mapping_cls86.csv')
+primate_cluster_mappings = primate_cluster_mappings[1:86, ]
+
+primate_cluster_mappings
+```
+
+
+```{r}
+table(jorstad_supp6_meta$metaneighbor_cluster %in% primate_cluster_mappings$cross_species_cluster)
+
+
+index = match(jorstad_supp6_meta$metaneighbor_cluster, primate_cluster_mappings$cross_species_cluster)
+
+jorstad_supp6_meta
+primate_cluster_mappings[index, ]
+
+table(jorstad_supp6_meta$metaneighbor_cluster == primate_cluster_mappings$cross_species_cluster[index] )
+table(jorstad_supp6_meta$subclass == primate_cluster_mappings$subclass_label[index] )
+
+
+
+
+```
+
+human_10x
+
+```{r}
+#human_10x
+temp_ftp_data_meta = as.data.frame(colData(human_10x)) %>% group_by(cross_species_cluster, confirmed_subclass) %>% summarise(n = n())
+
+index = match(temp_ftp_data_meta$cross_species_cluster, jorstad_supp6_meta$metaneighbor_cluster )
+temp_ftp_data_meta$supp_table_6_subclass = jorstad_supp6_meta$subclass[index]
+
+
+temp_ftp_data_meta %>% filter(confirmed_subclass != supp_table_6_subclass)
+
+#human_ss
+
+temp_ftp_data_meta = as.data.frame(colData(human_ss)) %>% group_by(cross_species_cluster, confirmed_subclass) %>% 
+  summarise(n = n(), .groups = 'keep')
+index = match(temp_ftp_data_meta$cross_species_cluster, jorstad_supp6_meta$metaneighbor_cluster )
+temp_ftp_data_meta$supp_table_6_subclass = jorstad_supp6_meta$subclass[index]
+
+
+temp_ftp_data_meta %>% filter(confirmed_subclass != supp_table_6_subclass)
+
+```
+
+
+```{r}
+
+temp_ftp_data_meta = as.data.frame(colData(human_ss))
+
+temp_ftp_data_meta %>% 
+  group_by(cross_species_cluster, confirmed_subclass, cluster ) %>% 
+  summarise(n = n()) %>% filter(cross_species_cluster %in% c('lamp5_sncg_vip|7','lamp5_sncg_vip|9'))
+
+
+
+```
+
+```{r}
+jorstad_supp6_meta %>% filter(metaneighbor_cluster == 'lamp5_sncg_vip|9') %>% pull(within_species_clusters)
+```
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+temp_ftp_data_meta = as.data.frame(colData(chimp_10x)) %>% group_by(cross_species_cluster, confirmed_subclass) %>% summarise(n = n())
+
+index = match(temp_ftp_data_meta$cross_species_cluster, jorstad_supp6_meta$metaneighbor_cluster )
+temp_ftp_data_meta$supp_table_6_subclass = jorstad_supp6_meta$subclass[index]
+
+
+temp_ftp_data_meta %>% filter(confirmed_subclass != supp_table_6_subclass)
+
+temp_ftp_data_meta = as.data.frame(colData(chimp_ss)) %>% group_by(cross_species_cluster, confirmed_subclass) %>% summarise(n = n())
+
+index = match(temp_ftp_data_meta$cross_species_cluster, jorstad_supp6_meta$metaneighbor_cluster )
+temp_ftp_data_meta$supp_table_6_subclass = jorstad_supp6_meta$subclass[index]
+
+
+temp_ftp_data_meta %>% filter(confirmed_subclass != supp_table_6_subclass)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
