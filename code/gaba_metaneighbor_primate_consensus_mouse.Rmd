@@ -48,6 +48,8 @@ tasic18
 ```{r}
 
 zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba.rds')
+as.data.frame(colData(zeng_10x_cells))
+
 
 #Change to align with the primate gene names
 #mouse_genes = rownames(zeng_10x_cells)
@@ -2317,13 +2319,12 @@ save(interneuron.combined, file = '/inkwell03/werner/mouse_brain_consensus_taxon
 ```{r}
 
 load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/mouse_primate_MN_integrated.Rdata')
-
+interneuron.combined$cell_subclass[interneuron.combined$cell_subclass == 'Serpinf1'] = 'Vip'
 ```
 
 
 ```{r}
 
-interneuron.combined$cell_subclass[interneuron.combined$cell_subclass == 'Serpinf1'] = 'Vip'
 
 
 
@@ -2464,33 +2465,88 @@ ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = unc5c_zscore)) + geom_po
 ```
 
 
+Dataset and technology contributions to subclasses
 
+All primary motor cortex 
+zeng_10x_cells = 10xv2
+zeng_10x_nuclei = 10xv2
+zeng_smart_cells = Smart-seq v4
+zeng_smart_nuclei = Smart-seq v4
 
+https://www.nature.com/articles/s41586-021-03500-8#Sec62
+
+tasic18 is smartseq v4 from Anterior Lateral Motor Cortex (ALM) and Primary visual cortex (VISp)
+https://pmc.ncbi.nlm.nih.gov/articles/PMC6456269/#S6
+
+allen wba is single cell 10xv2 and 10xv3
+https://www.nature.com/articles/s41586-023-06812-z#Abs1
+
+macosko wba is single nucleus 10xv3
+
+https://www.nature.com/articles/s41586-023-06818-7#Abs1 
 
 
 ```{r}
 
 
 all_metadata = interneuron.combined[[]]
-all_metadata %>% filter(cell_cluster == 'Serfpin1') %>% group_by(study) %>% summarise(n = n())
 
 all_metadata$cell_subclass[all_metadata$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
 all_metadata$cell_subclass[all_metadata$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
 all_metadata$cell_subclass[all_metadata$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
 
 
-primate_sub_comp_df = all_metadata  %>% group_by(primate_subclass, study) %>% summarise(n = n())
+all_metadata$institute_tech = rep(NA, length = nrow(all_metadata))
+all_metadata$institute_tech[all_metadata$study== 'tasic18'] = 'Allen Institute single-cell Smart-seq v4 2018'
+all_metadata$institute_tech[all_metadata$study== 'zeng_10x_cells'] = 'Allen Institute single-cell 10xV2 2021'
+all_metadata$institute_tech[all_metadata$study== 'zeng_10x_nuclei'] = 'Allen Institute single-nuclei 10xV2 2021'
+all_metadata$institute_tech[all_metadata$study== 'zeng_smart_cells'] = 'Allen Institute single-cell Smart-seq v4 2021'
+all_metadata$institute_tech[all_metadata$study== 'zeng_smart_nuclei'] = 'Allen Institute single-nuclei Smart-seq v4 2021'
+all_metadata$institute_tech[all_metadata$study== 'zeng_10xv2_wba'] = 'Allen Institute single-cell 10xV2 2023'
+all_metadata$institute_tech[all_metadata$study== 'zeng_10xv3_wba'] = 'Allen Institute single-cell 10xV3 2023'
+all_metadata$institute_tech[all_metadata$study== 'macosko_wba'] = 'Broad Institute single-nuclei 10xV3 2023'
+
+
+primate_sub_comp_df = all_metadata  %>% group_by(primate_subclass, institute_tech) %>% summarise(n = n())
 mouse_sub_comp_df = all_metadata  %>% group_by(cell_subclass, study) %>% summarise(n = n())
+
+primate_sub_comp_df$institute_tech = factor(primate_sub_comp_df$institute_tech, 
+                                            levels = c('Allen Institute single-cell Smart-seq v4 2018',
+                                                       'Allen Institute single-cell 10xV2 2021',
+                                                       'Allen Institute single-nuclei 10xV2 2021',
+                                                       'Allen Institute single-cell Smart-seq v4 2021',
+                                                       'Allen Institute single-nuclei Smart-seq v4 2021',
+                                                       'Allen Institute single-cell 10xV2 2023',
+                                                       'Allen Institute single-cell 10xV3 2023',
+                                                       'Broad Institute single-nuclei 10xV3 2023'))
+
+primate_sub_comp_df$primate_subclass = factor(primate_sub_comp_df$primate_subclass,
+                                              levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+                                                         'Vip','Sncg','Pax6','Lamp5','Lamp5 Lhx6'))
+
+
+study_colors = MetBrewer::met.brewer("Veronese", n=8, type="continuous")
+study_colors = study_colors[1:8] 
+names(study_colors) =c('Allen Institute single-cell Smart-seq v4 2018',
+                       'Allen Institute single-cell 10xV2 2021',
+                       'Allen Institute single-nuclei 10xV2 2021',
+                       'Allen Institute single-cell Smart-seq v4 2021',
+                       'Allen Institute single-nuclei Smart-seq v4 2021',
+                       'Allen Institute single-cell 10xV2 2023',
+                       'Allen Institute single-cell 10xV3 2023',
+                       'Broad Institute single-nuclei 10xV3 2023')
 
 
 # Stacked + percent
-ggplot(primate_sub_comp_df, aes(fill=study, y=n, x=primate_subclass)) + 
-    geom_bar(position="fill", stat="identity") + ylab('% cell-type') + ggtitle('Study contribution to orthologous subclasses')
+ggplot(primate_sub_comp_df, aes(fill=institute_tech, y=n, x=primate_subclass)) + 
+    geom_bar(position="fill", stat="identity") + ylab('% cell-type') + 
+  scale_fill_manual(values = study_colors) +
+  ggtitle('Institute/technology contribution to orthologous subclasses') +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
 
-ggplot(mouse_sub_comp_df, aes(fill=study, y=n, x=cell_subclass)) + 
-    geom_bar(position="fill", stat="identity") + ylab('% cell-type') + ggtitle('Study contribution to original subclasses')
-
-primate_sub_comp_df %>% group_by(primate_subclass) %>% summarise(n = n()) 
+ggsave(filename = 'institute_tech_stacked_orth_subclass_mouse.pdf',device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 4, width = 8)
 
 ```
 

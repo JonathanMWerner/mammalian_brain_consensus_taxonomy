@@ -52,12 +52,14 @@ temp_df = data.table::fread('/inkwell03/werner/lamp5_lhx6_meta/datasets/mouse/ma
 
 ```
 
-
-
+tasic18 is smartseq v4 from Anterior Lateral Motor Cortex (ALM) and Primary visual cortex (VISp)
+https://pmc.ncbi.nlm.nih.gov/articles/PMC6456269/#S6
 load in the datasets
 ```{r}
 
 tasic18 = readRDS(file = '/vault/werner/rotation/jonathan/data/tasic18.rds')
+table(as.character(tasic18$source.name), tasic18$characteristics..cell_subclass)
+
 #Just grab the GABAergic cells
 inhib_filt = colData(tasic18)$cell_class == 'GABAergic'
 tasic18 = tasic18[ ,inhib_filt]
@@ -68,10 +70,23 @@ ncol(tasic18)
 ```
 
 
+All primary motor cortex 
+zeng_10x_cells = 10xv2
+zeng_10x_nuclei = 10xv2
+zeng_smart_cells = Smart-seq v4
+zeng_smart_nuclei = Smart-seq v4
+
+https://www.nature.com/articles/s41586-021-03500-8#Sec62
+
 ```{r}
 
 zeng_10x_cells = readRDS("/vault/werner/rotation/jonathan/data/zeng_10x_cells/zeng_10x_cells.rds")
+zeng_10x_cells
+
+
 zeng_10x_nuclei = readRDS("/vault/werner/rotation/jonathan/data/zeng_10x_nuclei/zeng_10x_nuclei.rds")
+zeng_10x_nuclei
+
 zeng_smart_cells = readRDS("/vault/werner/rotation/jonathan/data/zeng_smart_cells/zeng_smart_cells.rds")
 zeng_smart_nuclei = readRDS("/vault/werner/rotation/jonathan/data/zeng_smart_nuclei/zeng_smart_nuclei.rds")
 

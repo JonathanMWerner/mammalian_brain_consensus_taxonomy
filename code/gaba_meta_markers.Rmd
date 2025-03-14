@@ -13,6 +13,7 @@ library(SingleCellExperiment)
 library(MetaMarkers)
 library(dplyr)
 library(ggplot2)
+library(ggrepel)
 ```
 
 Checking out some supplemental tables from Bakken 2021: https://pmc.ncbi.nlm.nih.gov/articles/PMC8494640/#Fig9
@@ -796,6 +797,8 @@ Comparing across the MetaMarkers
 ```{r}
 
 primate_subclass_meta_markers = read_meta_markers( "metamarkers/primate_meta_markers.csv.gz")
+primate_subclass_meta_markers$cell_type[primate_subclass_meta_markers$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
 primate_cluster_meta_markers = read_meta_markers( "metamarkers/primate_cluster_meta_markers.csv.gz")
 
 ortho_mouse_subclass_meta_markers = read_meta_markers( "metamarkers/ortho_meta_markers.csv.gz")
@@ -808,9 +811,84 @@ Except for 1 pvalb cluster in 1 dataset
 And is DE in 2 datasets for the Pvalb subclass
 
 ```{r}
-primate_cluster_meta_markers %>% filter(gene == 'PAX6')
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C')
+```
 
-primate_subclass_meta_markers %>% filter(gene == 'PAX6')
+```{r}
+
+
+pax6_prim_df = primate_subclass_meta_markers %>% filter(gene == 'PAX6')
+pax6_prim_df$sub_label = pax6_prim_df$cell_type
+pax6_prim_df$sub_label[!pax6_prim_df$sub_label %in% c('Sncg', 'Pax6')] = ''
+
+p_pax6_plot = ggplot(pax6_prim_df, aes(x = log2(fold_change), y = auroc, color = cell_type, label = sub_label)) +
+  geom_point(size = 4, show.legend = F, alpha = .75) +
+  xlim(-4, 5) + ylim(.35, .9) +
+  geom_label_repel(show.legend = F, nudge_x = -1, nudge_y = .1, min.segment.length = 0) +
+  scale_color_manual(values = celltype_color_palette) + theme_classic() + theme(aspect.ratio = 1)
+p_pax6_plot 
+
+ggsave(plot = p_pax6_plot, filename = 'primate_sub_MM_pax6_DE_scatter.pdf', device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/',
+       useDingbats = F, height = 2, width = 2)
+
+sncg_prim_df = primate_subclass_meta_markers %>% filter(gene == 'SNCG')
+sncg_prim_df$sub_label = sncg_prim_df$cell_type
+sncg_prim_df$sub_label[!sncg_prim_df$sub_label %in% c('Sncg', 'Pax6')] = ''
+
+p_sncg_plot = ggplot(sncg_prim_df, aes(x = log2(fold_change), y = auroc, color = cell_type, label = sub_label)) +
+  geom_point(size = 4, show.legend = F, alpha = .75) +
+  xlim(-4, 5) + ylim(.35, .9) +
+  geom_label_repel(show.legend = F, nudge_x = -1.5, nudge_y = .1, min.segment.length = 0) +
+  scale_color_manual(values = celltype_color_palette) + theme_classic() + theme(aspect.ratio = 1)
+p_sncg_plot 
+
+ggsave(plot = p_sncg_plot, filename = 'primate_sub_MM_sncg_DE_scatter.pdf', device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/',
+       useDingbats = F, height = 2, width = 2)
+
+
+
+
+
+pax6_mouse_df = ortho_mouse_subclass_meta_markers %>% filter(gene == 'PAX6')
+pax6_mouse_df$sub_label = pax6_mouse_df$cell_type
+pax6_mouse_df$sub_label[!pax6_mouse_df$sub_label %in% c('Sncg', 'Pax6')] = ''
+
+p_pax6_plot = ggplot(pax6_mouse_df, aes(x = log2(fold_change), y = auroc, color = cell_type, label = sub_label)) +
+  geom_point(size = 4, show.legend = F, alpha = .75) +
+  xlim(-4, 5) + ylim(.35, .9) +
+  geom_label_repel(show.legend = F, nudge_x = -1, nudge_y = .1, min.segment.length = 0) +
+  scale_color_manual(values = celltype_color_palette) + theme_classic() + theme(aspect.ratio = 1)
+p_pax6_plot 
+
+ggsave(plot = p_pax6_plot, filename = 'mouse_sub_MM_pax6_DE_scatter.pdf', device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/',
+       useDingbats = F, height = 2, width = 2)
+
+sncg_mouse_df = ortho_mouse_subclass_meta_markers  %>% filter(gene == 'SNCG')
+sncg_mouse_df$sub_label = sncg_mouse_df$cell_type
+sncg_mouse_df$sub_label[!sncg_mouse_df$sub_label %in% c('Sncg', 'Pax6')] = ''
+
+p_sncg_plot = ggplot(sncg_mouse_df, aes(x = log2(fold_change), y = auroc, color = cell_type, label = sub_label)) +
+  geom_point(size = 4, show.legend = F, alpha = .75) +
+  xlim(-4, 5) + ylim(.35, .9) +
+  geom_label_repel(show.legend = F, nudge_x = -1, nudge_y = .1, min.segment.length = 0) +
+  scale_color_manual(values = celltype_color_palette) + theme_classic() + theme(aspect.ratio = 1)
+p_sncg_plot 
+
+ggsave(plot = p_sncg_plot, filename = 'mouse_sub_MM_sncg_DE_scatter.pdf', device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/',
+       useDingbats = F, height = 2, width = 2)
+
 
 ```
 
@@ -825,11 +903,6 @@ Ortho
 ```{r}
 
 ortho_mouse_subclass_meta_markers %>% filter(gene == 'SNCG')
-
-```
-
-```{r}
-library(ggrepel)
 
 ```
 
@@ -1027,16 +1100,37 @@ for(i in 1:length(all_cell_types)){
   
   g1 = ggplot(de_stats, aes(x = log2(fold_change), y = auroc, label = gene_label)) + 
     geom_point(aes(color = cross_species_de, alpha = cross_species_de)) + 
-    geom_label_repel(max.overlaps = Inf,min.segment.length = 0, nudge_x = 5, direction = "both", force = 10) +
+    geom_label_repel(max.overlaps = Inf,min.segment.length = 0, 
+                     nudge_x = 5, direction = "both", force = 10,
+                     xlim = c(-Inf, Inf), ylim = c(-Inf, Inf)) +
     scale_color_manual(values = c('TRUE' = 'red', 'FALSE' = 'black') ) +
     scale_alpha_manual(values = c('TRUE' = 1, 'FALSE' = .25) ) +
+    coord_cartesian(clip = "off") +
+    theme_classic()+
     ggtitle(sprintf('Cross-mammal DE: %s', current_cell_type))
   
   print(g1)
+  
+  file_name = paste0(gsub(' ', '_', current_cell_type), '_cross_mammal_MM_scatter.pdf')
+  ggsave(plot = g1, filename = file_name,
+         path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/',
+         useDingbats = F, height = 6, width = 8, device = 'pdf')
     
 }
 ```
 
+
+
+Get a plot of Pax6s DE stats across the primate clusters, colored by subclass, then Sncg
+Same with the mouse clusters
+
+```{r}
+
+all_species_markers[1]
+
+
+
+```
 
 
 
