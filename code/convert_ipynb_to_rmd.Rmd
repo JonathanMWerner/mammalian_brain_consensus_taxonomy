@@ -1,0 +1,31 @@
+
+
+
+Converting Leons whole brain atlas download jupyter notebooks to R notebooks
+
+
+Try out the zeng and macosko single cell whole brain atlasses
+```{r}
+#Trying converting first leons jupyter notebook for loading up the data
+input = '/inkwell03/werner/tools/mouse_wba_download/Basic_loading_notebook.ipynb'
+rmarkdown::convert_ipynb(input, output = xfun::with_ext(input, "Rmd"))
+
+```
+
+```{r}
+#Trying converting first leons jupyter notebook for loading up the data
+input = '/inkwell03/werner/tools/mouse_wba_download/Load_and_subset_Zeng.ipynb'
+rmarkdown::convert_ipynb(input, output = xfun::with_ext(input, "Rmd"))
+
+```
+
+```{r}
+#Trying converting first leons jupyter notebook for loading up the data
+input = '/inkwell03/werner/tools/mouse_wba_download/Load_and_subset_Macosko.ipynb'
+rmarkdown::convert_ipynb(input, output = xfun::with_ext(input, "Rmd"))
+
+```
+
+
+
+

@@ -9,7 +9,8 @@ https://cellxgene.cziscience.com/collections/4dca242c-d302-4dba-a68f-4c61e7bad55
 
 
 ```{r}
-
+library(SingleCellExperiment)
+library(dplyr)
 human_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_10x_gaba.rds')
 human_ss = readRDS( file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_ss_gaba.rds')
 
@@ -24,6 +25,19 @@ macaca_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/da
 marmoset_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
 
 ```
+
+
+
+```{r}
+
+human_czi = zellkonverter::readH5AD('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/czi_primate_data/human_czi.h5ad')
+
+```
+
+
+
+
+
 
 This is supplemental table 6 from the Jorstad paper
 https://pmc.ncbi.nlm.nih.gov/articles/PMC10659116/#ABS1
@@ -143,9 +157,27 @@ temp_ftp_data_meta %>% filter(confirmed_subclass != supp_table_6_subclass)
 
 
 
+Comparing to the CZI data
 
 
+```{r}
+czi_temp_meta = as.data.frame(colData(human_czi)) %>% group_by(Cluster,CrossSpeciesCluster, Subclass) %>% summarise(n = n())
 
+index = match(czi_temp_meta$CrossSpeciesCluster, jorstad_supp6_meta$cross_species_cluster )
+czi_temp_meta$supp_subclass = jorstad_supp6_meta$subclass[index]
+
+
+czi_temp_meta %>% filter(Subclass != supp_subclass)  
+czi_temp_meta %>% filter(Subclass == supp_subclass)
+
+
+czi_temp_meta %>% group_by(CrossSpeciesCluster, Subclass, supp_subclass) %>% summarise(n = n())
+```
+
+```{r}
+table(human_czi$CrossSpeciesCluster %in% jorstad_supp6_meta$cross_species_cluster )
+jorstad_supp6_meta$cross_species_cluster
+```
 
 
 

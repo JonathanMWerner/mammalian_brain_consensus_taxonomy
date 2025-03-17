@@ -351,6 +351,19 @@ interneuron.combined$cell_subclass[interneuron.combined$cell_subclass == 'Serpin
 
 ```
 
+
+
+```{r}
+
+interneuron.combined[[]] %>% filter(study %in% c('zeng_10xv2_wba','zeng_10xv3_wba')) %>% 
+  group_by(cell_cluster, primate_subclass) %>% summarise(n = n())
+
+```
+
+
+
+
+
 Get the intersect of the cluster markers across the individual datasets, plus the intersect with the 2000 genes used in the integration
 
 ```{r}
