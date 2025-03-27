@@ -1,0 +1,51 @@
+
+
+
+
+
+```{r}
+
+library(SingleCellExperiment)
+library(Seurat)
+library(rhdf5)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(stats)
+library(data.table)
+library(MetaMarkers)
+setwd('/home/werner/projects/mouse_brain_consensus_taxonomy/code')
+```
+
+
+Selecting cortical glut clusters
+```{r}
+
+macosko_metaclusts = data.table::fread('/inkwell03/werner/lamp5_lhx6_meta/datasets/mouse/macosko_CellType_MetaCluster.csv')
+macosko_metaclusts %>% filter(grepl('cortical', Annotation) | grepl('Cortical', Annotation))
+
+keep_clusts = macosko_metaclusts %>% filter(grepl('cortical', Annotation) | grepl('Cortical', Annotation))
+keep_clusts = keep_clusts %>% filter(!grepl('CGE', Annotation) & !grepl('MGE', Annotation))
+
+
+write.csv(keep_clusts,'/inkwell03/werner/mouse_brain_consensus_taxonomy/for_Leon/macosko_CellType_MetaCluster_corticalGlut.csv', row.names = F)
+
+
+temp_df = data.table::fread('/inkwell03/werner/mouse_brain_consensus_taxonomy/for_Leon/macosko_CellType_MetaCluster_corticalGlut.csv')
+temp_df
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

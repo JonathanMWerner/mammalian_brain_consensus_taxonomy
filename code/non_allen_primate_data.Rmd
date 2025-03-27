@@ -1,0 +1,691 @@
+
+
+Non-allen institute cross primate data
+
+Initial idea, cluster the data de novo using standard Seurat approaches. 
+Using just the subclass name-sake genes (VIP, Pvalb, ) etc, annotate the clusters. 
+
+The idea is to quantify 
+1.) whether SNCG is DE in the primate data
+2.) whether PAX6 is DE in the primate data
+3.) if the Vip cells have a consistent outgroup with marker gene expression consistent with the orthologous SNCG subclass.
+
+```{r}
+library(SingleCellExperiment)
+library(Seurat)
+library(rhdf5)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(stats)
+library(data.table)
+library(MetaMarkers)
+setwd('/home/werner/projects/mouse_brain_consensus_taxonomy/code')
+
+```
+
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C',
+                           'Serpinf1' = '#A45FBF')
+
+
+```
+
+Caglayan_konopka primate
+
+downloaded from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE192773
+Paper: https://pmc.ncbi.nlm.nih.gov/articles/PMC11161302/#S32
+
+snRNA-seq of Brodmann area 23, part of the posterior cingulate cortex
+
+```{r}
+
+caglayan_inhib = readRDS('/inkwell03/werner/sc_data/primate_caglayan_konopka/GSE192773_Seurat_Inhibitory_RNA.RDS')
+
+caglayan_inhib
+
+
+
+```
+
+```{r}
+
+rownames(caglayan_inhib)[1:10]
+
+caglayan_inhib[[]]
+
+table(caglayan_inhib$Species, caglayan_inhib$CellType )
+
+table(caglayan_inhib$Sample, caglayan_inhib$CellType)
+
+
+cge_mge_label = rep('CGE', length = ncol(caglayan_inhib))
+cge_mge_label[caglayan_inhib$CellType %in% c('PVALB_Basket','PVALB_Chandelier','SST_CALB1-','SST_CALB1+')] = 'MGE'
+
+caglayan_inhib$cge_mge = cge_mge_label
+
+```
+
+
+```{r}
+
+final_present_1to1s = readRDS('/home/werner/projects/mouse_brain_consensus_taxonomy/data/final_present_1to1s.rds')
+
+final_present_1to1s
+
+#mouse_present_1to1s= paste(final_present_1to1s$`Mouse gene stable ID`, final_present_1to1s$`Mouse gene name`, sep = '_')
+#length(mouse_present_1to1s)
+
+caglayan_genes = rownames(caglayan_inhib)
+
+length(caglayan_genes)
+table(caglayan_genes %in% final_present_1to1s$`Gene name`)
+
+table('TRPS1' %in% caglayan_genes)
+
+caglayan
+
+
+```
+
+
+Try clustering the data like normal
+CPM, standard clustering, do it species specific first
+
+
+```{r}
+caglayan_human_inhib = subset(caglayan_inhib, subset = Species == 'human' )
+
+
+#CPM normalization
+caglayan_human_inhib <- NormalizeData(caglayan_human_inhib, normalization.method = 'RC', scale.factor = 1e6, verbose = F)
+caglayan_human_inhib <- FindVariableFeatures(caglayan_human_inhib, selection.method = "vst", nfeatures = 2000, verbose = F)
+all.genes <- rownames(caglayan_human_inhib)
+caglayan_human_inhib <- ScaleData(caglayan_human_inhib, features = all.genes, verbose = F)
+
+
+caglayan_human_inhib <- RunPCA(caglayan_human_inhib, features = VariableFeatures(object =caglayan_human_inhib), verbose = F)
+
+#caglayan_human_inhib <- RunPCA(caglayan_human_inhib, features = c('VIP','SNCG','PAX6','LAMP5','LHX6', 'SST', 'CHODL', 'PVALB', 'TRPS1'), 
+#                               npcs = 5, verbose = F)
+
+
+caglayan_human_inhib <- FindNeighbors(caglayan_human_inhib, dims = 1:25, verbose = F)
+caglayan_human_inhib <- FindClusters(caglayan_human_inhib, verbose = F)
+
+caglayan_human_inhib <- RunUMAP(caglayan_human_inhib, dims = 1:25, verbose = F)
+
+DimPlot(caglayan_human_inhib, reduction = "pca", label = T)
+DimPlot(caglayan_human_inhib, reduction = "umap", label = T)
+DimPlot(caglayan_human_inhib, reduction = "umap", group.by = 'CellType')
+DimPlot(caglayan_human_inhib, reduction = "umap", group.by = 'cge_mge')
+
+```
+
+
+```{r}
+caglayan_human_inhib_markers = compute_markers(caglayan_human_inhib@assays$RNA@data, caglayan_human_inhib$seurat_clusters)
+gc()
+
+caglayan_human_inhib_class_markers = compute_markers(caglayan_human_inhib@assays$RNA@data, caglayan_human_inhib$cge_mge)
+gc()
+
+caglayan_human_inhib_markers %>% filter(gene == 'PAX6') %>% arrange(desc(fold_change))
+caglayan_human_inhib_markers %>% filter(gene == 'SNCG') %>% arrange(desc(fold_change))
+caglayan_human_inhib_markers %>% filter(gene == 'RXRG') %>% arrange(desc(fold_change))
+caglayan_human_inhib_markers %>% filter(gene == 'LAMP5') %>% arrange(desc(fold_change))
+caglayan_human_inhib_markers %>% filter(gene == 'PALMD') %>% arrange(desc(fold_change))
+caglayan_human_inhib_markers %>% filter(gene == 'CXCL14') %>% arrange(desc(fold_change))
+
+
+caglayan_human_inhib_class_markers %>% filter(gene == 'PAX6') %>% arrange(desc(fold_change))
+caglayan_human_inhib_class_markers %>% filter(gene == 'SNCG') %>% arrange(desc(fold_change))
+caglayan_human_inhib_class_markers %>% filter(gene == 'RXRG') %>% arrange(desc(fold_change))
+caglayan_human_inhib_class_markers %>% filter(gene == 'LAMP5') %>% arrange(desc(fold_change))
+caglayan_human_inhib_class_markers %>% filter(gene == 'PALMD') %>% arrange(desc(fold_change))
+caglayan_human_inhib_class_markers %>% filter(gene == 'CXCL14') %>% arrange(desc(fold_change))
+
+
+
+features = c('ADARB2','VIP','PALMD','SNCG','RXRG','CXCL14','LAMP5','LHX6','SST', 'CHODL','PVALB','TRPS1')
+VlnPlot(caglayan_human_inhib, group.by = 'seurat_clusters',
+        features, stack = TRUE, sort = F, flip = T, slot = 'data',) +
+        theme(legend.position = "none") + ggtitle("Caglayan Human GABA")
+
+```
+
+
+
+
+```{r}
+caglayan_chimp_inhib = subset(caglayan_inhib, subset = Species == 'chimp' )
+
+#CPM normalization
+caglayan_chimp_inhib <- NormalizeData(caglayan_chimp_inhib, normalization.method = 'RC', scale.factor = 1e6, verbose = F)
+caglayan_chimp_inhib <- FindVariableFeatures(caglayan_chimp_inhib, selection.method = "vst", nfeatures = 2000, verbose = F)
+all.genes <- rownames(caglayan_chimp_inhib)
+caglayan_chimp_inhib <- ScaleData(caglayan_chimp_inhib, features = all.genes, verbose = F)
+
+caglayan_chimp_inhib <- RunPCA(caglayan_chimp_inhib, features = VariableFeatures(object =caglayan_chimp_inhib), verbose = F)
+
+caglayan_chimp_inhib <- FindNeighbors(caglayan_chimp_inhib, dims = 1:25, verbose = F)
+caglayan_chimp_inhib <- FindClusters(caglayan_chimp_inhib, verbose = F, resolution = .25)
+
+caglayan_chimp_inhib <- RunUMAP(caglayan_chimp_inhib, dims = 1:25, verbose = F)
+
+DimPlot(caglayan_chimp_inhib, reduction = "pca", label = T)
+DimPlot(caglayan_chimp_inhib, reduction = "umap", label = T)
+DimPlot(caglayan_chimp_inhib, reduction = "umap", group.by = 'CellType')
+DimPlot(caglayan_chimp_inhib, reduction = "umap", group.by = 'cge_mge')
+
+
+FeaturePlot(caglayan_chimp_inhib, features = 'VIP', slot = 'scale.data')
+FeaturePlot(caglayan_chimp_inhib, features = 'CBLN2', slot = 'scale.data')
+FeaturePlot(caglayan_chimp_inhib, features = 'CXCL14', slot = 'scale.data')
+FeaturePlot(caglayan_chimp_inhib, features = 'PAX6', slot = 'scale.data')
+FeaturePlot(caglayan_chimp_inhib, features = 'PALMD', slot = 'scale.data')
+```
+
+
+
+
+
+
+```{r}
+caglayan_chimp_inhib_markers = compute_markers(caglayan_chimp_inhib@assays$RNA@data, caglayan_chimp_inhib$seurat_clusters)
+gc()
+
+caglayan_chimp_inhib_class_markers = compute_markers(caglayan_chimp_inhib@assays$RNA@data, caglayan_chimp_inhib$cge_mge)
+gc()
+
+
+caglayan_chimp_inhib_class_markers %>% filter(gene == 'PAX6') %>% arrange(desc(fold_change))
+caglayan_chimp_inhib_class_markers %>% filter(gene == 'SNCG') %>% arrange(desc(fold_change))
+caglayan_chimp_inhib_class_markers %>% filter(gene == 'RXRG') %>% arrange(desc(fold_change))
+caglayan_chimp_inhib_class_markers %>% filter(gene == 'LAMP5') %>% arrange(desc(fold_change))
+caglayan_chimp_inhib_class_markers %>% filter(gene == 'PALMD') %>% arrange(desc(fold_change))
+caglayan_chimp_inhib_class_markers %>% filter(gene == 'CXCL14') %>% arrange(desc(fold_change))
+
+
+```
+
+
+```{r}
+caglayan_macaque_inhib = subset(caglayan_inhib, subset = Species == 'macaque' )
+
+
+#CPM normalization
+caglayan_macaque_inhib <- NormalizeData(caglayan_macaque_inhib, normalization.method = 'RC', scale.factor = 1e6, verbose = F)
+caglayan_macaque_inhib <- FindVariableFeatures(caglayan_macaque_inhib, selection.method = "vst", nfeatures = 2000, verbose = F)
+all.genes <- rownames(caglayan_macaque_inhib)
+caglayan_macaque_inhib <- ScaleData(caglayan_macaque_inhib, features = all.genes, verbose = F)
+
+caglayan_macaque_inhib <- RunPCA(caglayan_macaque_inhib, features = VariableFeatures(object =caglayan_macaque_inhib), verbose = F)
+
+caglayan_macaque_inhib <- FindNeighbors(caglayan_macaque_inhib, dims = 1:25, verbose = F)
+caglayan_macaque_inhib <- FindClusters(caglayan_macaque_inhib, verbose = F, resolution = .25)
+
+caglayan_macaque_inhib <- RunUMAP(caglayan_macaque_inhib, dims = 1:25, verbose = F)
+
+DimPlot(caglayan_macaque_inhib, reduction = "pca", label = T)
+DimPlot(caglayan_macaque_inhib, reduction = "umap", label = T)
+DimPlot(caglayan_macaque_inhib, reduction = "umap", group.by = 'CellType')
+DimPlot(caglayan_macaque_inhib, reduction = "umap", group.by = 'cge_mge')
+
+
+FeaturePlot(caglayan_macaque_inhib, features = 'VIP', slot = 'scale.data')
+FeaturePlot(caglayan_macaque_inhib, features = 'CBLN2', slot = 'scale.data')
+FeaturePlot(caglayan_macaque_inhib, features = 'CXCL14', slot = 'scale.data')
+FeaturePlot(caglayan_macaque_inhib, features = 'PAX6', slot = 'scale.data')
+FeaturePlot(caglayan_macaque_inhib, features = 'PALMD', slot = 'scale.data')
+```
+
+```{r}
+caglayan_macaque_inhib_markers = compute_markers(caglayan_macaque_inhib@assays$RNA@data, caglayan_macaque_inhib$seurat_clusters)
+gc()
+
+caglayan_macaque_inhib_class_markers = compute_markers(caglayan_macaque_inhib@assays$RNA@data, caglayan_macaque_inhib$cge_mge)
+gc()
+
+
+caglayan_macaque_inhib_class_markers %>% filter(gene == 'PAX6') %>% arrange(desc(fold_change))
+caglayan_macaque_inhib_class_markers %>% filter(gene == 'SNCG') %>% arrange(desc(fold_change))
+caglayan_macaque_inhib_class_markers %>% filter(gene == 'RXRG') %>% arrange(desc(fold_change))
+caglayan_macaque_inhib_class_markers %>% filter(gene == 'LAMP5') %>% arrange(desc(fold_change))
+caglayan_macaque_inhib_class_markers %>% filter(gene == 'PALMD') %>% arrange(desc(fold_change))
+caglayan_macaque_inhib_class_markers %>% filter(gene == 'CXCL14') %>% arrange(desc(fold_change))
+
+
+```
+
+
+
+```{r}
+
+pax6_sp_1 = caglayan_human_inhib_class_markers %>% filter(gene == 'PAX6') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'human')
+
+pax6_sp_2 = caglayan_chimp_inhib_class_markers %>% filter(gene == 'PAX6') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'chimp')
+
+pax6_sp_3 = caglayan_macaque_inhib_class_markers %>% filter(gene == 'PAX6') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'macaque')
+
+
+pax6_DE_df = do.call('rbind', list(pax6_sp_1 , pax6_sp_2 , pax6_sp_3))
+pax6_DE_df = pax6_DE_df %>% tidyr::pivot_wider(names_from = cell_type, values_from = fold_change)
+
+
+sncg_sp_1 = caglayan_human_inhib_class_markers %>% filter(gene == 'SNCG') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'human')
+
+sncg_sp_2 = caglayan_chimp_inhib_class_markers %>% filter(gene == 'SNCG') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'chimp')
+
+sncg_sp_3 = caglayan_macaque_inhib_class_markers %>% filter(gene == 'SNCG') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'macaque')
+
+
+sncg_DE_df = do.call('rbind', list(sncg_sp_1 , sncg_sp_2 , sncg_sp_3))
+sncg_DE_df = sncg_DE_df %>% tidyr::pivot_wider(names_from = cell_type, values_from = fold_change)
+
+
+marker_gene_df = rbind(pax6_DE_df, sncg_DE_df)
+
+
+
+ggplot(marker_gene_df  , aes(x = log2(CGE), y = log2(MGE), color = gene, shape = species)) + geom_point(size = 3) +
+  xlab('CGE log2(FC)') + ylab('MGE log2(FC)') +
+  scale_color_manual(values = c('SNCG' = celltype_color_palette[['Sncg']], 'PAX6' = celltype_color_palette[['Pax6']])) + 
+  geom_hline(yintercept = 0, linetype = 'dashed', color = 'red') +
+  geom_vline(xintercept = 0, linetype = 'dashed', color = 'red') +
+  theme_classic() + ggtitle('Caglayan cross-primate data')
+
+```
+
+Just cluster the data taxonomically like the allen, see what it looks like.
+Show the VIP values across the centroids, is there a consistent  out group to VIP that expresses the orthologous SNCG markers?
+CXCL14?
+
+
+```{r}
+all_species_markers = list(
+    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz"),
+    tasic18 = read_markers("metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("metamarkers/ortho_markers_macosko_wba.csv.gz")
+)
+
+
+all_species_markers$human_10x$cell_type[all_species_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$human_ss$cell_type[all_species_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$chimp_10x$cell_type[all_species_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$chimp_ss$cell_type[all_species_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$gorilla_10x$cell_type[all_species_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$gorilla_ss$cell_type[all_species_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$macaca_10x$cell_type[all_species_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$marmoset_10x$cell_type[all_species_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+conserved_subclass_meta_markers = make_meta_markers(all_species_markers, detailed_stats = TRUE)
+
+conserved_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+```
+
+Cluster all the species using the integrated space
+And then compute markers from the normalized data
+
+```{r}
+
+caglayan_inhib_copy = caglayan_inhib
+caglayan_inhib_copy <- FindNeighbors(caglayan_inhib_copy , dims = 1:25, verbose = F, assay = 'integrated')
+caglayan_inhib_copy <- FindClusters(caglayan_inhib_copy , verbose = F, graph.name = 'integrated_snn')
+
+
+
+caglayan_inhib_copy<- NormalizeData(caglayan_inhib_copy, normalization.method = 'RC', scale.factor = 1e6, verbose = F)
+caglayan_integ_inhib_markers = compute_markers(caglayan_inhib_copy@assays$RNA@data, caglayan_inhib_copy$seurat_clusters)
+gc()
+
+
+#caglayan_inhib_copy_cge = subset(caglayan_inhib_copy, subset = cge_mge == 'CGE')
+#caglayan_inhib_copy_cge[[]]
+```
+
+Get aggregate expression of the top conserved marker genes
+```{r}
+num_conserved_markers = 50
+
+grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Vip' & rank <= num_conserved_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_vip = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+#caglayan_inhib_copy$agg_vip = caglayan_inhib_copy$agg_vip / max(caglayan_inhib_copy$agg_vip)
+
+grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Sncg' & rank <=num_conserved_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_sncg = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+#caglayan_inhib_copy$agg_sncg = caglayan_inhib_copy$agg_sncg / max(caglayan_inhib_copy$agg_sncg)
+
+grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Pax6' & rank <= num_conserved_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_pax6 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+#caglayan_inhib_copy$agg_pax6 = caglayan_inhib_copy$agg_pax6 / max(caglayan_inhib_copy$agg_pax6)
+
+grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Lamp5' & rank <= num_conserved_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_lamp5 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+#caglayan_inhib_copy$agg_lamp5 = caglayan_inhib_copy$agg_lamp5 / max(caglayan_inhib_copy$agg_lamp5)
+
+grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Lamp5 Lhx6' & rank <= num_conserved_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_lamp5_lhx6 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+#caglayan_inhib_copy$agg_lamp5_lhx6 = caglayan_inhib_copy$agg_lamp5_lhx6 / max(caglayan_inhib_copy$agg_lamp5_lhx6)
+
+grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Pvalb' & rank <= num_conserved_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_pvalb = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+
+grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Chandelier' & rank <= num_conserved_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_chandelier = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+
+grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Sst' & rank <= num_conserved_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_sst = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+
+grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Sst Chodl' & rank <= num_conserved_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_sst_chodl = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+```
+
+```{r}
+
+#Unique list of the top cluster markers
+num_markers = 50
+clust_method = 'average'
+dataset_name = 'Caglayan Human/Chimp/Macaque GABA: agg. Primate MetaMarkers'
+
+  top_clust_markers = caglayan_integ_inhib_markers %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = num_markers)
+  top_clust_markers = unique(top_clust_markers$gene)
+  
+  #Expression data for that list
+  gene_filt = rownames(caglayan_inhib_copy@assays$RNA@meta.features) %in% top_clust_markers
+  exp_data = caglayan_inhib_copy@assays$RNA@data[gene_filt, ]
+
+  #Compute centroids of gene expression per cluster
+  exp_data = as.data.frame(t(as.matrix(exp_data)))
+  exp_data = exp_data %>% mutate(cluster = caglayan_inhib_copy$seurat_clusters)
+  
+  centroids = exp_data %>% group_by(cluster) %>% summarize(across(which(colnames(exp_data)!= 'cluster'), median)) %>% as.data.frame()
+  #Get back into genes on rows and subclass on columns
+  rownames(centroids) = centroids$cluster
+  centroids = t(centroids[ ,2:ncol(centroids)])
+  
+  #Compute a distance matrix from the correlations of the centroids
+  centroid_corr = cor(centroids, method = 'spearman')
+  
+  #Hierarchical clusting on the correlation distance matrix
+  hclust_avg <- hclust(as.dist(1-centroid_corr), method = clust_method)
+  
+
+  #Get the average of the aggregated subclass MetaMarker expression per cluster as column annotations
+  
+  col_annot_data = caglayan_inhib_copy[[]] %>% select(seurat_clusters, agg_vip, agg_sncg, agg_pax6, 
+                                                      agg_lamp5, agg_lamp5_lhx6,
+                                                      agg_pvalb, agg_chandelier, 
+                                                      agg_sst, agg_sst_chodl) %>%
+    group_by(seurat_clusters) %>% summarise(mean_vip = mean(agg_vip), mean_sncg = mean(agg_sncg), 
+                                            mean_pax6 = mean(agg_pax6), mean_lamp5 = mean(agg_lamp5),
+                                            mean_lamp5_lhx6 = mean(agg_lamp5_lhx6),
+                                            mean_pvalb = mean(agg_pvalb), mean_chandelier = mean(agg_chandelier),
+                                            mean_sst = mean(agg_sst),mean_sst_chodl = mean(agg_sst_chodl))
+  
+  col_annot_data = as.data.frame(apply(col_annot_data[ ,c(2:ncol(col_annot_data))], 2, function(x) x/max(x) ))
+  
+  
+  vip_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Vip']]))
+  sncg_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sncg']]))
+  pax6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pax6']]))
+  lamp5_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5']]))
+  lamp5_lhx6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
+  pvalb_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pvalb']]))
+  chandelier_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Chandelier']]))
+  sst_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst']]))
+  sst_chodl_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
+  
+  col_annot = ComplexHeatmap::HeatmapAnnotation(mean_vip = col_annot_data$mean_vip,
+                                                mean_sncg = col_annot_data$mean_sncg,
+                                                mean_pax6 = col_annot_data$mean_pax6,
+                                                mean_lamp5 = col_annot_data$mean_lamp5,
+                                                mean_lamp5_lhx6 = col_annot_data$mean_lamp5_lhx6,
+                                                mean_pvalb = col_annot_data$mean_pvalb,
+                                                mean_chandelier = col_annot_data$mean_chandelier,
+                                                mean_sst = col_annot_data$mean_sst,
+                                                mean_sst_chodl = col_annot_data$mean_sst_chodl,
+                                                col = list(mean_vip = vip_col,
+                                                           mean_sncg = sncg_col, 
+                                                           mean_pax6 = pax6_col,
+                                                           mean_lamp5 = lamp5_col,
+                                                           mean_lamp5_lhx6 = lamp5_lhx6_col,
+                                                           mean_pvalb = pvalb_col,
+                                                           mean_chandelier = chandelier_col,
+                                                           mean_sst = sst_col,
+                                                           mean_sst_chodl = sst_chodl_col),
+                                                show_legend = c(T, F, F, F, F, F, F, F, F))
+  
+  
+  
+  corr_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+  cent_hm = ComplexHeatmap::Heatmap(centroid_corr, col = corr_cols, name = 'spearman' ,
+                                    cluster_columns = hclust_avg,
+                                    cluster_rows = hclust_avg,
+                                    column_title = dataset_name,
+                                    top_annotation = col_annot)
+  cent_hm = ComplexHeatmap::draw(cent_hm)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/caglayan_cross_primate_primate_MM_cluster_tax_heat.pdf',
+    useDingbats = F, height = 8, width = 8)
+cent_hm 
+dev.off()
+
+```
+
+
+```{r}
+
+DimPlot(caglayan_inhib_copy, reduction = "umap", group.by = 'Species')
+DimPlot(caglayan_inhib_copy, reduction = "umap", group.by = 'CellType', label = T)
+DimPlot(caglayan_inhib_copy, reduction = "umap", group.by = 'seurat_clusters', label = T)
+
+FeaturePlot(caglayan_inhib_copy, features = 'agg_vip')
+FeaturePlot(caglayan_inhib_copy, features = 'agg_sncg')
+FeaturePlot(caglayan_inhib_copy, features = 'agg_pax6')
+FeaturePlot(caglayan_inhib_copy, features = 'agg_lamp5')
+FeaturePlot(caglayan_inhib_copy, features = 'agg_lamp5_lhx6')
+
+FeaturePlot(caglayan_inhib_copy, features = 'PAX6', slot = 'data')
+FeaturePlot(caglayan_inhib_copy, features = 'MAML2', slot = 'data')
+FeaturePlot(caglayan_inhib_copy, features = 'RELN', slot = 'data')
+FeaturePlot(caglayan_inhib_copy, features = 'SORCS3', slot = 'data')
+
+FeaturePlot(caglayan_inhib_copy, features = 'CXCL14', slot = 'data')
+FeaturePlot(caglayan_inhib_copy, features = 'RXRG', slot = 'data')
+FeaturePlot(caglayan_inhib_copy, features = 'KCNG1', slot = 'data')
+FeaturePlot(caglayan_inhib_copy, features = 'NPAS3', slot = 'data')
+```
+
+
+And what about if you use the top Mouse metamarkers for the orthologous cell annotations
+
+
+```{r}
+all_mouse_markers = list(
+    tasic18 = read_markers("metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("metamarkers/ortho_markers_macosko_wba.csv.gz")
+)
+
+
+mouse_subclass_meta_markers = make_meta_markers(all_mouse_markers, detailed_stats = TRUE)
+
+mouse_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+```
+
+Get aggregate expression of the top mouse marker genes
+```{r}
+num_mouse_markers = 50
+
+grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Vip' & rank <= num_mouse_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_vip = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+#caglayan_inhib_copy$agg_vip = caglayan_inhib_copy$agg_vip / max(caglayan_inhib_copy$agg_vip)
+
+grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Sncg' & rank <=num_mouse_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_sncg = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+#caglayan_inhib_copy$agg_sncg = caglayan_inhib_copy$agg_sncg / max(caglayan_inhib_copy$agg_sncg)
+
+grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Pax6' & rank <= num_mouse_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_pax6 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+#caglayan_inhib_copy$agg_pax6 = caglayan_inhib_copy$agg_pax6 / max(caglayan_inhib_copy$agg_pax6)
+
+grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Lamp5' & rank <= num_mouse_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_lamp5 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+#caglayan_inhib_copy$agg_lamp5 = caglayan_inhib_copy$agg_lamp5 / max(caglayan_inhib_copy$agg_lamp5)
+
+grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Lamp5 Lhx6' & rank <= num_mouse_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_lamp5_lhx6 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+#caglayan_inhib_copy$agg_lamp5_lhx6 = caglayan_inhib_copy$agg_lamp5_lhx6 / max(caglayan_inhib_copy$agg_lamp5_lhx6)
+
+grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Pvalb' & rank <= num_mouse_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_pvalb = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+
+grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Chandelier' & rank <= num_mouse_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_chandelier = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+
+grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Sst' & rank <= num_mouse_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_sst = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+
+grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Sst Chodl' & rank <= num_mouse_markers) %>% pull(gene)
+caglayan_inhib_copy$agg_sst_chodl = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
+```
+
+
+
+```{r}
+
+#Unique list of the top cluster markers
+num_markers = 50
+clust_method = 'average'
+dataset_name = 'Caglayan Human/Chimp/Macaque GABA: agg. Mouse MetaMarkers'
+
+  top_clust_markers = caglayan_integ_inhib_markers %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = num_markers)
+  top_clust_markers = unique(top_clust_markers$gene)
+  
+  #Expression data for that list
+  gene_filt = rownames(caglayan_inhib_copy@assays$RNA@meta.features) %in% top_clust_markers
+  exp_data = caglayan_inhib_copy@assays$RNA@data[gene_filt, ]
+
+  #Compute centroids of gene expression per cluster
+  exp_data = as.data.frame(t(as.matrix(exp_data)))
+  exp_data = exp_data %>% mutate(cluster = caglayan_inhib_copy$seurat_clusters)
+  
+  centroids = exp_data %>% group_by(cluster) %>% summarize(across(which(colnames(exp_data)!= 'cluster'), median)) %>% as.data.frame()
+  #Get back into genes on rows and subclass on columns
+  rownames(centroids) = centroids$cluster
+  centroids = t(centroids[ ,2:ncol(centroids)])
+  
+  #Compute a distance matrix from the correlations of the centroids
+  centroid_corr = cor(centroids, method = 'spearman')
+  
+  #Hierarchical clusting on the correlation distance matrix
+  hclust_avg <- hclust(as.dist(1-centroid_corr), method = clust_method)
+  
+
+  #Get the average of the aggregated subclass MetaMarker expression per cluster as column annotations
+  
+  col_annot_data = caglayan_inhib_copy[[]] %>% select(seurat_clusters, agg_vip, agg_sncg, agg_pax6, 
+                                                      agg_lamp5, agg_lamp5_lhx6,
+                                                      agg_pvalb, agg_chandelier, 
+                                                      agg_sst, agg_sst_chodl) %>%
+    group_by(seurat_clusters) %>% summarise(mean_vip = mean(agg_vip), mean_sncg = mean(agg_sncg), 
+                                            mean_pax6 = mean(agg_pax6), mean_lamp5 = mean(agg_lamp5),
+                                            mean_lamp5_lhx6 = mean(agg_lamp5_lhx6),
+                                            mean_pvalb = mean(agg_pvalb), mean_chandelier = mean(agg_chandelier),
+                                            mean_sst = mean(agg_sst),mean_sst_chodl = mean(agg_sst_chodl))
+  
+  col_annot_data = as.data.frame(apply(col_annot_data[ ,c(2:ncol(col_annot_data))], 2, function(x) x/max(x) ))
+  
+  
+  vip_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Vip']]))
+  sncg_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sncg']]))
+  pax6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pax6']]))
+  lamp5_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5']]))
+  lamp5_lhx6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
+  pvalb_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pvalb']]))
+  chandelier_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Chandelier']]))
+  sst_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst']]))
+  sst_chodl_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
+  
+  col_annot = ComplexHeatmap::HeatmapAnnotation(mean_vip = col_annot_data$mean_vip,
+                                                mean_sncg = col_annot_data$mean_sncg,
+                                                mean_pax6 = col_annot_data$mean_pax6,
+                                                mean_lamp5 = col_annot_data$mean_lamp5,
+                                                mean_lamp5_lhx6 = col_annot_data$mean_lamp5_lhx6,
+                                                mean_pvalb = col_annot_data$mean_pvalb,
+                                                mean_chandelier = col_annot_data$mean_chandelier,
+                                                mean_sst = col_annot_data$mean_sst,
+                                                mean_sst_chodl = col_annot_data$mean_sst_chodl,
+                                                col = list(mean_vip = vip_col,
+                                                           mean_sncg = sncg_col, 
+                                                           mean_pax6 = pax6_col,
+                                                           mean_lamp5 = lamp5_col,
+                                                           mean_lamp5_lhx6 = lamp5_lhx6_col,
+                                                           mean_pvalb = pvalb_col,
+                                                           mean_chandelier = chandelier_col,
+                                                           mean_sst = sst_col,
+                                                           mean_sst_chodl = sst_chodl_col),
+                                                show_legend = c(T, F, F, F, F, F, F, F, F))
+  
+  
+  
+  corr_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+  cent_hm = ComplexHeatmap::Heatmap(centroid_corr, col = corr_cols, name = 'spearman' ,
+                                    cluster_columns = hclust_avg,
+                                    cluster_rows = hclust_avg,
+                                    column_title = dataset_name,
+                                    top_annotation = col_annot)
+  cent_hm = ComplexHeatmap::draw(cent_hm)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/caglayan_cross_primate_mouse_MM_cluster_tax_heat.pdf',
+    useDingbats = F, height = 8, width = 8)
+cent_hm 
+dev.off()
+```
+
+
+

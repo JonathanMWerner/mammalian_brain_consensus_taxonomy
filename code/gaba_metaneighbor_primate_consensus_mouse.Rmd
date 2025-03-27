@@ -2551,7 +2551,93 @@ ggsave(filename = 'institute_tech_stacked_orth_subclass_mouse.pdf',device = 'pdf
 ```
 
 
+Save the current mouse metadata. Specifically need the mouse cluster name to subclass mappings.
 
+```{r}
+
+
+interneuron_metadata = interneuron.combined[[]]
+
+interneuron_metadata %>% filter(study %in% c('zeng_10xv2_wba','zeng_10xv3_wba') & cell_subclass == 'Sncg' & orthology == 'high_orthology')
+
+interneuron_metadata %>% filter(study %in% c('zeng_10xv2_wba','zeng_10xv3_wba') & 
+                                  primate_subclass == 'Sncg' & 
+                                  cell_subclass == 'Vip' & 
+                                  orthology == 'high_orthology')
+
+interneuron_metadata %>% filter(study == 'macosko_wba' & 
+                                  primate_subclass == 'Sncg' & 
+                                  cell_subclass == 'Vip' & 
+                                  orthology == 'high_orthology')
+
+
+
+save(interneuron_metadata, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/20_3_25_interneuron_mouse_metadata.Rdata')
+
+
+```
+
+
+save lists of cluster names of interest
+
+
+```{r}
+
+
+load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/20_3_25_interneuron_mouse_metadata.Rdata')
+
+
+mouse_vip_prim_sncg_df = interneuron_metadata %>% filter( grepl('wba', study) &
+                                  primate_subclass == 'Sncg' & 
+                                  cell_subclass == 'Vip' & 
+                                  orthology == 'high_orthology') %>%
+  mutate(study_cluster = paste(study, cell_cluster, sep = '_'))
+
+mouse_vip_prim_sncg_df = mouse_vip_prim_sncg_df %>% filter(!duplicated(study_cluster)) %>% select(study, cell_cluster, cell_subclass, primate_subclass)
+rownames(mouse_vip_prim_sncg_df) = NULL
+mouse_vip_prim_sncg_df
+
+mouse_vip_prim_vip_df = interneuron_metadata %>% filter( grepl('wba', study) &
+                                  primate_subclass == 'Vip' & 
+                                  cell_subclass == 'Vip' & 
+                                  orthology == 'high_orthology') %>%
+  mutate(study_cluster = paste(study, cell_cluster, sep = '_'))
+  
+
+mouse_vip_prim_vip_df = mouse_vip_prim_vip_df %>% filter(!duplicated(study_cluster)) %>% select(study, cell_cluster, cell_subclass, primate_subclass)
+rownames(mouse_vip_prim_vip_df) = NULL
+mouse_vip_prim_vip_df
+
+mouse_lamp5_prim_pax6_df = interneuron_metadata %>% filter( grepl('wba', study) &
+                                  primate_subclass == 'Pax6' & 
+                                  cell_subclass == 'Lamp5' & 
+                                  orthology == 'high_orthology') %>%
+  mutate(study_cluster = paste(study, cell_cluster, sep = '_'))
+  
+
+mouse_lamp5_prim_pax6_df = mouse_lamp5_prim_pax6_df %>% filter(!duplicated(study_cluster)) %>% select(study, cell_cluster, cell_subclass, primate_subclass)
+rownames(mouse_lamp5_prim_pax6_df) = NULL
+mouse_lamp5_prim_pax6_df
+
+mouse_lamp5_prim_lamp5_df = interneuron_metadata %>% filter( grepl('wba', study) &
+                                  primate_subclass == 'Lamp5' & 
+                                  cell_subclass == 'Lamp5' & 
+                                  orthology == 'high_orthology') %>%
+  mutate(study_cluster = paste(study, cell_cluster, sep = '_'))
+  
+
+mouse_lamp5_prim_lamp5_df = mouse_lamp5_prim_lamp5_df %>% filter(!duplicated(study_cluster)) %>% select(study, cell_cluster, cell_subclass, primate_subclass)
+rownames(mouse_lamp5_prim_lamp5_df) = NULL
+mouse_lamp5_prim_lamp5_df
+
+
+
+saveRDS(mouse_vip_prim_sncg_df, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/for_Leon/mouse_vip_primate_scng_WBA_clusters_df.rds')
+saveRDS(mouse_vip_prim_vip_df, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/for_Leon/mouse_vip_primate_vip_WBA_clusters_df.rds')
+saveRDS(mouse_lamp5_prim_pax6_df, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/for_Leon/mouse_lamp5_primate_pax6_WBA_clusters_df.rds')
+saveRDS(mouse_lamp5_prim_lamp5_df, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/for_Leon/mouse_lamp5_primate_lamp5_WBA_clusters_df.rds')
+
+```
 
 
 
