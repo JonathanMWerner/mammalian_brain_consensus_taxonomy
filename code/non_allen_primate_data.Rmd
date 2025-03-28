@@ -53,8 +53,6 @@ caglayan_inhib = readRDS('/inkwell03/werner/sc_data/primate_caglayan_konopka/GSE
 
 caglayan_inhib
 
-
-
 ```
 
 ```{r}
@@ -369,13 +367,34 @@ caglayan_inhib_copy <- FindClusters(caglayan_inhib_copy , verbose = F, graph.nam
 
 
 caglayan_inhib_copy<- NormalizeData(caglayan_inhib_copy, normalization.method = 'RC', scale.factor = 1e6, verbose = F)
+
+
+```
+
+
+
+```{r}
+
+
+saveRDS(caglayan_inhib_copy, file = '/inkwell03/werner/sc_data/primate_caglayan_konopka/caglayan_gaba_processed.rds')
+
+```
+
+
+```{r}
+
+caglayan_inhib_copy = readRDS('/inkwell03/werner/sc_data/primate_caglayan_konopka/caglayan_gaba_processed.rds')
+
+
 caglayan_integ_inhib_markers = compute_markers(caglayan_inhib_copy@assays$RNA@data, caglayan_inhib_copy$seurat_clusters)
 gc()
 
 
-#caglayan_inhib_copy_cge = subset(caglayan_inhib_copy, subset = cge_mge == 'CGE')
-#caglayan_inhib_copy_cge[[]]
 ```
+
+
+
+
 
 Get aggregate expression of the top conserved marker genes
 ```{r}
@@ -383,23 +402,18 @@ num_conserved_markers = 50
 
 grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Vip' & rank <= num_conserved_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_vip = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_vip = caglayan_inhib_copy$agg_vip / max(caglayan_inhib_copy$agg_vip)
 
 grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Sncg' & rank <=num_conserved_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_sncg = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_sncg = caglayan_inhib_copy$agg_sncg / max(caglayan_inhib_copy$agg_sncg)
 
 grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Pax6' & rank <= num_conserved_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_pax6 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_pax6 = caglayan_inhib_copy$agg_pax6 / max(caglayan_inhib_copy$agg_pax6)
 
 grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Lamp5' & rank <= num_conserved_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_lamp5 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_lamp5 = caglayan_inhib_copy$agg_lamp5 / max(caglayan_inhib_copy$agg_lamp5)
 
 grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Lamp5 Lhx6' & rank <= num_conserved_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_lamp5_lhx6 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_lamp5_lhx6 = caglayan_inhib_copy$agg_lamp5_lhx6 / max(caglayan_inhib_copy$agg_lamp5_lhx6)
 
 grab_genes = conserved_subclass_meta_markers %>% filter(cell_type == 'Pvalb' & rank <= num_conserved_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_pvalb = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
@@ -450,43 +464,48 @@ dataset_name = 'Caglayan Human/Chimp/Macaque GABA: agg. Mammal MetaMarkers'
                                                       agg_lamp5, agg_lamp5_lhx6,
                                                       agg_pvalb, agg_chandelier, 
                                                       agg_sst, agg_sst_chodl) %>%
-    group_by(seurat_clusters) %>% summarise(mean_vip = mean(agg_vip), mean_sncg = mean(agg_sncg), 
-                                            mean_pax6 = mean(agg_pax6), mean_lamp5 = mean(agg_lamp5),
-                                            mean_lamp5_lhx6 = mean(agg_lamp5_lhx6),
-                                            mean_pvalb = mean(agg_pvalb), mean_chandelier = mean(agg_chandelier),
-                                            mean_sst = mean(agg_sst),mean_sst_chodl = mean(agg_sst_chodl))
+    group_by(seurat_clusters) %>% summarise(agg_vip = mean(agg_vip), agg_sncg = mean(agg_sncg), 
+                                            agg_pax6 = mean(agg_pax6), agg_lamp5 = mean(agg_lamp5),
+                                            agg_lamp5_lhx6 = mean(agg_lamp5_lhx6),
+                                            agg_pvalb = mean(agg_pvalb), agg_chandelier = mean(agg_chandelier),
+                                            agg_sst = mean(agg_sst), agg_sst_chodl = mean(agg_sst_chodl))
   
-  col_annot_data = as.data.frame(apply(col_annot_data[ ,c(2:ncol(col_annot_data))], 2, function(x) x/max(x) ))
+  col_annot_data = col_annot_data %>% select(-c(seurat_clusters))
+  celltype_cent_means = colMeans(col_annot_data)
+  #Dividing each celltype centroid by the mean centroid across clusters to get enrichment
+  col_annot_data = mapply('/', col_annot_data, celltype_cent_means)
+  #Then max scale so each cell-type is 0-1
+  col_annot_data = as.data.frame(apply(col_annot_data, 2, function(x) x/max(x) ))
   
   
-  vip_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Vip']]))
-  sncg_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sncg']]))
-  pax6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pax6']]))
-  lamp5_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5']]))
-  lamp5_lhx6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
-  pvalb_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pvalb']]))
-  chandelier_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Chandelier']]))
-  sst_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst']]))
-  sst_chodl_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
+  vip_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Vip']]))
+  sncg_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sncg']]))
+  pax6_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Pax6']]))
+  lamp5_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Lamp5']]))
+  lamp5_lhx6_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
+  pvalb_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Pvalb']]))
+  chandelier_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Chandelier']]))
+  sst_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sst']]))
+  sst_chodl_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
   
-  col_annot = ComplexHeatmap::HeatmapAnnotation(mean_vip = col_annot_data$mean_vip,
-                                                mean_sncg = col_annot_data$mean_sncg,
-                                                mean_pax6 = col_annot_data$mean_pax6,
-                                                mean_lamp5 = col_annot_data$mean_lamp5,
-                                                mean_lamp5_lhx6 = col_annot_data$mean_lamp5_lhx6,
-                                                mean_pvalb = col_annot_data$mean_pvalb,
-                                                mean_chandelier = col_annot_data$mean_chandelier,
-                                                mean_sst = col_annot_data$mean_sst,
-                                                mean_sst_chodl = col_annot_data$mean_sst_chodl,
-                                                col = list(mean_vip = vip_col,
-                                                           mean_sncg = sncg_col, 
-                                                           mean_pax6 = pax6_col,
-                                                           mean_lamp5 = lamp5_col,
-                                                           mean_lamp5_lhx6 = lamp5_lhx6_col,
-                                                           mean_pvalb = pvalb_col,
-                                                           mean_chandelier = chandelier_col,
-                                                           mean_sst = sst_col,
-                                                           mean_sst_chodl = sst_chodl_col),
+  col_annot = ComplexHeatmap::HeatmapAnnotation(agg_vip = col_annot_data$agg_vip,
+                                                agg_sncg = col_annot_data$agg_sncg,
+                                                agg_pax6 = col_annot_data$agg_pax6,
+                                                agg_lamp5 = col_annot_data$agg_lamp5,
+                                                agg_lamp5_lhx6 = col_annot_data$agg_lamp5_lhx6,
+                                                agg_pvalb = col_annot_data$agg_pvalb,
+                                                agg_chandelier = col_annot_data$agg_chandelier,
+                                                agg_sst = col_annot_data$agg_sst,
+                                                agg_sst_chodl = col_annot_data$agg_sst_chodl,
+                                                col = list(agg_vip = vip_col,
+                                                           agg_sncg = sncg_col, 
+                                                           agg_pax6 = pax6_col,
+                                                           agg_lamp5 = lamp5_col,
+                                                           agg_lamp5_lhx6 = lamp5_lhx6_col,
+                                                           agg_pvalb = pvalb_col,
+                                                           agg_chandelier = chandelier_col,
+                                                           agg_sst = sst_col,
+                                                           agg_sst_chodl = sst_chodl_col),
                                                 show_legend = c(T, F, F, F, F, F, F, F, F))
   
   
@@ -513,13 +532,53 @@ DimPlot(caglayan_inhib_copy, reduction = "umap", group.by = 'Species')
 DimPlot(caglayan_inhib_copy, reduction = "umap", group.by = 'CellType', label = T)
 DimPlot(caglayan_inhib_copy, reduction = "umap", group.by = 'seurat_clusters', label = T)
 
+caglayan_inhib_copy$agg_vip = caglayan_inhib_copy$agg_vip/ mean(caglayan_inhib_copy$agg_vip)
+caglayan_inhib_copy$agg_vip = caglayan_inhib_copy$agg_vip / max(caglayan_inhib_copy$agg_vip)
+
+caglayan_inhib_copy$agg_sncg = caglayan_inhib_copy$agg_sncg/ mean(caglayan_inhib_copy$agg_sncg)
+caglayan_inhib_copy$agg_sncg = caglayan_inhib_copy$agg_sncg / max(caglayan_inhib_copy$agg_sncg)
+
+caglayan_inhib_copy$agg_pax6 = caglayan_inhib_copy$agg_pax6/ mean(caglayan_inhib_copy$agg_pax6)
+caglayan_inhib_copy$agg_pax6 = caglayan_inhib_copy$agg_pax6 / max(caglayan_inhib_copy$agg_pax6)
+
 FeaturePlot(caglayan_inhib_copy, features = 'agg_vip')
 FeaturePlot(caglayan_inhib_copy, features = 'agg_sncg')
 FeaturePlot(caglayan_inhib_copy, features = 'agg_pax6')
-FeaturePlot(caglayan_inhib_copy, features = 'agg_lamp5')
-FeaturePlot(caglayan_inhib_copy, features = 'agg_lamp5_lhx6')
+
 
 ```
+
+
+What do the markers look like for a simple subclass reassignment isolating the obvious clustering?
+So for MGE, it's clearly Chandelier, Pvalb, Sst, Sst Chodl. 
+For CGE, there's the Lamp5 clusters, with Lam5 Lhx6 and Lamp5, and then there's the Vip cluster and the fourth cluster next to Vip. At the moment this is mostly Pax6, but also a blend of Lamp5 and Sncg. What do the markers look like for that potential subclass?
+
+```{r}
+
+caglayan_inhib_copy$temp_subclass_annot = rep(NA, length = ncol(caglayan_inhib_copy))
+caglayan_inhib_copy$temp_subclass_annot[caglayan_inhib_copy$seurat_clusters %in% c(12)] = 'Chandelier'
+caglayan_inhib_copy$temp_subclass_annot[caglayan_inhib_copy$seurat_clusters %in% c(0, 3, 15, 16, 23)] = 'Pvalb'
+caglayan_inhib_copy$temp_subclass_annot[caglayan_inhib_copy$seurat_clusters %in% c(1, 4, 6, 8, 10, 21, 22)] = 'Sst'
+caglayan_inhib_copy$temp_subclass_annot[caglayan_inhib_copy$seurat_clusters %in% c(28)] = 'Sst Chodl'
+
+caglayan_inhib_copy$temp_subclass_annot[caglayan_inhib_copy$seurat_clusters %in% c(2, 27)] = 'Lamp5'
+caglayan_inhib_copy$temp_subclass_annot[caglayan_inhib_copy$seurat_clusters %in% c(9)] = 'Lamp5 Lhx6'
+caglayan_inhib_copy$temp_subclass_annot[caglayan_inhib_copy$seurat_clusters %in% c(5, 7, 11, 13, 17, 18, 20, 26)] = 'Vip'
+caglayan_inhib_copy$temp_subclass_annot[caglayan_inhib_copy$seurat_clusters %in% c(14, 19, 24, 25)] = 'New CGE subclass'
+
+
+caglayan_temp_new_subclass_markers = compute_markers(caglayan_inhib_copy@assays$RNA@data, caglayan_inhib_copy$temp_subclass_annot)
+caglayan_temp_new_subclass_markers %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = 20)
+```
+
+```{r}
+
+caglayan_temp_new_subclass_markers %>% filter(gene == 'RELN')
+caglayan_temp_new_subclass_markers %>% filter(gene == 'CXCL14')
+```
+
+
+
 
 
 And what about if you use the top Mouse metamarkers for the orthologous cell annotations
@@ -579,23 +638,18 @@ num_mouse_markers = 50
 
 grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Vip' & rank <= num_mouse_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_vip = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_vip = caglayan_inhib_copy$agg_vip / max(caglayan_inhib_copy$agg_vip)
 
 grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Sncg' & rank <=num_mouse_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_sncg = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_sncg = caglayan_inhib_copy$agg_sncg / max(caglayan_inhib_copy$agg_sncg)
 
 grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Pax6' & rank <= num_mouse_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_pax6 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_pax6 = caglayan_inhib_copy$agg_pax6 / max(caglayan_inhib_copy$agg_pax6)
 
 grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Lamp5' & rank <= num_mouse_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_lamp5 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_lamp5 = caglayan_inhib_copy$agg_lamp5 / max(caglayan_inhib_copy$agg_lamp5)
 
 grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Lamp5 Lhx6' & rank <= num_mouse_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_lamp5_lhx6 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_lamp5_lhx6 = caglayan_inhib_copy$agg_lamp5_lhx6 / max(caglayan_inhib_copy$agg_lamp5_lhx6)
 
 grab_genes = mouse_subclass_meta_markers %>% filter(cell_type == 'Pvalb' & rank <= num_mouse_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_pvalb = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
@@ -648,43 +702,48 @@ dataset_name = 'Caglayan Human/Chimp/Macaque GABA: agg. Mouse MetaMarkers'
                                                       agg_lamp5, agg_lamp5_lhx6,
                                                       agg_pvalb, agg_chandelier, 
                                                       agg_sst, agg_sst_chodl) %>%
-    group_by(seurat_clusters) %>% summarise(mean_vip = mean(agg_vip), mean_sncg = mean(agg_sncg), 
-                                            mean_pax6 = mean(agg_pax6), mean_lamp5 = mean(agg_lamp5),
-                                            mean_lamp5_lhx6 = mean(agg_lamp5_lhx6),
-                                            mean_pvalb = mean(agg_pvalb), mean_chandelier = mean(agg_chandelier),
-                                            mean_sst = mean(agg_sst),mean_sst_chodl = mean(agg_sst_chodl))
+    group_by(seurat_clusters) %>% summarise(agg_vip = mean(agg_vip), agg_sncg = mean(agg_sncg), 
+                                            agg_pax6 = mean(agg_pax6), agg_lamp5 = mean(agg_lamp5),
+                                            agg_lamp5_lhx6 = mean(agg_lamp5_lhx6),
+                                            agg_pvalb = mean(agg_pvalb), agg_chandelier = mean(agg_chandelier),
+                                            agg_sst = mean(agg_sst),agg_sst_chodl = mean(agg_sst_chodl))
   
-  col_annot_data = as.data.frame(apply(col_annot_data[ ,c(2:ncol(col_annot_data))], 2, function(x) x/max(x) ))
+  col_annot_data = col_annot_data %>% select(-c(seurat_clusters))
+  celltype_cent_means = colMeans(col_annot_data)
+  #Dividing each celltype centroid by the mean centroid across clusters to get enrichment
+  col_annot_data = mapply('/', col_annot_data, celltype_cent_means)
+  #Then max scale so each cell-type is 0-1
+  col_annot_data = as.data.frame(apply(col_annot_data, 2, function(x) x/max(x) ))
   
   
-  vip_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Vip']]))
-  sncg_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sncg']]))
-  pax6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pax6']]))
-  lamp5_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5']]))
-  lamp5_lhx6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
-  pvalb_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pvalb']]))
-  chandelier_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Chandelier']]))
-  sst_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst']]))
-  sst_chodl_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
+  vip_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Vip']]))
+  sncg_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sncg']]))
+  pax6_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Pax6']]))
+  lamp5_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Lamp5']]))
+  lamp5_lhx6_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
+  pvalb_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Pvalb']]))
+  chandelier_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Chandelier']]))
+  sst_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sst']]))
+  sst_chodl_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
   
-  col_annot = ComplexHeatmap::HeatmapAnnotation(mean_vip = col_annot_data$mean_vip,
-                                                mean_sncg = col_annot_data$mean_sncg,
-                                                mean_pax6 = col_annot_data$mean_pax6,
-                                                mean_lamp5 = col_annot_data$mean_lamp5,
-                                                mean_lamp5_lhx6 = col_annot_data$mean_lamp5_lhx6,
-                                                mean_pvalb = col_annot_data$mean_pvalb,
-                                                mean_chandelier = col_annot_data$mean_chandelier,
-                                                mean_sst = col_annot_data$mean_sst,
-                                                mean_sst_chodl = col_annot_data$mean_sst_chodl,
-                                                col = list(mean_vip = vip_col,
-                                                           mean_sncg = sncg_col, 
-                                                           mean_pax6 = pax6_col,
-                                                           mean_lamp5 = lamp5_col,
-                                                           mean_lamp5_lhx6 = lamp5_lhx6_col,
-                                                           mean_pvalb = pvalb_col,
-                                                           mean_chandelier = chandelier_col,
-                                                           mean_sst = sst_col,
-                                                           mean_sst_chodl = sst_chodl_col),
+  col_annot = ComplexHeatmap::HeatmapAnnotation(agg_vip = col_annot_data$agg_vip,
+                                                agg_sncg = col_annot_data$agg_sncg,
+                                                agg_pax6 = col_annot_data$agg_pax6,
+                                                agg_lamp5 = col_annot_data$agg_lamp5,
+                                                agg_lamp5_lhx6 = col_annot_data$agg_lamp5_lhx6,
+                                                agg_pvalb = col_annot_data$agg_pvalb,
+                                                agg_chandelier = col_annot_data$agg_chandelier,
+                                                agg_sst = col_annot_data$agg_sst,
+                                                agg_sst_chodl = col_annot_data$agg_sst_chodl,
+                                                col = list(agg_vip = vip_col,
+                                                           agg_sncg = sncg_col, 
+                                                           agg_pax6 = pax6_col,
+                                                           agg_lamp5 = lamp5_col,
+                                                           agg_lamp5_lhx6 = lamp5_lhx6_col,
+                                                           agg_pvalb = pvalb_col,
+                                                           agg_chandelier = chandelier_col,
+                                                           agg_sst = sst_col,
+                                                           agg_sst_chodl = sst_chodl_col),
                                                 show_legend = c(T, F, F, F, F, F, F, F, F))
   
   
@@ -713,23 +772,18 @@ num_original_mouse_markers = 50
 
 grab_genes = original_mouse_subclass_meta_markers %>% filter(cell_type == 'Vip' & rank <= num_original_mouse_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_vip = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_vip = caglayan_inhib_copy$agg_vip / max(caglayan_inhib_copy$agg_vip)
 
 grab_genes = original_mouse_subclass_meta_markers %>% filter(cell_type == 'Sncg' & rank <=num_original_mouse_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_sncg = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_sncg = caglayan_inhib_copy$agg_sncg / max(caglayan_inhib_copy$agg_sncg)
 
 #grab_genes = original_mouse_subclass_meta_markers %>% filter(cell_type == 'Pax6' & rank <= num_original_mouse_markers) %>% pull(gene)
 #caglayan_inhib_copy$agg_pax6 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_pax6 = caglayan_inhib_copy$agg_pax6 / max(caglayan_inhib_copy$agg_pax6)
 
 grab_genes = original_mouse_subclass_meta_markers %>% filter(cell_type == 'Lamp5' & rank <= num_original_mouse_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_lamp5 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_lamp5 = caglayan_inhib_copy$agg_lamp5 / max(caglayan_inhib_copy$agg_lamp5)
 
 grab_genes = original_mouse_subclass_meta_markers %>% filter(cell_type == 'Lamp5 Lhx6' & rank <= num_original_mouse_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_lamp5_lhx6 = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
-#caglayan_inhib_copy$agg_lamp5_lhx6 = caglayan_inhib_copy$agg_lamp5_lhx6 / max(caglayan_inhib_copy$agg_lamp5_lhx6)
 
 grab_genes = original_mouse_subclass_meta_markers %>% filter(cell_type == 'Pvalb' & rank <= num_original_mouse_markers) %>% pull(gene)
 caglayan_inhib_copy$agg_pvalb = rowSums(FetchData(caglayan_inhib_copy, vars = grab_genes, slot = 'data'))
@@ -783,40 +837,45 @@ dataset_name = 'Caglayan Human/Chimp/Macaque GABA: agg. ori. Mouse MetaMarkers'
                                                       agg_lamp5, agg_lamp5_lhx6,
                                                       agg_pvalb, agg_chandelier, 
                                                       agg_sst, agg_sst_chodl) %>%
-    group_by(seurat_clusters) %>% summarise(mean_vip = mean(agg_vip), mean_sncg = mean(agg_sncg), 
-                                            mean_lamp5 = mean(agg_lamp5),
-                                            mean_lamp5_lhx6 = mean(agg_lamp5_lhx6),
-                                            mean_pvalb = mean(agg_pvalb), mean_chandelier = mean(agg_chandelier),
-                                            mean_sst = mean(agg_sst),mean_sst_chodl = mean(agg_sst_chodl))
+    group_by(seurat_clusters) %>% summarise(agg_vip = mean(agg_vip), agg_sncg = mean(agg_sncg), 
+                                            agg_lamp5 = mean(agg_lamp5),
+                                            agg_lamp5_lhx6 = mean(agg_lamp5_lhx6),
+                                            agg_pvalb = mean(agg_pvalb), agg_chandelier = mean(agg_chandelier),
+                                            agg_sst = mean(agg_sst),agg_sst_chodl = mean(agg_sst_chodl))
   
-  col_annot_data = as.data.frame(apply(col_annot_data[ ,c(2:ncol(col_annot_data))], 2, function(x) x/max(x) ))
+  col_annot_data = col_annot_data %>% select(-c(seurat_clusters))
+  celltype_cent_means = colMeans(col_annot_data)
+  #Dividing each celltype centroid by the mean centroid across clusters to get enrichment
+  col_annot_data = mapply('/', col_annot_data, celltype_cent_means)
+  #Then max scale so each cell-type is 0-1
+  col_annot_data = as.data.frame(apply(col_annot_data, 2, function(x) x/max(x) ))
   
   
-  vip_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Vip']]))
-  sncg_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sncg']]))
-  lamp5_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5']]))
-  lamp5_lhx6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
-  pvalb_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pvalb']]))
-  chandelier_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Chandelier']]))
-  sst_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst']]))
-  sst_chodl_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
+  vip_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Vip']]))
+  sncg_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sncg']]))
+  lamp5_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Lamp5']]))
+  lamp5_lhx6_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
+  pvalb_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Pvalb']]))
+  chandelier_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Chandelier']]))
+  sst_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sst']]))
+  sst_chodl_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
   
-  col_annot = ComplexHeatmap::HeatmapAnnotation(mean_vip = col_annot_data$mean_vip,
-                                                mean_sncg = col_annot_data$mean_sncg,
-                                                mean_lamp5 = col_annot_data$mean_lamp5,
-                                                mean_lamp5_lhx6 = col_annot_data$mean_lamp5_lhx6,
-                                                mean_pvalb = col_annot_data$mean_pvalb,
-                                                mean_chandelier = col_annot_data$mean_chandelier,
-                                                mean_sst = col_annot_data$mean_sst,
-                                                mean_sst_chodl = col_annot_data$mean_sst_chodl,
-                                                col = list(mean_vip = vip_col,
-                                                           mean_sncg = sncg_col, 
-                                                           mean_lamp5 = lamp5_col,
-                                                           mean_lamp5_lhx6 = lamp5_lhx6_col,
-                                                           mean_pvalb = pvalb_col,
-                                                           mean_chandelier = chandelier_col,
-                                                           mean_sst = sst_col,
-                                                           mean_sst_chodl = sst_chodl_col),
+  col_annot = ComplexHeatmap::HeatmapAnnotation(agg_vip = col_annot_data$agg_vip,
+                                                agg_sncg = col_annot_data$agg_sncg,
+                                                agg_lamp5 = col_annot_data$agg_lamp5,
+                                                agg_lamp5_lhx6 = col_annot_data$agg_lamp5_lhx6,
+                                                agg_pvalb = col_annot_data$agg_pvalb,
+                                                agg_chandelier = col_annot_data$agg_chandelier,
+                                                agg_sst = col_annot_data$agg_sst,
+                                                agg_sst_chodl = col_annot_data$agg_sst_chodl,
+                                                col = list(agg_vip = vip_col,
+                                                           agg_sncg = sncg_col, 
+                                                           agg_lamp5 = lamp5_col,
+                                                           agg_lamp5_lhx6 = lamp5_lhx6_col,
+                                                           agg_pvalb = pvalb_col,
+                                                           agg_chandelier = chandelier_col,
+                                                           agg_sst = sst_col,
+                                                           agg_sst_chodl = sst_chodl_col),
                                                 show_legend = c(T, F, F, F, F, F, F, F))
   
   
@@ -1132,43 +1191,48 @@ dataset_name = 'Sesten Human/Chimp/Macaque/Marm. GABA: agg. Mammal MetaMarkers'
                                                       agg_lamp5, agg_lamp5_lhx6,
                                                       agg_pvalb, agg_chandelier, 
                                                       agg_sst, agg_sst_chodl) %>%
-    group_by(seurat_clusters) %>% summarise(mean_vip = mean(agg_vip), mean_sncg = mean(agg_sncg), 
-                                            mean_pax6 = mean(agg_pax6), mean_lamp5 = mean(agg_lamp5),
-                                            mean_lamp5_lhx6 = mean(agg_lamp5_lhx6),
-                                            mean_pvalb = mean(agg_pvalb), mean_chandelier = mean(agg_chandelier),
-                                            mean_sst = mean(agg_sst),mean_sst_chodl = mean(agg_sst_chodl))
+    group_by(seurat_clusters) %>% summarise(agg_vip = mean(agg_vip), agg_sncg = mean(agg_sncg), 
+                                            agg_pax6 = mean(agg_pax6), agg_lamp5 = mean(agg_lamp5),
+                                            agg_lamp5_lhx6 = mean(agg_lamp5_lhx6),
+                                            agg_pvalb = mean(agg_pvalb), agg_chandelier = mean(agg_chandelier),
+                                            agg_sst = mean(agg_sst),agg_sst_chodl = mean(agg_sst_chodl))
   
-  col_annot_data = as.data.frame(apply(col_annot_data[ ,c(2:ncol(col_annot_data))], 2, function(x) x/max(x) ))
+  col_annot_data = col_annot_data %>% select(-c(seurat_clusters))
+  celltype_cent_means = colMeans(col_annot_data)
+  #Dividing each celltype centroid by the mean centroid across clusters to get enrichment
+  col_annot_data = mapply('/', col_annot_data, celltype_cent_means)
+  #Then max scale so each cell-type is 0-1
+  col_annot_data = as.data.frame(apply(col_annot_data, 2, function(x) x/max(x) ))
   
   
-  vip_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Vip']]))
-  sncg_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sncg']]))
-  pax6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pax6']]))
-  lamp5_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5']]))
-  lamp5_lhx6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
-  pvalb_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pvalb']]))
-  chandelier_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Chandelier']]))
-  sst_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst']]))
-  sst_chodl_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
+  vip_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Vip']]))
+  sncg_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sncg']]))
+  pax6_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Pax6']]))
+  lamp5_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Lamp5']]))
+  lamp5_lhx6_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
+  pvalb_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Pvalb']]))
+  chandelier_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Chandelier']]))
+  sst_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sst']]))
+  sst_chodl_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
   
-  col_annot = ComplexHeatmap::HeatmapAnnotation(mean_vip = col_annot_data$mean_vip,
-                                                mean_sncg = col_annot_data$mean_sncg,
-                                                mean_pax6 = col_annot_data$mean_pax6,
-                                                mean_lamp5 = col_annot_data$mean_lamp5,
-                                                mean_lamp5_lhx6 = col_annot_data$mean_lamp5_lhx6,
-                                                mean_pvalb = col_annot_data$mean_pvalb,
-                                                mean_chandelier = col_annot_data$mean_chandelier,
-                                                mean_sst = col_annot_data$mean_sst,
-                                                mean_sst_chodl = col_annot_data$mean_sst_chodl,
-                                                col = list(mean_vip = vip_col,
-                                                           mean_sncg = sncg_col, 
-                                                           mean_pax6 = pax6_col,
-                                                           mean_lamp5 = lamp5_col,
-                                                           mean_lamp5_lhx6 = lamp5_lhx6_col,
-                                                           mean_pvalb = pvalb_col,
-                                                           mean_chandelier = chandelier_col,
-                                                           mean_sst = sst_col,
-                                                           mean_sst_chodl = sst_chodl_col),
+  col_annot = ComplexHeatmap::HeatmapAnnotation(agg_vip = col_annot_data$agg_vip,
+                                                agg_sncg = col_annot_data$agg_sncg,
+                                                agg_pax6 = col_annot_data$agg_pax6,
+                                                agg_lamp5 = col_annot_data$agg_lamp5,
+                                                agg_lamp5_lhx6 = col_annot_data$agg_lamp5_lhx6,
+                                                agg_pvalb = col_annot_data$agg_pvalb,
+                                                agg_chandelier = col_annot_data$agg_chandelier,
+                                                agg_sst = col_annot_data$agg_sst,
+                                                agg_sst_chodl = col_annot_data$agg_sst_chodl,
+                                                col = list(agg_vip = vip_col,
+                                                           agg_sncg = sncg_col, 
+                                                           agg_pax6 = pax6_col,
+                                                           agg_lamp5 = lamp5_col,
+                                                           agg_lamp5_lhx6 = lamp5_lhx6_col,
+                                                           agg_pvalb = pvalb_col,
+                                                           agg_chandelier = chandelier_col,
+                                                           agg_sst = sst_col,
+                                                           agg_sst_chodl = sst_chodl_col),
                                                 show_legend = c(T, F, F, F, F, F, F, F, F))
   
   
@@ -1198,6 +1262,50 @@ FeaturePlot(sesten_gaba_data, features = 'agg_sncg')
 FeaturePlot(sesten_gaba_data, features = 'agg_pax6')
 FeaturePlot(sesten_gaba_data, features = 'agg_lamp5')
 ```
+
+Check out the new subclass markers
+
+```{r}
+
+sesten_gaba_data$temp_subclass_annot = rep(NA, length = ncol(sesten_gaba_data))
+sesten_gaba_data$temp_subclass_annot[sesten_gaba_data$seurat_clusters %in% c(8)] = 'Chandelier'
+sesten_gaba_data$temp_subclass_annot[sesten_gaba_data$seurat_clusters %in% c(0, 3, 6, 23)] = 'Pvalb'
+sesten_gaba_data$temp_subclass_annot[sesten_gaba_data$seurat_clusters %in% c(2, 5, 7, 13, 14, 18, 21)] = 'Sst'
+sesten_gaba_data$temp_subclass_annot[sesten_gaba_data$seurat_clusters %in% c(25)] = 'Sst Chodl'
+
+sesten_gaba_data$temp_subclass_annot[sesten_gaba_data$seurat_clusters %in% c(15, 1)] = 'Lamp5'
+sesten_gaba_data$temp_subclass_annot[sesten_gaba_data$seurat_clusters %in% c(11)] = 'Lamp5 Lhx6'
+sesten_gaba_data$temp_subclass_annot[sesten_gaba_data$seurat_clusters %in% c(4, 9, 10, 12, 17, 19)] = 'Vip'
+sesten_gaba_data$temp_subclass_annot[sesten_gaba_data$seurat_clusters %in% c(16, 20, 22, 24)] = 'New CGE subclass'
+
+
+sesten_temp_new_subclass_markers = compute_markers(sesten_gaba_data@assays$RNA@data, sesten_gaba_data$temp_subclass_annot)
+sesten_temp_new_subclass_markers %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = 20)
+```
+
+
+
+```{r}
+
+new_subclass_markers = list(
+  caglayan_markers = caglayan_temp_new_subclass_markers,
+  sesten_markers = sesten_temp_new_subclass_markers
+)
+
+
+new_subclass_metamarkers = make_meta_markers(new_subclass_markers, detailed_stats = T)
+
+new_subclass_metamarkers %>% group_by(cell_type) %>% filter(rank <= 20)
+
+
+new_subclass_metamarkers %>% filter(gene == 'LHX6')
+
+```
+
+
+
+
+
 
 
 ```{r}
@@ -1269,43 +1377,48 @@ dataset_name = 'Sesten Human/Chimp/Macaque/Marm. GABA: agg. Mouse MetaMarkers'
                                                       agg_lamp5, agg_lamp5_lhx6,
                                                       agg_pvalb, agg_chandelier, 
                                                       agg_sst, agg_sst_chodl) %>%
-    group_by(seurat_clusters) %>% summarise(mean_vip = mean(agg_vip), mean_sncg = mean(agg_sncg), 
-                                            mean_pax6 = mean(agg_pax6), mean_lamp5 = mean(agg_lamp5),
-                                            mean_lamp5_lhx6 = mean(agg_lamp5_lhx6),
-                                            mean_pvalb = mean(agg_pvalb), mean_chandelier = mean(agg_chandelier),
-                                            mean_sst = mean(agg_sst),mean_sst_chodl = mean(agg_sst_chodl))
+    group_by(seurat_clusters) %>% summarise(agg_vip = mean(agg_vip), agg_sncg = mean(agg_sncg), 
+                                            agg_pax6 = mean(agg_pax6), agg_lamp5 = mean(agg_lamp5),
+                                            agg_lamp5_lhx6 = mean(agg_lamp5_lhx6),
+                                            agg_pvalb = mean(agg_pvalb), agg_chandelier = mean(agg_chandelier),
+                                            agg_sst = mean(agg_sst),agg_sst_chodl = mean(agg_sst_chodl))
   
-  col_annot_data = as.data.frame(apply(col_annot_data[ ,c(2:ncol(col_annot_data))], 2, function(x) x/max(x) ))
+  col_annot_data = col_annot_data %>% select(-c(seurat_clusters))
+  celltype_cent_means = colMeans(col_annot_data)
+  #Dividing each celltype centroid by the mean centroid across clusters to get enrichment
+  col_annot_data = mapply('/', col_annot_data, celltype_cent_means)
+  #Then max scale so each cell-type is 0-1
+  col_annot_data = as.data.frame(apply(col_annot_data, 2, function(x) x/max(x) ))
   
   
-  vip_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Vip']]))
-  sncg_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sncg']]))
-  pax6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pax6']]))
-  lamp5_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5']]))
-  lamp5_lhx6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
-  pvalb_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pvalb']]))
-  chandelier_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Chandelier']]))
-  sst_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst']]))
-  sst_chodl_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
+  vip_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Vip']]))
+  sncg_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sncg']]))
+  pax6_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Pax6']]))
+  lamp5_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Lamp5']]))
+  lamp5_lhx6_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
+  pvalb_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Pvalb']]))
+  chandelier_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Chandelier']]))
+  sst_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sst']]))
+  sst_chodl_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
   
-  col_annot = ComplexHeatmap::HeatmapAnnotation(mean_vip = col_annot_data$mean_vip,
-                                                mean_sncg = col_annot_data$mean_sncg,
-                                                mean_pax6 = col_annot_data$mean_pax6,
-                                                mean_lamp5 = col_annot_data$mean_lamp5,
-                                                mean_lamp5_lhx6 = col_annot_data$mean_lamp5_lhx6,
-                                                mean_pvalb = col_annot_data$mean_pvalb,
-                                                mean_chandelier = col_annot_data$mean_chandelier,
-                                                mean_sst = col_annot_data$mean_sst,
-                                                mean_sst_chodl = col_annot_data$mean_sst_chodl,
-                                                col = list(mean_vip = vip_col,
-                                                           mean_sncg = sncg_col, 
-                                                           mean_pax6 = pax6_col,
-                                                           mean_lamp5 = lamp5_col,
-                                                           mean_lamp5_lhx6 = lamp5_lhx6_col,
-                                                           mean_pvalb = pvalb_col,
-                                                           mean_chandelier = chandelier_col,
-                                                           mean_sst = sst_col,
-                                                           mean_sst_chodl = sst_chodl_col),
+  col_annot = ComplexHeatmap::HeatmapAnnotation(agg_vip = col_annot_data$agg_vip,
+                                                agg_sncg = col_annot_data$agg_sncg,
+                                                agg_pax6 = col_annot_data$agg_pax6,
+                                                agg_lamp5 = col_annot_data$agg_lamp5,
+                                                agg_lamp5_lhx6 = col_annot_data$agg_lamp5_lhx6,
+                                                agg_pvalb = col_annot_data$agg_pvalb,
+                                                agg_chandelier = col_annot_data$agg_chandelier,
+                                                agg_sst = col_annot_data$agg_sst,
+                                                agg_sst_chodl = col_annot_data$agg_sst_chodl,
+                                                col = list(agg_vip = vip_col,
+                                                           agg_sncg = sncg_col, 
+                                                           agg_pax6 = pax6_col,
+                                                           agg_lamp5 = lamp5_col,
+                                                           agg_lamp5_lhx6 = lamp5_lhx6_col,
+                                                           agg_pvalb = pvalb_col,
+                                                           agg_chandelier = chandelier_col,
+                                                           agg_sst = sst_col,
+                                                           agg_sst_chodl = sst_chodl_col),
                                                 show_legend = c(T, F, F, F, F, F, F, F, F))
   
   
@@ -1399,40 +1512,45 @@ dataset_name = 'Sesten Human/Chimp/Macaque/Marm. GABA: agg. ori. Mouse MetaMarke
                                                       agg_lamp5, agg_lamp5_lhx6,
                                                       agg_pvalb, agg_chandelier, 
                                                       agg_sst, agg_sst_chodl) %>%
-    group_by(seurat_clusters) %>% summarise(mean_vip = mean(agg_vip), mean_sncg = mean(agg_sncg), 
-                                            mean_lamp5 = mean(agg_lamp5),
-                                            mean_lamp5_lhx6 = mean(agg_lamp5_lhx6),
-                                            mean_pvalb = mean(agg_pvalb), mean_chandelier = mean(agg_chandelier),
-                                            mean_sst = mean(agg_sst),mean_sst_chodl = mean(agg_sst_chodl))
+    group_by(seurat_clusters) %>% summarise(agg_vip = mean(agg_vip), agg_sncg = mean(agg_sncg), 
+                                            agg_lamp5 = mean(agg_lamp5),
+                                            agg_lamp5_lhx6 = mean(agg_lamp5_lhx6),
+                                            agg_pvalb = mean(agg_pvalb), agg_chandelier = mean(agg_chandelier),
+                                            agg_sst = mean(agg_sst),agg_sst_chodl = mean(agg_sst_chodl))
   
-  col_annot_data = as.data.frame(apply(col_annot_data[ ,c(2:ncol(col_annot_data))], 2, function(x) x/max(x) ))
+  col_annot_data = col_annot_data %>% select(-c(seurat_clusters))
+  celltype_cent_means = colMeans(col_annot_data)
+  #Dividing each celltype centroid by the mean centroid across clusters to get enrichment
+  col_annot_data = mapply('/', col_annot_data, celltype_cent_means)
+  #Then max scale so each cell-type is 0-1
+  col_annot_data = as.data.frame(apply(col_annot_data, 2, function(x) x/max(x) ))
+
   
+  vip_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Vip']]))
+  sncg_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sncg']]))
+  lamp5_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Lamp5']]))
+  lamp5_lhx6_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
+  pvalb_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Pvalb']]))
+  chandelier_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Chandelier']]))
+  sst_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sst']]))
+  sst_chodl_col = circlize::colorRamp2(c(0, .45, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
   
-  vip_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Vip']]))
-  sncg_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sncg']]))
-  lamp5_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5']]))
-  lamp5_lhx6_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Lamp5 Lhx6']]))
-  pvalb_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Pvalb']]))
-  chandelier_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Chandelier']]))
-  sst_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst']]))
-  sst_chodl_col = circlize::colorRamp2(c(0, .5, 1), c("white","white", celltype_color_palette[['Sst Chodl']]))
-  
-  col_annot = ComplexHeatmap::HeatmapAnnotation(mean_vip = col_annot_data$mean_vip,
-                                                mean_sncg = col_annot_data$mean_sncg,
-                                                mean_lamp5 = col_annot_data$mean_lamp5,
-                                                mean_lamp5_lhx6 = col_annot_data$mean_lamp5_lhx6,
-                                                mean_pvalb = col_annot_data$mean_pvalb,
-                                                mean_chandelier = col_annot_data$mean_chandelier,
-                                                mean_sst = col_annot_data$mean_sst,
-                                                mean_sst_chodl = col_annot_data$mean_sst_chodl,
-                                                col = list(mean_vip = vip_col,
-                                                           mean_sncg = sncg_col, 
-                                                           mean_lamp5 = lamp5_col,
-                                                           mean_lamp5_lhx6 = lamp5_lhx6_col,
-                                                           mean_pvalb = pvalb_col,
-                                                           mean_chandelier = chandelier_col,
-                                                           mean_sst = sst_col,
-                                                           mean_sst_chodl = sst_chodl_col),
+  col_annot = ComplexHeatmap::HeatmapAnnotation(agg_vip = col_annot_data$agg_vip,
+                                                agg_sncg = col_annot_data$agg_sncg,
+                                                agg_lamp5 = col_annot_data$agg_lamp5,
+                                                agg_lamp5_lhx6 = col_annot_data$agg_lamp5_lhx6,
+                                                agg_pvalb = col_annot_data$agg_pvalb,
+                                                agg_chandelier = col_annot_data$agg_chandelier,
+                                                agg_sst = col_annot_data$agg_sst,
+                                                agg_sst_chodl = col_annot_data$agg_sst_chodl,
+                                                col = list(agg_vip = vip_col,
+                                                           agg_sncg = sncg_col, 
+                                                           agg_lamp5 = lamp5_col,
+                                                           agg_lamp5_lhx6 = lamp5_lhx6_col,
+                                                           agg_pvalb = pvalb_col,
+                                                           agg_chandelier = chandelier_col,
+                                                           agg_sst = sst_col,
+                                                           agg_sst_chodl = sst_chodl_col),
                                                 show_legend = c(T, F, F, F, F, F, F, F))
   
   
