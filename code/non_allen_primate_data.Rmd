@@ -196,6 +196,7 @@ FeaturePlot(caglayan_chimp_inhib, features = 'PALMD', slot = 'scale.data')
 
 
 ```{r}
+
 caglayan_chimp_inhib_markers = compute_markers(caglayan_chimp_inhib@assays$RNA@data, caglayan_chimp_inhib$seurat_clusters)
 gc()
 
@@ -263,6 +264,20 @@ caglayan_macaque_inhib_class_markers %>% filter(gene == 'CXCL14') %>% arrange(de
 ```
 
 
+```{r}
+
+
+export_markers(caglayan_macaque_inhib_markers, '/inkwell03/werner/sc_data/primate_caglayan_konopka/species_meta_markers/macaque_gaba_celltype_markers.csv' )
+export_markers(caglayan_chimp_inhib_markers, '/inkwell03/werner/sc_data/primate_caglayan_konopka/species_meta_markers/chimp_gaba_celltype_markers.csv' )
+export_markers(caglayan_human_inhib_markers, '/inkwell03/werner/sc_data/primate_caglayan_konopka/species_meta_markers/human_gaba_celltype_markers.csv' )
+
+
+export_markers(caglayan_macaque_inhib_class_markers, '/inkwell03/werner/sc_data/primate_caglayan_konopka/species_meta_markers/macaque_gaba_class_markers.csv' )
+export_markers(caglayan_chimp_inhib_class_markers, '/inkwell03/werner/sc_data/primate_caglayan_konopka/species_meta_markers/chimp_gaba_class_markers.csv' )
+export_markers(caglayan_human_inhib_class_markers, '/inkwell03/werner/sc_data/primate_caglayan_konopka/species_meta_markers/human_gaba_class_markers.csv' )
+
+```
+
 
 ```{r}
 
@@ -304,12 +319,16 @@ marker_gene_df = rbind(pax6_DE_df, sncg_DE_df)
 
 
 
-ggplot(marker_gene_df  , aes(x = log2(CGE), y = log2(MGE), color = gene, shape = species)) + geom_point(size = 3) +
+ggplot(marker_gene_df  , aes(x = log2(CGE), y = log2(MGE), color = gene, shape = species)) + geom_point(size = 5,alpha = .75) +
   xlab('CGE log2(FC)') + ylab('MGE log2(FC)') +
   scale_color_manual(values = c('SNCG' = celltype_color_palette[['Sncg']], 'PAX6' = celltype_color_palette[['Pax6']])) + 
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'red') +
   geom_vline(xintercept = 0, linetype = 'dashed', color = 'red') +
   theme_classic() + ggtitle('Caglayan cross-primate data')
+
+ggsave(filename = 'caglayan_pax6_sncg_MGE_CGE_DE_scatter.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 3, width = 4)
+
 
 ```
 
@@ -927,7 +946,6 @@ sestan_data
 ```
 
 
-
 ```{r}
 
 sestan_data@assays$RNA@meta.features
@@ -951,7 +969,112 @@ sestan_inhib[[]]
 DimPlot(sestan_inhib, reduction = "umap", group.by = 'species')
 DimPlot(sestan_inhib, reduction = "umap", group.by = 'subclass')
 
+
+cge_mge_label = rep('CGE', length = ncol(sestan_inhib))
+cge_mge_label[sestan_inhib$subclass %in% c('PVALB','PVALB ChC','SST','SST HGF','SST NPY')] = 'MGE'
+
+table(cge_mge_label)
+table(sestan_inhib$subclass)
+
+
+sestan_inhib$cge_mge = cge_mge_label
+
 ```
+
+
+Get the same SNCG and PAX6 DE plot as from the Caglayan data, split by species, normalize, get markers, etc.
+
+
+```{r}
+
+sestan_human_data = subset(sestan_inhib, subset = species == 'Human')
+sestan_chimp_data = subset(sestan_inhib, subset = species == 'Chimpanzee')
+sestan_macaque_data = subset(sestan_inhib, subset = species == 'Rhesus')
+sestan_marmoset_data = subset(sestan_inhib, subset = species == 'Marmoset')
+
+
+sestan_human_data = NormalizeData(sestan_human_data, normalization.method = 'RC', scale.factor = 1e6, verbose = F)
+sestan_human_inhib_class_markers = compute_markers(sestan_human_data@assays$RNA@data, sestan_human_data$cge_mge)
+gc()
+sestan_chimp_data = NormalizeData(sestan_chimp_data, normalization.method = 'RC', scale.factor = 1e6, verbose = F)
+sestan_chimp_inhib_class_markers = compute_markers(sestan_chimp_data@assays$RNA@data, sestan_chimp_data$cge_mge)
+gc()
+sestan_macaque_data = NormalizeData(sestan_macaque_data, normalization.method = 'RC', scale.factor = 1e6, verbose = F)
+sestan_macaque_inhib_class_markers = compute_markers(sestan_macaque_data@assays$RNA@data, sestan_macaque_data$cge_mge)
+gc()
+sestan_marmoset_data = NormalizeData(sestan_marmoset_data, normalization.method = 'RC', scale.factor = 1e6, verbose = F)
+sestan_marmoset_inhib_class_markers = compute_markers(sestan_marmoset_data@assays$RNA@data, sestan_marmoset_data$cge_mge)
+gc()
+
+```
+
+
+
+```{r}
+
+pax6_sp_1 = sestan_human_inhib_class_markers %>% filter(gene == 'PAX6') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'human')
+
+pax6_sp_2 = sestan_chimp_inhib_class_markers %>% filter(gene == 'PAX6') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'chimp')
+
+pax6_sp_3 = sestan_macaque_inhib_class_markers %>% filter(gene == 'PAX6') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'macaque')
+
+pax6_sp_4 = sestan_marmoset_inhib_class_markers %>% filter(gene == 'PAX6') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'marmoset')
+
+pax6_DE_df = do.call('rbind', list(pax6_sp_1 , pax6_sp_2 , pax6_sp_3, pax6_sp_4))
+pax6_DE_df = pax6_DE_df %>% tidyr::pivot_wider(names_from = cell_type, values_from = fold_change)
+
+
+sncg_sp_1 = sestan_human_inhib_class_markers %>% filter(gene == 'SNCG') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'human')
+
+sncg_sp_2 = sestan_chimp_inhib_class_markers %>% filter(gene == 'SNCG') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'chimp')
+
+sncg_sp_3 = sestan_macaque_inhib_class_markers %>% filter(gene == 'SNCG') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'macaque')
+
+sncg_sp_4 = sestan_marmoset_inhib_class_markers %>% filter(gene == 'SNCG') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'marmoset')
+
+
+sncg_DE_df = do.call('rbind', list(sncg_sp_1 , sncg_sp_2 , sncg_sp_3, sncg_sp_4))
+sncg_DE_df = sncg_DE_df %>% tidyr::pivot_wider(names_from = cell_type, values_from = fold_change)
+
+
+marker_gene_df = rbind(pax6_DE_df, sncg_DE_df)
+
+
+
+ggplot(marker_gene_df  , aes(x = log2(CGE), y = log2(MGE), color = gene, shape = species)) + geom_point(size = 5,alpha = .75) +
+  xlab('CGE log2(FC)') + ylab('MGE log2(FC)') +
+  scale_color_manual(values = c('SNCG' = celltype_color_palette[['Sncg']], 'PAX6' = celltype_color_palette[['Pax6']])) + 
+  geom_hline(yintercept = 0, linetype = 'dashed', color = 'red') +
+  geom_vline(xintercept = 0, linetype = 'dashed', color = 'red') +
+  theme_classic() + ggtitle('Sesten cross-primate data')
+
+ggsave(filename = 'sesten_pax6_sncg_MGE_CGE_DE_scatter.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 3, width = 4)
+
+
+```
+
+
+
+
+
+
 
 
 
@@ -1569,6 +1692,312 @@ cent_hm
 dev.off()
 
 ```
+
+
+
+######################################
+Perhaps instead, use the non-allen data to make a specific point. The two changes we're making to the allen is relabeling their Sncg as Pax6 and then splitting the VIP into Vip and Sncg. We already know Sncg is not strongly DE in the Allen primate data, we can show that again in the non-allen data.
+
+But also, just run MetaNeighbor using just the Mouse old Vip-Sncg (new Vip-Sncg-Pax6) clusters against de novo clustered non-allen data.
+
+The goal is to show the we achieve distinct matching of these subclass labels in completely independent primate data.
+
+
+########################################
+
+
+```{r}
+
+library(MetaNeighbor)
+
+```
+
+
+```{r}
+
+sesten_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_ma_sestan/sestan_integrated_gaba.rds')
+
+sesten_gaba_data
+table(sesten_gaba_data$seurat_clusters)
+
+```
+
+
+And the mouse data with all primate subclass and orthology annotations
+
+```{r}
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba_primate_MN.rds')
+zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba_primate_MN.rds')
+zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba_primate_MN.rds')
+zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba_primate_MN.rds')
+zeng_10xv2_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba_primate_MN.rds')
+zeng_10xv3_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv3_gaba_primate_MN.rds')
+macosko_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba_primate_MN.rds')
+
+mouse_genes = rownames(tasic18)
+
+zeng_10x_cells$cell_cluster = as.character(zeng_10x_cells$cell_cluster)
+zeng_10x_cells$cell_subclass = as.character(zeng_10x_cells$cell_subclass)
+zeng_10x_nuclei$cell_cluster = as.character(zeng_10x_nuclei$cell_cluster)
+zeng_10x_nuclei$cell_subclass = as.character(zeng_10x_nuclei$cell_subclass)
+zeng_smart_nuclei$cell_cluster = as.character(zeng_smart_nuclei$cell_cluster)
+zeng_smart_nuclei$cell_subclass = as.character(zeng_smart_nuclei$cell_subclass)
+zeng_smart_cells$cell_cluster = as.character(zeng_smart_cells$cell_cluster)
+zeng_smart_cells$cell_subclass = as.character(zeng_smart_cells$cell_subclass)
+
+```
+
+
+Filter the mouse data to just the mouse Vip and Mouse Sncg clusters.
+Filter for the gene intersect across all the data
+Convert Sestan into a SCE object, split by species
+Run 1vsBest MN
+
+
+```{r}
+DefaultAssay(sesten_gaba_data ) = 'RNA'
+
+
+sesten_gaba_data = as.SingleCellExperiment(sesten_gaba_data)
+names(assays(sesten_gaba_data)) = c('counts','cpm')
+
+sesten_gaba_data
+
+sesten_genes = rownames(sesten_gaba_data)
+
+
+intersect_genes = intersect(mouse_genes, sesten_genes)
+length(intersect_genes)
+
+```
+
+first split and filter the sestan data
+```{r}
+sesten_gene_index = rownames(sesten_gaba_data) %in% intersect_genes
+
+human_cell_index = sesten_gaba_data$species == 'Human'
+chimp_cell_index = sesten_gaba_data$species == 'Chimpanzee'
+macaque_cell_index = sesten_gaba_data$species == 'Rhesus'
+marmoset_cell_index = sesten_gaba_data$species == 'Marmoset'
+
+
+sesten_human = sesten_gaba_data[sesten_gene_index, human_cell_index]
+sesten_chimp = sesten_gaba_data[sesten_gene_index, chimp_cell_index]
+sesten_macaque = sesten_gaba_data[sesten_gene_index, macaque_cell_index]
+sesten_marmoset = sesten_gaba_data[sesten_gene_index, marmoset_cell_index]
+
+rm(sesten_gaba_data)
+gc()
+
+```
+
+
+now filter the mouse_data
+
+```{r}
+#tasic18
+tasic18$cell_subclass[tasic18$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+tasic18$cell_subclass[tasic18$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+tasic18$cell_subclass[tasic18$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+tasic18$cell_subclass[tasic18$cell_subclass == 'Serpinf1'] = 'Vip'
+
+keep_meta = colData(tasic18)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+colData(tasic18) = keep_meta
+
+mouse_gene_index = rownames(tasic18) %in% intersect_genes
+tasic18 = tasic18[mouse_gene_index, ]
+
+#zeng_10x_cells
+zeng_10x_cells$cell_subclass[as.character(zeng_10x_cells$cell_cluster) == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_10x_cells$cell_subclass[as.character(zeng_10x_cells$cell_cluster) == 'Pvalb Vipr2'] = 'Chandelier'
+zeng_10x_cells$cell_subclass[as.character(zeng_10x_cells$cell_cluster) == 'Sst Chodl'] = 'Sst Chodl'
+
+keep_meta = colData(zeng_10x_cells)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+colData(zeng_10x_cells) = keep_meta
+
+mouse_gene_index = rownames(zeng_10x_cells) %in% intersect_genes
+zeng_10x_cells = zeng_10x_cells[mouse_gene_index, ]
+
+#zeng_10x_nuclei
+zeng_10x_nuclei$cell_subclass[as.character(zeng_10x_nuclei$cell_cluster) == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_10x_nuclei$cell_subclass[as.character(zeng_10x_nuclei$cell_cluster) == 'Pvalb Vipr2'] = 'Chandelier'
+zeng_10x_nuclei$cell_subclass[as.character(zeng_10x_nuclei$cell_cluster) == 'Sst Chodl'] = 'Sst Chodl'
+
+keep_meta = colData(zeng_10x_nuclei)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+colData(zeng_10x_nuclei) = keep_meta
+
+mouse_gene_index = rownames(zeng_10x_nuclei) %in% intersect_genes
+zeng_10x_nuclei = zeng_10x_nuclei[mouse_gene_index, ]
+
+#zeng_smart_nuclei
+zeng_smart_nuclei$cell_subclass[as.character(zeng_smart_nuclei$cell_cluster) == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_smart_nuclei$cell_subclass[as.character(zeng_smart_nuclei$cell_cluster) == 'Pvalb Vipr2'] = 'Chandelier'
+zeng_smart_nuclei$cell_subclass[as.character(zeng_smart_nuclei$cell_cluster) == 'Sst Chodl'] = 'Sst Chodl'
+
+keep_meta = colData(zeng_smart_nuclei)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+colData(zeng_smart_nuclei) = keep_meta
+
+mouse_gene_index = rownames(zeng_smart_nuclei) %in% intersect_genes
+zeng_smart_nuclei = zeng_smart_nuclei[mouse_gene_index, ]
+
+#zeng_smart_cells
+zeng_smart_cells$cell_subclass[as.character(zeng_smart_cells$cell_cluster) == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_smart_cells$cell_subclass[as.character(zeng_smart_cells$cell_cluster) == 'Pvalb Vipr2'] = 'Chandelier'
+zeng_smart_cells$cell_subclass[as.character(zeng_smart_cells$cell_cluster) == 'Sst Chodl'] = 'Sst Chodl'
+
+keep_meta = colData(zeng_smart_cells)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+colData(zeng_smart_cells) = keep_meta
+
+mouse_gene_index = rownames(zeng_smart_cells) %in% intersect_genes
+zeng_smart_cells = zeng_smart_cells[mouse_gene_index, ]
+
+#zeng_10xv2_wba
+keep_meta = colData(zeng_10xv2_wba)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+colData(zeng_10xv2_wba) = keep_meta
+
+mouse_gene_index = rownames(zeng_10xv2_wba) %in% intersect_genes
+zeng_10xv2_wba = zeng_10xv2_wba[mouse_gene_index, ]
+
+#zeng_10xv3_wba
+keep_meta = colData(zeng_10xv3_wba)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+colData(zeng_10xv3_wba) = keep_meta
+
+mouse_gene_index = rownames(zeng_10xv3_wba) %in% intersect_genes
+zeng_10xv3_wba = zeng_10xv3_wba[mouse_gene_index, ]
+
+#macosko_wba
+keep_meta = colData(macosko_wba)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+colData(macosko_wba) = keep_meta
+
+mouse_gene_index = rownames(macosko_wba) %in% intersect_genes
+macosko_wba = macosko_wba[mouse_gene_index, ]
+
+gc()
+```
+
+
+
+```{r}
+
+human_meta = data.frame(cell_cluster = as.character(sesten_human$seurat_clusters), cell_subclass = NA, primate_subclass = NA) %>% DataFrame()
+colData(sesten_human) = human_meta
+chimp_meta = data.frame(cell_cluster = as.character(sesten_chimp$seurat_clusters), cell_subclass = NA, primate_subclass = NA) %>% DataFrame()
+colData(sesten_chimp) = chimp_meta
+macaque_meta = data.frame(cell_cluster = as.character(sesten_macaque$seurat_clusters), cell_subclass = NA, primate_subclass = NA) %>% DataFrame()
+colData(sesten_macaque) = macaque_meta
+marmoset_meta = data.frame(cell_cluster = as.character(sesten_marmoset$seurat_clusters), cell_subclass = NA, primate_subclass = NA) %>% DataFrame()
+colData(sesten_marmoset) = marmoset_meta
+
+
+
+
+```
+
+
+
+
+```{r}
+
+sesten_mouse_sce_list = list(
+  tasic18 = tasic18,
+  zeng_10x_cells = zeng_10x_cells,
+  zeng_10x_nuclei = zeng_10x_nuclei,
+  zeng_smart_cells = zeng_smart_cells,
+  zeng_smart_nuclei = zeng_smart_nuclei,
+  zeng_10xv2_wba = zeng_10xv2_wba,
+  zeng_10xv3_wba = zeng_10xv3_wba,
+  macosko_wba = macosko_wba, 
+  sesten_human = sesten_human, 
+  sesten_chimp = sesten_chimp,
+  sesten_macaque = sesten_macaque, 
+  sesten_marmoset = sesten_marmoset
+)
+
+```
+
+
+
+
+```{r}
+merged_sesten_mouse = mergeSCE(sesten_mouse_sce_list)
+dim(merged_sesten_mouse)
+
+```
+
+
+Get rid of the list of sce objects for space
+```{r}
+
+rm(sesten_mouse_sce_list)
+gc()
+```
+
+#########
+STOPPED
+#########
+
+
+
+
+Run MetaNeighbor
+
+Get highly variable genes
+```{r}
+start = Sys.time()
+global_hvgs = variableGenes(dat = merged_sesten_mouse , exp_labels = merged_sesten_mouse$study_id, min_recurrence = 5)
+length(global_hvgs)
+Sys.time() - start
+```
+
+Just use the top 1000 hvgs
+```{r}
+global_hvgs = global_hvgs[1:1000]
+
+```
+
+
+And now the one-vs-best cell-types
+
+```{r}
+start = Sys.time()
+sesten_mouse_best_hits = MetaNeighborUS(var_genes = global_hvgs, 
+                              dat = merged_sesten_mouse, 
+                              study_id = merged_sesten_mouse$study_id,
+                              cell_type = merged_sesten_mouse$cell_cluster,
+                              fast_version = T,
+                              one_vs_best = T, symmetric_output = F)
+
+
+Sys.time() - start
+gc()
+
+
+
+#pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/all_within_mouse_data_1vsbest.pdf', 
+#    useDingbats = F, height = 25, width = 25)
+plotHeatmap(sesten_mouse_best_hits, cex = .2)
+#dev.off()
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
