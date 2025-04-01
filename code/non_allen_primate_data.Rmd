@@ -1709,7 +1709,7 @@ The goal is to show the we achieve distinct matching of these subclass labels in
 ```{r}
 
 library(MetaNeighbor)
-
+library(ComplexHeatmap)
 ```
 
 
@@ -1931,12 +1931,9 @@ Get rid of the list of sce objects for space
 
 rm(sesten_mouse_sce_list)
 gc()
+
+merged_sesten_mouse
 ```
-
-#########
-STOPPED
-#########
-
 
 
 
@@ -1974,12 +1971,22 @@ gc()
 
 
 
-#pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/all_within_mouse_data_1vsbest.pdf', 
-#    useDingbats = F, height = 25, width = 25)
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/sesten_vs_mouse_1vsbest.pdf', 
+    useDingbats = F, height = 25, width = 25)
 plotHeatmap(sesten_mouse_best_hits, cex = .2)
-#dev.off()
+dev.off()
+
+dim(sesten_mouse_best_hits)
+
+```
 
 
+
+
+```{r}
+
+saveRDS(sesten_mouse_best_hits, 
+        file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/sesten_vs_mouse_1vsbestMN.rds')
 
 ```
 
@@ -1987,7 +1994,131 @@ plotHeatmap(sesten_mouse_best_hits, cex = .2)
 
 
 
+```{r}
 
+r_names = rownames(sesten_mouse_best_hits)
+
+index = match(r_names, paste(merged_sesten_mouse$study_id, merged_sesten_mouse$cell_cluster, sep = '|'))
+mouse_orth_subclass = merged_sesten_mouse$primate_subclass[index]
+mouse_original_subclass = merged_sesten_mouse$cell_subclass[index]
+
+c_index = grepl('sesten', r_names)
+r_index = mouse_orth_subclass %in% c('Pax6','Sncg','Vip')
+
+
+test_metasubclass_hits = sesten_mouse_best_hits[r_index, c_index]
+
+
+row_keep_index = rowSums(!is.na(test_metasubclass_hits)) != 0
+test_metasubclass_hits = test_metasubclass_hits[row_keep_index, ]
+
+m = test_metasubclass_hits 
+#Cluster first, need to swap NAs to 0 for clustering
+m[is.na(m)] <- 0
+row_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-m), method = "average"))
+col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(m)), method = "average"))
+
+
+#And the primate subclass colors
+#primate_subclass = rownames(test_metasubclass_hits)
+#primate_subclass = sapply(strsplit(primate_subclass, '|', fixed = T), '[[', 2)
+#primate_subclass = gsub('_',' ', primate_subclass)
+
+#row_ha = rowAnnotation(primate_subclass = primate_subclass,
+#                              col = list(primate_subclass = celltype_color_palette))
+
+index = match(rownames(test_metasubclass_hits), paste(merged_sesten_mouse$study_id, merged_sesten_mouse$cell_cluster, sep = '|'))
+mouse_orth_subclass = merged_sesten_mouse$primate_subclass[index]
+mouse_original_subclass = merged_sesten_mouse$cell_subclass[index]
+
+row_ha = rowAnnotation(mouse_orth_subclass = mouse_orth_subclass,
+                       mouse_original_subclass = mouse_original_subclass,
+                              col = list(mouse_orth_subclass = celltype_color_palette,
+                                         mouse_original_subclass = celltype_color_palette))
+
+
+auroc_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+
+ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
+                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                        column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
+                        column_names_gp = gpar(fontsize = 4),
+                        row_names_gp = gpar(fontsize = 8),
+                        right_annotation = row_ha)
+
+ht_mc = draw(ht_mc)
+
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/sesten_vs_mouse_1vsbest_mouse_rows.pdf', 
+    useDingbats = F, height = 25, width = 25)
+draw(ht_mc)
+dev.off()
+
+
+```
+
+
+
+```{r}
+cluster_graph = makeClusterGraph(sesten_mouse_best_hits, low_threshold = .3)
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/sesten_vs_mouse_1vsbest_cluster_graph.pdf', 
+    useDingbats = F, height = 25, width = 25)
+plotClusterGraph(cluster_graph, merged_sesten_mouse$study_id, 
+                 merged_sesten_mouse$cell_cluster, size_factor = 3)
+dev.off()
+
+
+```
+
+
+
+
+```{r}
+
+sesten_mouse_melt = reshape2::melt(test_metasubclass_hits, varnames = c('mouse_cluster','primate_cluster'), value.name = 'AUROC')
+
+
+index = match(sesten_mouse_melt$mouse_cluster, paste(merged_sesten_mouse$study_id, merged_sesten_mouse$cell_cluster, sep = '|'))
+sesten_mouse_melt$mouse_orth_subclass = merged_sesten_mouse$primate_subclass[index]
+sesten_mouse_melt$mouse_original_subclass = merged_sesten_mouse$cell_subclass[index]
+
+
+row_order_df = sesten_mouse_melt %>% group_by(mouse_orth_subclass, mouse_cluster) %>% summarise(mean_auroc = mean(AUROC, na.rm = T)) %>%
+  group_by(mouse_orth_subclass) %>% arrange(desc(mean_auroc), .by_group = T)
+
+r_index = match(as.character(row_order_df$mouse_cluster), rownames(test_metasubclass_hits))
+
+
+col_order_df = sesten_mouse_melt %>% group_by(primate_cluster, mouse_orth_subclass) %>% summarise(mean_auroc = mean(AUROC, na.rm = T)) %>%
+  filter(is.finite(mean_auroc)) %>% group_by(primate_cluster) %>% filter(mean_auroc == max(mean_auroc)) %>%
+  arrange(match(mouse_orth_subclass, 
+                c("Chandelier", 'Lamp5', 'Lamp5 Lhx6','Pax6','Pvalb', 'Sncg', 'Sst', 'Sst Chodl', 'Vip')),
+          desc(mean_auroc))
+
+c_index = match(as.character(col_order_df$primate_cluster), colnames(test_metasubclass_hits))
+
+
+
+
+row_ha = rowAnnotation(mouse_orthologous_subclass = row_order_df$mouse_orth_subclass,
+                           col = list(mouse_orthologous_subclass = celltype_color_palette))
+
+
+ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits[r_index, c_index ], name = 'AUROC', col = auroc_cols,
+                                cluster_rows = F, cluster_columns = F,
+                                column_names_gp = gpar(fontsize = 4),
+                                row_names_gp = gpar(fontsize = 8),
+                                right_annotation = row_ha)
+
+ht_mc = draw(ht_mc)
+
+
+
+
+```
 
 
 

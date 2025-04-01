@@ -1,0 +1,32 @@
+
+
+
+checking out Leons spatial data
+
+
+```{r}
+
+coronal_stats = data.table::fread('/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/results/distance_stats.coronal.csv')
+
+coronal_stats
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
