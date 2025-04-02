@@ -34,8 +34,7 @@ celltype_color_palette = c("Chandelier"='#F641A8',
                            "Sncg"='#DF70FF',
                            "Vip"='#A45FBF', 
                            "Lamp5 Lhx6"='#935F50',
-                           "Pax6"='#71238C',
-                           'Serpinf1' = '#A45FBF')
+                           "Pax6"='#71238C')
 
 
 ```
@@ -1978,17 +1977,51 @@ dev.off()
 
 dim(sesten_mouse_best_hits)
 
+
+start = Sys.time()
+sesten_mouse_aurocs = MetaNeighborUS(var_genes = global_hvgs, 
+                              dat = merged_sesten_mouse, 
+                              study_id = merged_sesten_mouse$study_id,
+                              cell_type = merged_sesten_mouse$cell_cluster,
+                              fast_version = T)
+Sys.time() - start
+gc()
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/sesten_vs_mouse_aurocs.pdf', 
+    useDingbats = F, height = 25, width = 25)
+plotHeatmap(sesten_mouse_aurocs, cex = .2)
+dev.off()
+
+dim(sesten_mouse_aurocs)
+
 ```
-
-
 
 
 ```{r}
 
+saveRDS(merged_sesten_mouse, 
+        file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/non_allen_data/merged_sesten_mouse_sce.rds')
+
+
 saveRDS(sesten_mouse_best_hits, 
         file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/sesten_vs_mouse_1vsbestMN.rds')
 
+saveRDS(sesten_mouse_aurocs, 
+        file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/sesten_vs_mouse_full_aurocs.rds')
+
 ```
+
+```{r}
+
+sesten_mouse_best_hits = readRDS(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/sesten_vs_mouse_1vsbestMN.rds')
+
+
+merged_sesten_mouse = readRDS(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/merged_sesten_mouse_sce.rds')
+
+
+```
+
 
 
 
@@ -1998,13 +2031,13 @@ saveRDS(sesten_mouse_best_hits,
 
 r_names = rownames(sesten_mouse_best_hits)
 
-index = match(r_names, paste(merged_sesten_mouse$study_id, merged_sesten_mouse$cell_cluster, sep = '|'))
-mouse_orth_subclass = merged_sesten_mouse$primate_subclass[index]
-mouse_original_subclass = merged_sesten_mouse$cell_subclass[index]
+#index = match(r_names, paste(merged_sesten_mouse$study_id, merged_sesten_mouse$cell_cluster, sep = '|'))
+#mouse_orth_subclass = merged_sesten_mouse$primate_subclass[index]
+#mouse_original_subclass = merged_sesten_mouse$cell_subclass[index]
 
 c_index = grepl('sesten', r_names)
-r_index = mouse_orth_subclass %in% c('Pax6','Sncg','Vip')
-
+#r_index = mouse_orth_subclass %in% c('Pax6','Sncg','Vip')
+r_index = !c_index
 
 test_metasubclass_hits = sesten_mouse_best_hits[r_index, c_index]
 
@@ -2019,22 +2052,14 @@ row_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-m), method = "averag
 col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(m)), method = "average"))
 
 
-#And the primate subclass colors
-#primate_subclass = rownames(test_metasubclass_hits)
-#primate_subclass = sapply(strsplit(primate_subclass, '|', fixed = T), '[[', 2)
-#primate_subclass = gsub('_',' ', primate_subclass)
+#index = match(rownames(test_metasubclass_hits), paste(merged_sesten_mouse$study_id, merged_sesten_mouse$cell_cluster, sep = '|'))
+#mouse_orth_subclass = merged_sesten_mouse$primate_subclass[index]
+#mouse_original_subclass = merged_sesten_mouse$cell_subclass[index]
 
-#row_ha = rowAnnotation(primate_subclass = primate_subclass,
-#                              col = list(primate_subclass = celltype_color_palette))
-
-index = match(rownames(test_metasubclass_hits), paste(merged_sesten_mouse$study_id, merged_sesten_mouse$cell_cluster, sep = '|'))
-mouse_orth_subclass = merged_sesten_mouse$primate_subclass[index]
-mouse_original_subclass = merged_sesten_mouse$cell_subclass[index]
-
-row_ha = rowAnnotation(mouse_orth_subclass = mouse_orth_subclass,
-                       mouse_original_subclass = mouse_original_subclass,
-                              col = list(mouse_orth_subclass = celltype_color_palette,
-                                         mouse_original_subclass = celltype_color_palette))
+#row_ha = rowAnnotation(mouse_orth_subclass = mouse_orth_subclass,
+#                       mouse_original_subclass = mouse_original_subclass,
+#                              col = list(mouse_orth_subclass = celltype_color_palette,
+#                                         mouse_original_subclass = celltype_color_palette))
 
 
 auroc_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
@@ -2043,8 +2068,7 @@ ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = au
                         row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
                         column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
                         column_names_gp = gpar(fontsize = 4),
-                        row_names_gp = gpar(fontsize = 8),
-                        right_annotation = row_ha)
+                        row_names_gp = gpar(fontsize = 8))
 
 ht_mc = draw(ht_mc)
 
@@ -2058,20 +2082,168 @@ dev.off()
 
 ```
 
-
+Assign the primate clusters to mouse subclasses
 
 ```{r}
-cluster_graph = makeClusterGraph(sesten_mouse_best_hits, low_threshold = .3)
+sesten_mouse_melt = reshape2::melt(test_metasubclass_hits, varnames = c('mouse_cluster','primate_cluster'), value.name = 'AUROC')
+
+index = match(sesten_mouse_melt$mouse_cluster, paste(merged_sesten_mouse$study_id, merged_sesten_mouse$cell_cluster, sep = '|'))
+sesten_mouse_melt$mouse_orth_subclass = merged_sesten_mouse$primate_subclass[index]
+sesten_mouse_melt$mouse_original_subclass = merged_sesten_mouse$cell_subclass[index]
+
+primate_subclass_mappings_df = sesten_mouse_melt %>% group_by(primate_cluster, mouse_orth_subclass) %>% 
+  summarise(mean_auroc = mean(AUROC, na.rm = T)) %>%
+  filter(is.finite(mean_auroc)) %>% group_by(primate_cluster) %>% filter(mean_auroc == max(mean_auroc)) 
+
+mouse_subclass_mappings_df = sesten_mouse_melt %>% filter(!duplicated(mouse_cluster)) %>%
+  select(mouse_cluster, mouse_orth_subclass, mouse_original_subclass)
+
+
+keep_primate_clusters = primate_subclass_mappings_df %>% filter(mouse_orth_subclass %in% c('Vip','Sncg')) %>% pull(primate_cluster)
+
+keep_mouse_clusters = as.character(unique(sesten_mouse_melt %>% filter(mouse_orth_subclass %in% c('Vip','Sncg')) %>% pull(mouse_cluster)))
+
+
+all_keep_clusters = c(as.character(keep_primate_clusters), keep_mouse_clusters)
+
+
+keep_subset_index = rownames(sesten_mouse_best_hits) %in% all_keep_clusters
+vip_subset_best_hits = sesten_mouse_best_hits[keep_subset_index, keep_subset_index]
+
+cell_index = paste(merged_sesten_mouse$study_id, merged_sesten_mouse$cell_cluster, sep = '|') %in% all_keep_clusters
+vip_subset_merged_sce = merged_sesten_mouse[ , cell_index]
+
+
+
+all_keep_clusters
+
+table(vip_subset_merged_sce$study_id)
+
+
+```
+
+```{r}
+sesten_mouse_melt %>% group_by(primate_cluster, mouse_orth_subclass) %>% 
+  summarise(mean_auroc = mean(AUROC, na.rm = T)) %>%
+  filter(is.finite(mean_auroc)) %>% group_by(primate_cluster)
+
+
+mouse_subclass_mappings_df %>% filter(grepl('tasic', mouse_cluster) & mouse_original_subclass == 'Vip')
+
+```
+
+
+
+
+
+Default MetaNeighbor cluster graph
+
+```{r}
+
+cluster_graph = makeClusterGraph(vip_subset_best_hits, low_threshold = .5)
+
+plotClusterGraph(cluster_graph, vip_subset_merged_sce$study_id, 
+                 vip_subset_merged_sce$cell_cluster, size_factor = 3)
 
 
 pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/sesten_vs_mouse_1vsbest_cluster_graph.pdf', 
     useDingbats = F, height = 25, width = 25)
-plotClusterGraph(cluster_graph, merged_sesten_mouse$study_id, 
-                 merged_sesten_mouse$cell_cluster, size_factor = 3)
+plotClusterGraph(cluster_graph, vip_subset_merged_sce$study_id, 
+                 vip_subset_merged_sce$cell_cluster, size_factor = 3)
 dev.off()
 
 
 ```
+
+
+Can we clean it up and make it clearer? I want the shapes to be the species, 
+mouse color to be the cluster orthologous subclass, the primate clusters can be grey.
+Highlighting that there are distinct matches in the new primate data to the mouse orthologous subclasses
+
+
+```{r}
+cluster_graph = makeClusterGraph(vip_subset_best_hits, low_threshold = .5)
+
+#This is an iGraph object
+temp_cluster_graph = cluster_graph
+
+
+
+
+
+#Subclass colors for the mouse clusters
+vertex_colors = celltype_color_palette[mouse_subclass_mappings_df$mouse_orth_subclass]
+names(vertex_colors) = as.character(mouse_subclass_mappings_df$mouse_cluster)
+
+
+vertex_study <- factor(igraph::V(temp_cluster_graph)$name)
+#Grab the primate cluster names 
+primate_clusts = as.character(vertex_study[grepl('sesten', vertex_study)])
+#And add those to the vertex colors
+primate_colors = rep('grey', length = length(primate_clusts))
+names(primate_colors) = primate_clusts
+vertex_colors = c(vertex_colors, primate_colors)
+
+#Set up the vertex colors
+levels(vertex_study) <- vertex_colors[levels(vertex_study)]
+
+igraph::V(temp_cluster_graph)$color <- as.character(vertex_study)
+igraph::V(temp_cluster_graph)$label.color <- "black"
+
+igraph::E(temp_cluster_graph)$width <- igraph::E(temp_cluster_graph)$weight
+igraph::E(temp_cluster_graph)$color <- c("orange","darkgray")[as.numeric(igraph::E(temp_cluster_graph)$weight >= 0.5) + 1]
+
+size_factor=1
+plot(temp_cluster_graph,
+     vertex.size = 5,
+     vertex.label.cex=.2*size_factor,
+     vertex.label.font=2,
+     vertex.frame.color = NA,
+     edge.width = igraph::E(temp_cluster_graph)$width * size_factor,
+     edge.arrow.size=.1*size_factor,
+     edge.arrow.width=0.5*size_factor)
+graphics::legend(
+    "topleft", legend = names(celltype_color_palette[c('Vip','Sncg')]), pt.bg = celltype_color_palette[c('Vip','Sncg')],
+    pt.cex = 2, cex = 0.5*2, pch=21
+)
+
+#graphics::legend(
+#    "topright", legend = c("Best hit", "2nd best hit"),
+#    col = c("darkgray", "orange"),
+#    cex = 0.5*legend_cex, lty=1, lwd = 2*legend_cex
+#)
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/subset_sesten_vs_mouse_1vsbest_cluster_graph.pdf', 
+    useDingbats = F, height = 10, width = 10)
+plot(temp_cluster_graph,
+     vertex.size = 5,
+     vertex.label.cex=.5*size_factor,
+     vertex.label.font=2,
+     vertex.frame.color = NA,
+     edge.width = igraph::E(temp_cluster_graph)$width * size_factor,
+     edge.arrow.size=.1*size_factor,
+     edge.arrow.width=0.5*size_factor)
+graphics::legend(
+    "topleft", legend = names(celltype_color_palette[c('Vip','Sncg')]), pt.bg = celltype_color_palette[c('Vip','Sncg')],
+    pt.cex = 2, cex = 0.5*2, pch=21
+)
+dev.off()
+```
+
+```{r}
+
+mouse_subclass_mappings_df %>% filter(mouse_orth_subclass %in% c('Vip','Sncg','Pax6')) %>%  arrange(mouse_orth_subclass)
+```
+
+
+
+Trying a metaneighbor when grouping the mouse clusters at the subclass level
+
+
+
+
+
 
 
 
@@ -2123,15 +2295,165 @@ ht_mc = draw(ht_mc)
 
 
 
+Trying a metaneighbor when grouping the mouse clusters at the subclass level
+
+
+```{r}
+
+table(grepl('sesten', merged_sesten_mouse$study_id))
+
+
+mouse_subclass_primate_cluster = merged_sesten_mouse$primate_subclass
+primate_index = grepl('sesten', merged_sesten_mouse$study_id)
+mouse_subclass_primate_cluster[primate_index] = as.character(merged_sesten_mouse$cell_cluster)[primate_index]
+
+table(mouse_subclass_primate_cluster)
+
+
+merged_sesten_mouse$mouse_subclass_primate_cluster = mouse_subclass_primate_cluster
+
+```
 
 
 
 
 
+```{r}
+start = Sys.time()
+sesten_mouse_subclass_best_hits = MetaNeighborUS(var_genes = global_hvgs, 
+                              dat = merged_sesten_mouse, 
+                              study_id = merged_sesten_mouse$study_id,
+                              cell_type = merged_sesten_mouse$mouse_subclass_primate_cluster,
+                              fast_version = T,
+                              one_vs_best = T, symmetric_output = F)
+
+
+Sys.time() - start
+gc()
+
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/sesten_vs_mouse_subclass_1vsbest.pdf', 
+    useDingbats = F, height = 25, width = 25)
+plotHeatmap(sesten_mouse_subclass_best_hits, cex = .5)
+dev.off()
+
+
+
+start = Sys.time()
+sesten_mouse_subclass_aurocs = MetaNeighborUS(var_genes = global_hvgs, 
+                              dat = merged_sesten_mouse, 
+                              study_id = merged_sesten_mouse$study_id,
+                              cell_type = merged_sesten_mouse$mouse_subclass_primate_cluster,
+                              fast_version = T)
+Sys.time() - start
+gc()
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/sesten_vs_mouse_subclass_aurocs.pdf', 
+    useDingbats = F, height = 25, width = 25)
+plotHeatmap(sesten_mouse_subclass_aurocs, cex = .2)
+dev.off()
+
+
+```
+
+
+
+```{r}
+
+cluster_graph = makeClusterGraph(sesten_mouse_subclass_best_hits , low_threshold = .5)
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/sesten_vs_mouse_subclass_1vsbest_cluster_graph.pdf', 
+    useDingbats = F, height = 10, width = 10)
+plotClusterGraph(cluster_graph, merged_sesten_mouse$study_id, 
+                 merged_sesten_mouse$mouse_subclass_primate_cluster, size_factor = 3)
+dev.off()
+
+
+```
+
+
+```{r}
+temp_cluster_graph = cluster_graph
+#Subclass colors for the mouse clusters
+vertex_colors = celltype_color_palette[mouse_subclass_mappings_df$mouse_orth_subclass]
+names(vertex_colors) = as.character(mouse_subclass_mappings_df$mouse_cluster)
 
 
 
 
+vertex_study <- factor(igraph::V(temp_cluster_graph)$name)
+#Grab the primate cluster names 
+primate_clusts = as.character(vertex_study[grepl('sesten', vertex_study)])
+#And add those to the vertex colors
+primate_colors = rep('grey', length = length(primate_clusts))
+names(primate_colors) = primate_clusts
+
+#Grab the mouse subclasses
+mouse_subclasses = as.character(vertex_study[!grepl('sesten', vertex_study)])
+#Just the subclass labels
+sub_label = sapply(strsplit(mouse_subclasses, split = '|', fixed = T), '[[', 2)
+mouse_colors = celltype_color_palette[sub_label]
+names(mouse_colors) = mouse_subclasses
+#All together
+vertex_colors = c(mouse_colors, primate_colors)
+
+#Set up the vertex colors
+levels(vertex_study) <- vertex_colors[levels(vertex_study)]
+
+igraph::V(temp_cluster_graph)$color <- as.character(vertex_study)
+igraph::V(temp_cluster_graph)$label.color <- "black"
+
+#Just the cluster name as the label, excluding the study
+full_vertex_labels = igraph::V(temp_cluster_graph)$name
+vertex_labels = sapply(strsplit(igraph::V(temp_cluster_graph)$name, split = '|', fixed = T), '[[', 2)
+igraph::V(temp_cluster_graph)$label <- vertex_labels
+
+
+
+igraph::E(temp_cluster_graph)$width <- igraph::E(temp_cluster_graph)$weight
+igraph::E(temp_cluster_graph)$color <- c("orange","darkgray")[as.numeric(igraph::E(temp_cluster_graph)$weight >= 0.5) + 1]
+
+size_factor=1
+plot(temp_cluster_graph,
+     vertex.size = 5,
+     vertex.label.cex=.5*size_factor,
+     vertex.label.font=2,
+     vertex.frame.color = NA,
+     edge.width = igraph::E(temp_cluster_graph)$width * size_factor,
+     edge.arrow.size=.1*size_factor,
+     edge.arrow.width=0.5*size_factor)
+graphics::legend(
+    "topleft", legend = names(celltype_color_palette), pt.bg = celltype_color_palette,
+    pt.cex = 2, cex = 0.5*2, pch=21
+)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/sesten_vs_mouse_subclass_1vsbest_cluster_graph.pdf', 
+    useDingbats = F, height = 10, width = 10)
+plot(temp_cluster_graph,
+     vertex.size = 5,
+     vertex.label.cex=.5*size_factor,
+     vertex.label.font=2,
+     vertex.frame.color = NA,
+     edge.width = igraph::E(temp_cluster_graph)$width * size_factor,
+     edge.arrow.size=.1*size_factor,
+     edge.arrow.width=0.5*size_factor)
+graphics::legend(
+    "topleft", legend = names(celltype_color_palette), pt.bg = celltype_color_palette,
+    pt.cex = 2, cex = 0.5*2, pch=21
+)
+dev.off()
+```
+
+
+
+```{r}
+
+
+
+```
 
 
 
