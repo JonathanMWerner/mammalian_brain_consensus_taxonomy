@@ -1381,7 +1381,7 @@ saveRDS(interneuron.combined, file = '/inkwell03/werner/sc_data/primate_ma_sesta
 
 
 
-Construct markers of the clusters and compare the taxonomy
+
 
 ```{r}
 
@@ -1406,6 +1406,124 @@ ggsave(filename = 'sestan_integrated_de_novo_clusters_umap.pdf', path = '../grap
        useDingbats = F, height = 4, width = 6)
 ```
 
+
+Also cluster each species independently in their non-integrated data and save as species specific clusters
+
+
+
+
+```{r}
+
+#human
+temp_sestan_human = subset(sesten_gaba_data, subset = species == 'Human')
+temp_sestan_human  <- FindVariableFeatures(temp_sestan_human , selection.method = "vst", nfeatures = 2000, verbose = F)
+temp_sestan_human <- ScaleData(temp_sestan_human, verbose = FALSE)
+temp_sestan_human <- RunPCA(temp_sestan_human, verbose = FALSE)
+temp_sestan_human <- RunUMAP(temp_sestan_human, reduction = "pca", dims = 1:25, verbose = F)
+temp_sestan_human <- FindNeighbors(temp_sestan_human , dims = 1:25, verbose = F, assay = 'RNA')
+temp_sestan_human <- FindClusters(temp_sestan_human , verbose = F, graph.name = 'RNA_snn')
+
+temp_sestan_human$species_specific_clusters = temp_sestan_human$RNA_snn_res.0.8
+
+DimPlot(temp_sestan_human, reduction = 'pca', group.by = 'species_specific_clusters')
+DimPlot(temp_sestan_human, reduction = 'umap', group.by = 'species_specific_clusters')
+DimPlot(temp_sestan_human, reduction = 'umap', group.by = 'subclass')
+
+
+#chimp
+temp_sestan_chimp = subset(sesten_gaba_data, subset = species == 'Chimpanzee')
+temp_sestan_chimp  <- FindVariableFeatures(temp_sestan_chimp , selection.method = "vst", nfeatures = 2000, verbose = F)
+temp_sestan_chimp <- ScaleData(temp_sestan_chimp, verbose = FALSE)
+temp_sestan_chimp <- RunPCA(temp_sestan_chimp, verbose = FALSE)
+temp_sestan_chimp <- RunUMAP(temp_sestan_chimp, reduction = "pca", dims = 1:25, verbose = F)
+temp_sestan_chimp <- FindNeighbors(temp_sestan_chimp , dims = 1:25, verbose = F, assay = 'RNA')
+temp_sestan_chimp <- FindClusters(temp_sestan_chimp , verbose = F, graph.name = 'RNA_snn')
+
+temp_sestan_chimp$species_specific_clusters = temp_sestan_chimp$RNA_snn_res.0.8
+
+DimPlot(temp_sestan_chimp, reduction = 'pca', group.by = 'species_specific_clusters')
+DimPlot(temp_sestan_chimp, reduction = 'umap', group.by = 'species_specific_clusters')
+DimPlot(temp_sestan_chimp, reduction = 'umap', group.by = 'subclass')
+
+#macaque
+temp_sestan_macaque = subset(sesten_gaba_data, subset = species == 'Rhesus')
+temp_sestan_macaque  <- FindVariableFeatures(temp_sestan_macaque , selection.method = "vst", nfeatures = 2000, verbose = F)
+temp_sestan_macaque <- ScaleData(temp_sestan_macaque, verbose = FALSE)
+temp_sestan_macaque <- RunPCA(temp_sestan_macaque, verbose = FALSE)
+temp_sestan_macaque <- RunUMAP(temp_sestan_macaque, reduction = "pca", dims = 1:25, verbose = F)
+temp_sestan_macaque <- FindNeighbors(temp_sestan_macaque , dims = 1:25, verbose = F, assay = 'RNA')
+temp_sestan_macaque <- FindClusters(temp_sestan_macaque , verbose = F, graph.name = 'RNA_snn')
+
+temp_sestan_macaque$species_specific_clusters = temp_sestan_macaque$RNA_snn_res.0.8
+
+DimPlot(temp_sestan_macaque, reduction = 'pca', group.by = 'species_specific_clusters')
+DimPlot(temp_sestan_macaque, reduction = 'umap', group.by = 'species_specific_clusters')
+DimPlot(temp_sestan_macaque, reduction = 'umap', group.by = 'subclass')
+
+
+#marmoset
+temp_sestan_marmoset = subset(sesten_gaba_data, subset = species == 'Marmoset')
+temp_sestan_marmoset  <- FindVariableFeatures(temp_sestan_marmoset , selection.method = "vst", nfeatures = 2000, verbose = F)
+temp_sestan_marmoset <- ScaleData(temp_sestan_marmoset, verbose = FALSE)
+temp_sestan_marmoset <- RunPCA(temp_sestan_marmoset, verbose = FALSE)
+temp_sestan_marmoset <- RunUMAP(temp_sestan_marmoset, reduction = "pca", dims = 1:25, verbose = F)
+temp_sestan_marmoset <- FindNeighbors(temp_sestan_marmoset , dims = 1:25, verbose = F, assay = 'RNA')
+temp_sestan_marmoset <- FindClusters(temp_sestan_marmoset , verbose = F, graph.name = 'RNA_snn')
+
+temp_sestan_marmoset$species_specific_clusters = temp_sestan_marmoset$RNA_snn_res.0.8
+
+DimPlot(temp_sestan_marmoset, reduction = 'pca', group.by = 'species_specific_clusters')
+DimPlot(temp_sestan_marmoset, reduction = 'umap', group.by = 'species_specific_clusters')
+DimPlot(temp_sestan_marmoset, reduction = 'umap', group.by = 'subclass')
+
+DimPlot(temp_sestan_human, reduction = 'umap', group.by = 'species_specific_clusters', label = T)
+DimPlot(temp_sestan_chimp, reduction = 'umap', group.by = 'species_specific_clusters', label = T)
+DimPlot(temp_sestan_macaque, reduction = 'umap', group.by = 'species_specific_clusters', label = T)
+DimPlot(temp_sestan_marmoset, reduction = 'umap', group.by = 'species_specific_clusters', label = T)
+
+```
+
+
+```{r}
+
+sesten_gaba_data$species_specific_clusters = rep(NA, length = ncol(sesten_gaba_data))
+table(is.na(sesten_gaba_data $species_specifc_clusters))
+
+all_species_barcodes = c(temp_sestan_human$cell.name, temp_sestan_chimp$cell.name, temp_sestan_macaque$cell.name, temp_sestan_marmoset$cell.name)
+
+all_species_clusters = c(temp_sestan_human$species_specific_clusters, temp_sestan_chimp$species_specific_clusters, 
+                         temp_sestan_macaque$species_specific_clusters, temp_sestan_marmoset$species_specific_clusters)
+
+index = match(sesten_gaba_data$cell.name, all_species_barcodes)
+sesten_gaba_data$species_specific_clusters = all_species_clusters[index]
+sesten_gaba_data[[]] %>% filter(integrated_snn_res.0.8 == 17) %>% group_by(species, species_specific_clusters) %>% summarise(n = n())
+
+sesten_gaba_data[[]] = sesten_gaba_data[[]]  %>% select(-c(species_specifc_clusters))
+
+
+
+saveRDS(sesten_gaba_data, file = '/inkwell03/werner/sc_data/primate_ma_sestan/sestan_integrated_gaba.rds')
+
+```
+
+
+
+
+
+```{r}
+
+sesten_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_ma_sestan/sestan_integrated_gaba.rds')
+
+DefaultAssay(sesten_gaba_data) <- "RNA"
+```
+
+
+
+
+######################
+Looking at the cluster markers from clusters derived via the integrated data
+
+#####################
 
 
 ```{r}
