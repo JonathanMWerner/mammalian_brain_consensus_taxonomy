@@ -1352,6 +1352,450 @@ export_markers(sesten_integ_inhib_markers, 'markers_to_share/sestan_de_novo_clus
 ```
 
 
+################################################
+Now in the non_allen primate datasets, look at the correlations in DE between the primate clusters and the mouse subclasses
+
+But split by species. Is there variability across the species? 
+
+If Mouse Sncg is the ancestral Primate Sncg and there remains an Ancestral Sncg in the form of a Vip cell-type in primates,
+is there also phylogenetic variability there as well across the primates?
+
+You could imagine the marmoset Ancestral Sncg(Vip) is closer to the Mouse Sncg than Human
+
+################################################
+
+First I need the marker genes for the de novo clusters
+
+```{r}
+
+
+human_index = sesten_gaba_data$species == 'Human'
+sestan_human = sesten_gaba_data[ , human_index]
+
+chimp_index = sesten_gaba_data$species == 'Chimpanzee'
+sestan_chimp = sesten_gaba_data[ , chimp_index]
+
+macaque_index = sesten_gaba_data$species == 'Rhesus'
+sestan_macaque = sesten_gaba_data[ , macaque_index]
+
+marmoset_index = sesten_gaba_data$species == 'Marmoset'
+sestan_marmoset = sesten_gaba_data[ , marmoset_index]
+
+
+sestan_human_cluster_markers = compute_markers(cpm(sestan_human),sestan_human$seurat_clusters )
+sestan_chimp_cluster_markers = compute_markers(cpm(sestan_chimp),sestan_chimp$seurat_clusters )
+sestan_macaque_cluster_markers = compute_markers(cpm(sestan_macaque),sestan_macaque$seurat_clusters )
+sestan_marmoset_cluster_markers = compute_markers(cpm(sestan_marmoset),sestan_marmoset$seurat_clusters )
+
+sestan_human_cluster_markers
+sestan_chimp_cluster_markers
+sestan_macaque_cluster_markers
+sestan_marmoset_cluster_markers
+
+
+export_markers(sestan_human_cluster_markers, 'markers_to_share/sestan_human_de_novo_cluster_markers.csv')
+export_markers(sestan_chimp_cluster_markers, 'markers_to_share/sestan_chimp_de_novo_cluster_markers.csv')
+export_markers(sestan_macaque_cluster_markers, 'markers_to_share/sestan_macaque_de_novo_cluster_markers.csv')
+export_markers(sestan_marmoset_cluster_markers, 'markers_to_share/sestan_marmoset_de_novo_cluster_markers.csv')
+
+```
+
+
+Compare DE correlations to the mouse Subclass markers
+Really just want the focus on the primate 17 cluster
+Primate Vip clusters: 4, 9, 10, 12, 17, 19
+Primate Sncg clusters: 16, 20
+Primate Pax6 clusters: 22, 24
+
+```{r}
+
+intersect_genes = intersect(sestan_human_cluster_markers$gene, mouse_subclass_meta_markers$gene)
+length(intersect_genes)
+
+filt_mouse_subclass_markers = mouse_subclass_meta_markers %>% filter(gene %in% intersect_genes)
+filt_primate_subclass_markers = primate_subclass_meta_markers %>% filter(gene %in% intersect_genes)
+
+
+filt_sestan_human_markers = sestan_human_cluster_markers %>% filter(gene %in% intersect_genes)
+filt_sestan_chimp_markers = sestan_chimp_cluster_markers %>% filter(gene %in% intersect_genes)
+filt_sestan_macaque_markers = sestan_macaque_cluster_markers %>% filter(gene %in% intersect_genes)
+filt_sestan_marmoset_markers = sestan_marmoset_cluster_markers %>% filter(gene %in% intersect_genes)
+
+
+
+
+```
+
+```{r}
+
+all_markers = seq(10, 500, 10)
+
+all_corr_summary_dfs = list()
+
+for(i in 1:length(all_markers)){
+
+  num_top_markers = all_markers[i]
+  
+  mouse_subclass = 'Vip'
+  de_metric = 'auroc'
+  primate_clusters =  c('17', '16', '20', '4', '9', '10', '12', '19')
+  
+  
+  test_mouse_subclass_markers = filt_mouse_subclass_markers %>% filter(cell_type == mouse_subclass & rank <= num_top_markers) %>% pull(gene)
+  
+  mouse_subclass_de_column = filt_mouse_subclass_markers %>% filter(cell_type == mouse_subclass & rank <= num_top_markers) %>% 
+    select(cell_type, gene, !! sym(de_metric)) %>%
+    tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  mouse_subclass_de_column = tibble::column_to_rownames(mouse_subclass_de_column, var = 'gene')
+  colnames(mouse_subclass_de_column) = paste0('Mouse_', colnames(mouse_subclass_de_column))
+  
+  #Human cluster
+  sestan_human_cluster_mat = filt_sestan_human_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_mouse_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_human_cluster_mat  = tibble::column_to_rownames(sestan_human_cluster_mat , var = 'gene')
+  colnames(sestan_human_cluster_mat) = paste0('human_', colnames(sestan_human_cluster_mat) )
+  gene_index = match(rownames(mouse_subclass_de_column), rownames(sestan_human_cluster_mat))
+  sestan_human_cluster_mat = sestan_human_cluster_mat[gene_index, , drop = F]
+  #chimp cluster
+  sestan_chimp_cluster_mat = filt_sestan_chimp_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_mouse_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_chimp_cluster_mat  = tibble::column_to_rownames(sestan_chimp_cluster_mat , var = 'gene')
+  colnames(sestan_chimp_cluster_mat) = paste0('chimp_', colnames(sestan_chimp_cluster_mat) )
+  gene_index = match(rownames(mouse_subclass_de_column), rownames(sestan_chimp_cluster_mat))
+  sestan_chimp_cluster_mat = sestan_chimp_cluster_mat[gene_index, , drop = F]
+  #macaque cluster
+  sestan_macaque_cluster_mat = filt_sestan_macaque_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_mouse_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_macaque_cluster_mat  = tibble::column_to_rownames(sestan_macaque_cluster_mat , var = 'gene')
+  colnames(sestan_macaque_cluster_mat) = paste0('macaque_', colnames(sestan_macaque_cluster_mat) )
+  gene_index = match(rownames(mouse_subclass_de_column), rownames(sestan_macaque_cluster_mat))
+  sestan_macaque_cluster_mat = sestan_macaque_cluster_mat[gene_index, , drop = F]
+  #marmoset cluster
+  sestan_marmoset_cluster_mat = filt_sestan_marmoset_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_mouse_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_marmoset_cluster_mat  = tibble::column_to_rownames(sestan_marmoset_cluster_mat , var = 'gene')
+  colnames(sestan_marmoset_cluster_mat) = paste0('marmoset_', colnames(sestan_marmoset_cluster_mat) )
+  gene_index = match(rownames(mouse_subclass_de_column), rownames(sestan_marmoset_cluster_mat))
+  sestan_marmoset_cluster_mat = sestan_marmoset_cluster_mat[gene_index, , drop = F]
+  
+  
+  all_species_de = do.call('cbind', list(sestan_human_cluster_mat, sestan_chimp_cluster_mat, 
+                                             sestan_macaque_cluster_mat, sestan_marmoset_cluster_mat, mouse_subclass_de_column ))
+  
+  cor_mat = cor(all_species_de, method = 'spearman')
+  
+  #ComplexHeatmap::Heatmap(cor_mat, name = 'spearman',
+  #                       clustering_distance_rows = function(m) dist(1-m), clustering_distance_columns = function(m) dist(1-m),
+  #                       clustering_method_rows = 'average', clustering_method_columns = 'average')
+  
+  
+  long_cor_df = reshape2::melt(cor_mat, value.name = 'spearman', varnames = c('cluster_1','cluster_2'))
+  long_cor_df$cluster_name = sapply(strsplit(as.character(long_cor_df$cluster_1), split = '_', fixed = T ), '[[', 2 )
+  
+  corr_summary_df = long_cor_df %>% filter(cluster_2 == sprintf('Mouse_%s', mouse_subclass)) %>% 
+    group_by(cluster_name) %>% summarise(mean_spearman = mean(spearman)) %>%
+    mutate(num_markers = num_top_markers)
+  
+  all_corr_summary_dfs[[i]] = corr_summary_df 
+  
+}
+
+
+all_corr_summary_dfs = do.call('rbind', all_corr_summary_dfs)
+
+primate_cluster_colors = c('red','#DF70FF','#DF70FF','#A45FBF','#A45FBF','#A45FBF','#A45FBF','#A45FBF')
+names(primate_cluster_colors ) = primate_clusters
+ggplot(all_corr_summary_dfs , aes(x = num_markers, y = mean_spearman, color = cluster_name)) + geom_line() +
+  ggtitle(sprintf('Similarity in DE to Mouse %s', mouse_subclass)) + 
+  ylab('Correlation in marker DE') +
+  xlab('Number of top markers') +
+  scale_color_manual(values = primate_cluster_colors)
+
+```
+
+
+
+```{r}
+
+all_markers = seq(10, 500, 10)
+
+all_corr_summary_dfs = list()
+
+for(i in 1:length(all_markers)){
+
+  num_top_markers = all_markers[i]
+  
+  mouse_subclass = 'Vip'
+  de_metric = 'auroc'
+  primate_clusters =  c('9')
+  
+  
+  test_mouse_subclass_markers = filt_mouse_subclass_markers %>% filter(cell_type == mouse_subclass & rank <= num_top_markers) %>% pull(gene)
+  
+  mouse_subclass_de_column = filt_mouse_subclass_markers %>% filter(cell_type == mouse_subclass & rank <= num_top_markers) %>% 
+    select(cell_type, gene, !! sym(de_metric)) %>%
+    tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  mouse_subclass_de_column = tibble::column_to_rownames(mouse_subclass_de_column, var = 'gene')
+  colnames(mouse_subclass_de_column) = paste0('Mouse_', colnames(mouse_subclass_de_column))
+  
+  #Human cluster
+  sestan_human_cluster_mat = filt_sestan_human_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_mouse_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_human_cluster_mat  = tibble::column_to_rownames(sestan_human_cluster_mat , var = 'gene')
+  colnames(sestan_human_cluster_mat) = paste0('human_', colnames(sestan_human_cluster_mat) )
+  gene_index = match(rownames(mouse_subclass_de_column), rownames(sestan_human_cluster_mat))
+  sestan_human_cluster_mat = sestan_human_cluster_mat[gene_index, , drop = F]
+  #chimp cluster
+  sestan_chimp_cluster_mat = filt_sestan_chimp_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_mouse_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_chimp_cluster_mat  = tibble::column_to_rownames(sestan_chimp_cluster_mat , var = 'gene')
+  colnames(sestan_chimp_cluster_mat) = paste0('chimp_', colnames(sestan_chimp_cluster_mat) )
+  gene_index = match(rownames(mouse_subclass_de_column), rownames(sestan_chimp_cluster_mat))
+  sestan_chimp_cluster_mat = sestan_chimp_cluster_mat[gene_index, , drop = F]
+  #macaque cluster
+  sestan_macaque_cluster_mat = filt_sestan_macaque_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_mouse_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_macaque_cluster_mat  = tibble::column_to_rownames(sestan_macaque_cluster_mat , var = 'gene')
+  colnames(sestan_macaque_cluster_mat) = paste0('macaque_', colnames(sestan_macaque_cluster_mat) )
+  gene_index = match(rownames(mouse_subclass_de_column), rownames(sestan_macaque_cluster_mat))
+  sestan_macaque_cluster_mat = sestan_macaque_cluster_mat[gene_index, , drop = F]
+  #marmoset cluster
+  sestan_marmoset_cluster_mat = filt_sestan_marmoset_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_mouse_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_marmoset_cluster_mat  = tibble::column_to_rownames(sestan_marmoset_cluster_mat , var = 'gene')
+  colnames(sestan_marmoset_cluster_mat) = paste0('marmoset_', colnames(sestan_marmoset_cluster_mat) )
+  gene_index = match(rownames(mouse_subclass_de_column), rownames(sestan_marmoset_cluster_mat))
+  sestan_marmoset_cluster_mat = sestan_marmoset_cluster_mat[gene_index, , drop = F]
+  
+  
+  all_species_de = do.call('cbind', list(sestan_human_cluster_mat, sestan_chimp_cluster_mat, 
+                                             sestan_macaque_cluster_mat, sestan_marmoset_cluster_mat, mouse_subclass_de_column ))
+  
+  cor_mat = cor(all_species_de, method = 'spearman')
+  
+  #ComplexHeatmap::Heatmap(cor_mat, name = 'spearman',
+  #                       clustering_distance_rows = function(m) dist(1-m), clustering_distance_columns = function(m) dist(1-m),
+  #                       clustering_method_rows = 'average', clustering_method_columns = 'average')
+  
+  
+  long_cor_df = reshape2::melt(cor_mat, value.name = 'spearman', varnames = c('cluster_1','cluster_2'))
+  #long_cor_df$cluster_name = sapply(strsplit(as.character(long_cor_df$cluster_1), split = '_', fixed = T ), '[[', 2 )
+  
+  corr_summary_df = long_cor_df %>% filter(cluster_2 == sprintf('Mouse_%s', mouse_subclass)) %>% 
+    mutate(num_markers = num_top_markers)
+  
+  all_corr_summary_dfs[[i]] = corr_summary_df 
+  
+}
+
+
+all_corr_summary_dfs = do.call('rbind', all_corr_summary_dfs)
+
+primate_17_species_colors = c('darkblue',  'lightblue',  'purple', 'orange')
+names(primate_17_species_colors) = paste0(c('human_','chimp_','macaque_','marmoset_'), primate_clusters)
+ggplot(all_corr_summary_dfs , aes(x = num_markers, y = spearman, color = cluster_1)) + geom_line() +
+  ggtitle(sprintf('Similarity in DE to Mouse %s', mouse_subclass)) + 
+  ylab('Correlation in marker DE') +
+  xlab('Number of top markers') +
+  scale_color_manual(values = primate_17_species_colors)
+
+```
+
+
+And the primate markers
+
+```{r}
+all_markers = seq(10, 500, 10)
+
+all_corr_summary_dfs = list()
+
+for(i in 1:length(all_markers)){
+
+  num_top_markers = all_markers[i]
+  
+  primate_subclass = 'Vip'
+  de_metric = 'auroc'
+  primate_clusters =  c('17', '16', '20', '4', '9', '10', '12', '19')
+  
+  
+  test_primate_subclass_markers = filt_primate_subclass_markers %>% filter(cell_type == primate_subclass & rank <= num_top_markers) %>% pull(gene)
+  
+  primate_subclass_de_column = filt_primate_subclass_markers %>% filter(cell_type == primate_subclass & rank <= num_top_markers) %>% 
+    select(cell_type, gene, !! sym(de_metric)) %>%
+    tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  primate_subclass_de_column = tibble::column_to_rownames(primate_subclass_de_column, var = 'gene')
+  colnames(primate_subclass_de_column) = paste0('Primate_', colnames(primate_subclass_de_column))
+  
+  #Human cluster
+  sestan_human_cluster_mat = filt_sestan_human_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_primate_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_human_cluster_mat  = tibble::column_to_rownames(sestan_human_cluster_mat , var = 'gene')
+  colnames(sestan_human_cluster_mat) = paste0('human_', colnames(sestan_human_cluster_mat) )
+  gene_index = match(rownames(primate_subclass_de_column), rownames(sestan_human_cluster_mat))
+  sestan_human_cluster_mat = sestan_human_cluster_mat[gene_index, , drop = F]
+  #chimp cluster
+  sestan_chimp_cluster_mat = filt_sestan_chimp_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_primate_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_chimp_cluster_mat  = tibble::column_to_rownames(sestan_chimp_cluster_mat , var = 'gene')
+  colnames(sestan_chimp_cluster_mat) = paste0('chimp_', colnames(sestan_chimp_cluster_mat) )
+  gene_index = match(rownames(primate_subclass_de_column), rownames(sestan_chimp_cluster_mat))
+  sestan_chimp_cluster_mat = sestan_chimp_cluster_mat[gene_index, , drop = F]
+  #macaque cluster
+  sestan_macaque_cluster_mat = filt_sestan_macaque_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_primate_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_macaque_cluster_mat  = tibble::column_to_rownames(sestan_macaque_cluster_mat , var = 'gene')
+  colnames(sestan_macaque_cluster_mat) = paste0('macaque_', colnames(sestan_macaque_cluster_mat) )
+  gene_index = match(rownames(primate_subclass_de_column), rownames(sestan_macaque_cluster_mat))
+  sestan_macaque_cluster_mat = sestan_macaque_cluster_mat[gene_index, , drop = F]
+  #marmoset cluster
+  sestan_marmoset_cluster_mat = filt_sestan_marmoset_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_primate_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_marmoset_cluster_mat  = tibble::column_to_rownames(sestan_marmoset_cluster_mat , var = 'gene')
+  colnames(sestan_marmoset_cluster_mat) = paste0('marmoset_', colnames(sestan_marmoset_cluster_mat) )
+  gene_index = match(rownames(primate_subclass_de_column), rownames(sestan_marmoset_cluster_mat))
+  sestan_marmoset_cluster_mat = sestan_marmoset_cluster_mat[gene_index, , drop = F]
+  
+  
+  all_species_de = do.call('cbind', list(sestan_human_cluster_mat, sestan_chimp_cluster_mat, 
+                                             sestan_macaque_cluster_mat, sestan_marmoset_cluster_mat, primate_subclass_de_column ))
+  
+  cor_mat = cor(all_species_de, method = 'spearman')
+  
+  #ComplexHeatmap::Heatmap(cor_mat, name = 'spearman',
+  #                       clustering_distance_rows = function(m) dist(1-m), clustering_distance_columns = function(m) dist(1-m),
+  #                       clustering_method_rows = 'average', clustering_method_columns = 'average')
+
+  long_cor_df = reshape2::melt(cor_mat, value.name = 'spearman', varnames = c('cluster_1','cluster_2'))
+  long_cor_df$cluster_name = sapply(strsplit(as.character(long_cor_df$cluster_1), split = '_', fixed = T ), '[[', 2 )
+  
+  corr_summary_df = long_cor_df %>% filter(cluster_2 == sprintf('Primate_%s', primate_subclass)) %>% 
+    group_by(cluster_name) %>% summarise(mean_spearman = mean(spearman)) %>%
+    mutate(num_markers = num_top_markers)
+  
+  all_corr_summary_dfs[[i]] = corr_summary_df 
+  
+}
+
+all_corr_summary_dfs = do.call('rbind', all_corr_summary_dfs)
+
+primate_cluster_colors = c('red','#DF70FF','#DF70FF','#A45FBF','#A45FBF','#A45FBF','#A45FBF','#A45FBF')
+names(primate_cluster_colors ) = primate_clusters
+ggplot(all_corr_summary_dfs , aes(x = num_markers, y = mean_spearman, color = cluster_name)) + geom_line() +
+  ggtitle(sprintf('Similarity in DE to Primate %s', primate_subclass)) + 
+  ylab('Correlation in marker DE') +
+  xlab('Number of top markers') +
+  scale_color_manual(values = primate_cluster_colors)
+
+
+```
+
+
+
+
+
+And the primate markers
+
+```{r}
+all_markers = seq(10, 500, 10)
+
+all_corr_summary_dfs = list()
+
+for(i in 1:length(all_markers)){
+
+  num_top_markers = all_markers[i]
+  
+  primate_subclass = 'Sncg'
+  de_metric = 'auroc'
+  primate_clusters =  c('16')
+  
+  
+  test_primate_subclass_markers = filt_primate_subclass_markers %>% filter(cell_type == primate_subclass & rank <= num_top_markers) %>% pull(gene)
+  
+  primate_subclass_de_column = filt_primate_subclass_markers %>% filter(cell_type == primate_subclass & rank <= num_top_markers) %>% 
+    select(cell_type, gene, !! sym(de_metric)) %>%
+    tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  primate_subclass_de_column = tibble::column_to_rownames(primate_subclass_de_column, var = 'gene')
+  colnames(primate_subclass_de_column) = paste0('Primate_', colnames(primate_subclass_de_column))
+  
+  #Human cluster
+  sestan_human_cluster_mat = filt_sestan_human_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_primate_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_human_cluster_mat  = tibble::column_to_rownames(sestan_human_cluster_mat , var = 'gene')
+  colnames(sestan_human_cluster_mat) = paste0('human_', colnames(sestan_human_cluster_mat) )
+  gene_index = match(rownames(primate_subclass_de_column), rownames(sestan_human_cluster_mat))
+  sestan_human_cluster_mat = sestan_human_cluster_mat[gene_index, , drop = F]
+  #chimp cluster
+  sestan_chimp_cluster_mat = filt_sestan_chimp_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_primate_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_chimp_cluster_mat  = tibble::column_to_rownames(sestan_chimp_cluster_mat , var = 'gene')
+  colnames(sestan_chimp_cluster_mat) = paste0('chimp_', colnames(sestan_chimp_cluster_mat) )
+  gene_index = match(rownames(primate_subclass_de_column), rownames(sestan_chimp_cluster_mat))
+  sestan_chimp_cluster_mat = sestan_chimp_cluster_mat[gene_index, , drop = F]
+  #macaque cluster
+  sestan_macaque_cluster_mat = filt_sestan_macaque_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_primate_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_macaque_cluster_mat  = tibble::column_to_rownames(sestan_macaque_cluster_mat , var = 'gene')
+  colnames(sestan_macaque_cluster_mat) = paste0('macaque_', colnames(sestan_macaque_cluster_mat) )
+  gene_index = match(rownames(primate_subclass_de_column), rownames(sestan_macaque_cluster_mat))
+  sestan_macaque_cluster_mat = sestan_macaque_cluster_mat[gene_index, , drop = F]
+  #marmoset cluster
+  sestan_marmoset_cluster_mat = filt_sestan_marmoset_markers %>% filter(cell_type %in% primate_clusters & 
+                                                                    gene %in% test_primate_subclass_markers ) %>%
+    select(cell_type, gene, !! sym(de_metric)) %>% tidyr::pivot_wider(names_from = cell_type, values_from = !! sym(de_metric))
+  sestan_marmoset_cluster_mat  = tibble::column_to_rownames(sestan_marmoset_cluster_mat , var = 'gene')
+  colnames(sestan_marmoset_cluster_mat) = paste0('marmoset_', colnames(sestan_marmoset_cluster_mat) )
+  gene_index = match(rownames(primate_subclass_de_column), rownames(sestan_marmoset_cluster_mat))
+  sestan_marmoset_cluster_mat = sestan_marmoset_cluster_mat[gene_index, , drop = F]
+  
+  
+  all_species_de = do.call('cbind', list(sestan_human_cluster_mat, sestan_chimp_cluster_mat, 
+                                             sestan_macaque_cluster_mat, sestan_marmoset_cluster_mat, primate_subclass_de_column ))
+  
+  cor_mat = cor(all_species_de, method = 'spearman')
+  
+  #ComplexHeatmap::Heatmap(cor_mat, name = 'spearman',
+  #                       clustering_distance_rows = function(m) dist(1-m), clustering_distance_columns = function(m) dist(1-m),
+  #                       clustering_method_rows = 'average', clustering_method_columns = 'average')
+
+  long_cor_df = reshape2::melt(cor_mat, value.name = 'spearman', varnames = c('cluster_1','cluster_2'))
+
+  corr_summary_df = long_cor_df %>% filter(cluster_2 == sprintf('Primate_%s', primate_subclass)) %>% 
+    mutate(num_markers = num_top_markers)
+  
+  all_corr_summary_dfs[[i]] = corr_summary_df 
+  
+}
+
+all_corr_summary_dfs = do.call('rbind', all_corr_summary_dfs)
+
+primate_17_species_colors = c('darkblue',  'lightblue',  'purple', 'orange')
+names(primate_17_species_colors) = paste0(c('human_','chimp_','macaque_','marmoset_'), primate_clusters)
+ggplot(all_corr_summary_dfs , aes(x = num_markers, y = spearman, color = cluster_1)) + geom_line() +
+  ggtitle(sprintf('Similarity in DE to Primate %s', primate_subclass)) + 
+  ylab('Correlation in marker DE') +
+  xlab('Number of top markers') +
+  scale_color_manual(values = primate_17_species_colors)
+
+
+```
+
+
+
 
 
 
