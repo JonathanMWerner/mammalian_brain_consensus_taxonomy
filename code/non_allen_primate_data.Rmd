@@ -1351,6 +1351,12 @@ export_markers(sesten_integ_inhib_markers, 'markers_to_share/sestan_de_novo_clus
 
 ```
 
+```{r}
+
+mouse_subclass_meta_markers = read_meta_markers('markers_to_share/mouse_subclass_metaMarkers.csv.gz')
+
+```
+
 
 ################################################
 Now in the non_allen primate datasets, look at the correlations in DE between the primate clusters and the mouse subclasses
@@ -1436,7 +1442,8 @@ for(i in 1:length(all_markers)){
 
   num_top_markers = all_markers[i]
   
-  mouse_subclass = 'Vip'
+  num_top_markers = 100
+  mouse_subclass = 'Sncg'
   de_metric = 'auroc'
   primate_clusters =  c('17', '16', '20', '4', '9', '10', '12', '19')
   
@@ -1488,9 +1495,10 @@ for(i in 1:length(all_markers)){
   
   cor_mat = cor(all_species_de, method = 'spearman')
   
-  #ComplexHeatmap::Heatmap(cor_mat, name = 'spearman',
-  #                       clustering_distance_rows = function(m) dist(1-m), clustering_distance_columns = function(m) dist(1-m),
-  #                       clustering_method_rows = 'average', clustering_method_columns = 'average')
+  ComplexHeatmap::Heatmap(cor_mat, name = 'spearman',
+                         clustering_distance_rows = function(m) dist(1-m), clustering_distance_columns = function(m) dist(1-m),
+                         clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+                         column_title = 'Similarity in Mouse Sncg DE')
   
   
   long_cor_df = reshape2::melt(cor_mat, value.name = 'spearman', varnames = c('cluster_1','cluster_2'))
@@ -1621,7 +1629,8 @@ for(i in 1:length(all_markers)){
 
   num_top_markers = all_markers[i]
   
-  primate_subclass = 'Vip'
+  num_top_markers = 100
+  primate_subclass = 'Sncg'
   de_metric = 'auroc'
   primate_clusters =  c('17', '16', '20', '4', '9', '10', '12', '19')
   
@@ -1673,9 +1682,10 @@ for(i in 1:length(all_markers)){
   
   cor_mat = cor(all_species_de, method = 'spearman')
   
-  #ComplexHeatmap::Heatmap(cor_mat, name = 'spearman',
-  #                       clustering_distance_rows = function(m) dist(1-m), clustering_distance_columns = function(m) dist(1-m),
-  #                       clustering_method_rows = 'average', clustering_method_columns = 'average')
+  ComplexHeatmap::Heatmap(cor_mat, name = 'spearman',
+                         clustering_distance_rows = function(m) dist(1-m), clustering_distance_columns = function(m) dist(1-m),
+                         clustering_method_rows = 'average', clustering_method_columns = 'average',
+                         column_title = 'Similarity in Primate Sncg DE')
 
   long_cor_df = reshape2::melt(cor_mat, value.name = 'spearman', varnames = c('cluster_1','cluster_2'))
   long_cor_df$cluster_name = sapply(strsplit(as.character(long_cor_df$cluster_1), split = '_', fixed = T ), '[[', 2 )
