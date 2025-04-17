@@ -347,23 +347,9 @@ DimPlot(interneuron.combined, reduction = "umap", group.by = 'Age')
 DimPlot(interneuron.combined, reduction = "umap", group.by = 'seurat_clusters')
 DimPlot(interneuron.combined, reduction = "umap", group.by = 'seurat_clusters', label = T)
 
-```
-
-
-
-
-
-```{r}
-
-table(interneuron.combined$Age, interneuron.combined$seurat_clusters )
-
-interneuron.combined[[]]
-
-
 DefaultAssay(interneuron.combined) = 'originalexp'
 
 ```
-
 
 
 
@@ -746,7 +732,45 @@ export_meta_markers(primate_class_meta_markers, "metamarkers/MGE_CGE/primate_met
 ```{r}
 rm(human_10x, human_ss, chimp_10x, chimp_ss, gorilla_10x, gorilla_ss, macaca_10x, marmoset_10x)
 gc()
+
 ```
+
+
+
+And get cross-mammal CGE MGE markers
+```{r}
+
+mammal_markers = list(
+    tasic18 = read_markers("metamarkers/MGE_CGE/markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("metamarkers/MGE_CGE/markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("metamarkers/MGE_CGE/markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("metamarkers/MGE_CGE/markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("metamarkers/MGE_CGE/markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("metamarkers/MGE_CGE/markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("metamarkers/MGE_CGE/markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("metamarkers/MGE_CGE/markers_macosko_wba.csv.gz"),
+    human_10x = read_markers("metamarkers/MGE_CGE/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/MGE_CGE/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/MGE_CGE/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/MGE_CGE/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/MGE_CGE/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/MGE_CGE/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/MGE_CGE/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/MGE_CGE/markers_marmoset_10x.csv.gz")
+)
+
+meta_markers = make_meta_markers(mammal_markers, detailed_stats = TRUE)
+
+meta_markers %>% group_by(cell_type) %>% filter(rank <= 20)
+
+export_meta_markers(meta_markers, "metamarkers/MGE_CGE/mammal_CGE_MGE_meta_markers.csv", names(mammal_markers))
+
+
+```
+
+
+
+
 
 
 Load up the mouse and primate CGE/MGE metamarkers
@@ -755,7 +779,7 @@ Load up the mouse and primate CGE/MGE metamarkers
 mouse_class_meta_markers = read_meta_markers("metamarkers/MGE_CGE/mouse_meta_markers.csv.gz")
 primate_class_meta_markers = read_meta_markers("metamarkers/MGE_CGE/primate_meta_markers.csv.gz")
 
-
+mammal_class_meta_markers = read_meta_markers("metamarkers/MGE_CGE/mammal_CGE_MGE_meta_markers.csv.gz")
 ```
 
 
@@ -765,21 +789,34 @@ primate_class_meta_markers = read_meta_markers("metamarkers/MGE_CGE/primate_meta
 Check out the CGE and MGE predictions for the tree shrew data
 
 ```{r}
-
-top_markers = mouse_class_meta_markers %>% filter(rank <= 50)
+#mouse class markers
+top_markers = mouse_class_meta_markers %>% filter(rank <= 100)
 ct_scores = score_cells(log1p(interneuron.combined@assays$originalexp@data), top_markers)
 ct_enrichment = compute_marker_enrichment(ct_scores)
 ct_pred = assign_cells(ct_scores)
 
 interneuron.combined$mouse_cge_mge = ct_pred$predicted
 
-
-top_markers = primate_class_meta_markers %>% filter(rank <= 50)
+#Primate class markers
+top_markers = primate_class_meta_markers %>% filter(rank <= 100)
 ct_scores = score_cells(log1p(interneuron.combined@assays$originalexp@data), top_markers)
 ct_enrichment = compute_marker_enrichment(ct_scores)
 ct_pred = assign_cells(ct_scores)
 
 interneuron.combined$primate_cge_mge = ct_pred$predicted
+
+#Cross_mammal class markers
+top_markers = mammal_class_meta_markers %>% filter(rank <= 100)
+ct_scores = score_cells(log1p(interneuron.combined@assays$originalexp@data), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+interneuron.combined$mammal_cge_mge = ct_pred$predicted
+
+#Add the cross-mammal CGE-MGE enrichments for plotting
+interneuron.combined$mammal_cge_enrich = scale(ct_enrichment['all|CGE', ])
+interneuron.combined$mammal_mge_enrich = scale(ct_enrichment['all|MGE', ])
+
 
 DimPlot(interneuron.combined, group.by = 'seurat_clusters', label = T) + ggtitle('Initial Tree Shrew de novo GABA clusters')
 ggsave(filename = 'initial_tree_shrew_intg_clusters.pdf', path = '../graphs/non_allen_data/umaps/', 
@@ -792,6 +829,26 @@ ggsave(filename = 'initial_tree_shrew_mouse_CGEMGE_annots.pdf', path = '../graph
 DimPlot(interneuron.combined, group.by = 'primate_cge_mge', label = T)+ ggtitle('CGE-MGE annotations using Primate markers')
 ggsave(filename = 'initial_tree_shrew_primate_CGEMGE_annots.pdf', path = '../graphs/non_allen_data/umaps/', 
        useDingbats = F, device = 'pdf', height = 4, width = 6)
+
+DimPlot(interneuron.combined, group.by = 'mammal_cge_mge', label = T)+ 
+  ggtitle('CGE-MGE annotations using Mammal markers') +
+  scale_color_manual(values = c('CGE' = 'darkorchid', 'MGE' = 'goldenrod1', 'unassigned' = 'red'))
+ggsave(filename = 'initial_tree_shrew_mammal_CGEMGE_annots.pdf', path = '../graphs/non_allen_data/umaps/', 
+       useDingbats = F, device = 'pdf', height = 4, width = 6)
+
+
+FeaturePlot(interneuron.combined, features = c('mammal_cge_enrich'))+ 
+  ggtitle('Mammalian CGE enrichment: Tree Shrew') +
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 0)
+ggsave(filename = 'initial_tree_shrew_mammal_CGE_enrich.pdf', path = '../graphs/non_allen_data/umaps/', 
+       useDingbats = F, device = 'pdf', height = 4, width = 6)
+
+FeaturePlot(interneuron.combined, features = c('mammal_mge_enrich'))+ 
+  ggtitle('Mammalian MGE enrichment: Tree Shrew') +
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 0)
+ggsave(filename = 'initial_tree_shrew_mammal_MGE_enrich.pdf', path = '../graphs/non_allen_data/umaps/', 
+       useDingbats = F, device = 'pdf', height = 4, width = 6)
+
 ```
 
 
@@ -807,6 +864,10 @@ total_clust_nums = colSums(primate_class_nums)
 primate_class_ratios = t(t(primate_class_nums) / total_clust_nums)
 
 
+mammal_class_nums = as.matrix(table(interneuron.combined$mammal_cge_mge, interneuron.combined$seurat_clusters))
+total_clust_nums = colSums(mammal_class_nums)
+mammal_class_ratios = t(t(mammal_class_nums) / total_clust_nums)
+
 par(pty = 's')
 plot(mouse_class_ratios['CGE', ], mouse_class_ratios['MGE', ], main = 'CGE/MGE ratios from mouse markers', 
      xlab = 'Tree Shrew CGE', ylab = 'Tree Shrew MGE')
@@ -819,6 +880,16 @@ plot(primate_class_ratios['CGE', ], primate_class_ratios['MGE', ], main = 'CGE/M
      xlab = 'Tree Shrew CGE', ylab = 'Tree Shrew MGE')
 abline(a = 0, b = 1, col = 'red', lty = 'dashed')
 text(primate_class_ratios['CGE', ], primate_class_ratios['MGE', ], colnames(primate_class_ratios), cex=0.6, pos=4, col="red")
+
+par(pty = 's')
+plot(mammal_class_ratios['CGE', ], mammal_class_ratios['MGE', ], main = 'CGE/MGE ratios from Mammal markers', 
+     xlab = 'Tree Shrew CGE', ylab = 'Tree Shrew MGE')
+abline(a = 0, b = 1, col = 'red', lty = 'dashed')
+text(mammal_class_ratios['CGE', ], mammal_class_ratios['MGE', ], colnames(mammal_class_ratios), cex=0.6, pos=4, col="red")
+
+
+
+
 
 pdf(file = '../graphs/non_allen_data/initial_tree_shrew_mouse_CGEMGE_clust_ratios.pdf', useDingbats = F, height = 4, width = 4)
 par(pty = 's')
@@ -836,8 +907,26 @@ abline(a = 0, b = 1, col = 'red', lty = 'dashed')
 text(primate_class_ratios['CGE', ], primate_class_ratios['MGE', ], colnames(primate_class_ratios), cex=0.6, pos=4, col="red")
 dev.off()
 
+pdf(file = '../graphs/non_allen_data/initial_tree_shrew_mammal_CGEMGE_clust_ratios.pdf', useDingbats = F, height = 4, width = 4)
+par(pty = 's')
+plot(mammal_class_ratios['CGE', ], mammal_class_ratios['MGE', ], main = 'CGE/MGE ratios from mammal markers', 
+     xlab = 'Tree Shrew CGE', ylab = 'Tree Shrew MGE')
+abline(a = 0, b = 1, col = 'red', lty = 'dashed')
+text(mammal_class_ratios['CGE', ], mammal_class_ratios['MGE', ], colnames(mammal_class_ratios), cex=0.6, pos=4, col="red")
+dev.off()
 
 
+
+mammal_class_ratios = t(mammal_class_ratios)
+for_ggplot_df = data.frame(CGE = mammal_class_ratios[ ,'CGE'], MGE = mammal_class_ratios[ ,'MGE'], cluster = rownames(mammal_class_ratios))
+for_ggplot_df$cluster[for_ggplot_df$CGE >= .90 | for_ggplot_df$CGE <= .10] = NA
+
+ggplot(for_ggplot_df, aes(x = CGE, y = MGE, label = cluster)) + geom_point() +
+  ggrepel::geom_label_repel(max.overlaps = Inf, min.segment.length = 0) + 
+  theme_bw() + coord_fixed() + ggtitle('CGE-MGE cluster proportions: Tree Shrew')
+
+ggsave(filename = 'initial_tree_shrew_mammal_CGEMGE_clust_ratios_ggplot.pdf', path = '../graphs/non_allen_data/', useDingbats = F,
+       device = 'pdf', height = 4, width = 4)
 ```
 
 
@@ -1163,11 +1252,36 @@ interneuron.combined.filt <- FindNeighbors(interneuron.combined.filt , dims = 1:
 interneuron.combined.filt <- FindClusters(interneuron.combined.filt , verbose = F, graph.name = 'integrated_snn')
 
 
-DimPlot(interneuron.combined.filt, reduction = "umap", group.by = 'Age')
-DimPlot(interneuron.combined.filt, reduction = "umap", group.by = 'seurat_clusters')
-DimPlot(interneuron.combined.filt, reduction = "umap", group.by = 'seurat_clusters', label = T)
-DimPlot(interneuron.combined.filt, reduction = "umap", group.by = 'mouse_cge_mge', label = T)
-DimPlot(interneuron.combined.filt, reduction = "umap", group.by = 'primate_cge_mge', label = T)
+DimPlot(interneuron.combined.filt, reduction = "umap", group.by = 'Age') + ggtitle('Tree Shrew: Age annotations')
+ggsave(filename = 'filt_tree_shrew_mammal_age_annots.pdf', path = '../graphs/non_allen_data/umaps/', 
+       useDingbats = F, device = 'pdf', height = 4, width = 6)
+
+
+DimPlot(interneuron.combined.filt, reduction = "umap", group.by = 'seurat_clusters', label = T) +
+  ggtitle('Tree Shrew: de novo clustering')
+ggsave(filename = 'filt_tree_shrew_de_novo_clust_annots.pdf', path = '../graphs/non_allen_data/umaps/', 
+       useDingbats = F, device = 'pdf', height = 4, width = 6)
+
+
+DimPlot(interneuron.combined.filt, group.by = 'mammal_cge_mge')+ 
+  ggtitle('CGE-MGE annotations using Mammal markers') +
+  scale_color_manual(values = c('CGE' = 'darkorchid', 'MGE' = 'goldenrod1', 'unassigned' = 'red'))
+ggsave(filename = 'filt_tree_shrew_mammal_CGEMGE_annots.pdf', path = '../graphs/non_allen_data/umaps/', 
+       useDingbats = F, device = 'pdf', height = 4, width = 6)
+
+
+FeaturePlot(interneuron.combined.filt, features = c('mammal_cge_enrich'))+ 
+  ggtitle('Mammalian CGE enrichment: Tree Shrew') +
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 0)
+ggsave(filename = 'filt_tree_shrew_mammal_CGE_enrich.pdf', path = '../graphs/non_allen_data/umaps/', 
+       useDingbats = F, device = 'pdf', height = 4, width = 6)
+
+FeaturePlot(interneuron.combined.filt, features = c('mammal_mge_enrich'))+ 
+  ggtitle('Mammalian MGE enrichment: Tree Shrew') +
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 0)
+ggsave(filename = 'filt_tree_shrew_mammal_MGE_enrich.pdf', path = '../graphs/non_allen_data/umaps/', 
+       useDingbats = F, device = 'pdf', height = 4, width = 6)
+
 
 
 ```
@@ -2125,6 +2239,12 @@ export_meta_markers(non_allen_clust_to_subclass_MetaMarkers, 'markers_to_share/n
 
 
 
+```{r}
+
+non_allen_clust_to_subclass_MetaMarkers = read_meta_markers( 'markers_to_share/non_allen_subclass_with_ancient_SNCG_metaMarkers.csv.gz')
+```
+
+
 And now look at expression in the tree shrew data
 
 ```{r}
@@ -2134,7 +2254,7 @@ mouse_subclass_meta_markers$cell_type = paste0('mouse_', mouse_subclass_meta_mar
 
 all_meta_markers = rbind(mouse_subclass_meta_markers[ , c(1:4)], non_allen_clust_to_subclass_MetaMarkers[, c(1:4)] )
 
-top_markers = all_meta_markers %>% filter(rank <= 100)
+top_markers = all_meta_markers %>% filter(rank <= 50)
 
 top_markers = top_markers %>% filter(cell_type %in% c('mouse_Vip','mouse_Sncg','Sncg','Vip', 'Ancestral Sncg', 'Chandelier','Pvalb','Sst','Sst Chodl',
                                                       'Pax6','Lamp5','Lamp5 Lhx6'))
@@ -2146,16 +2266,18 @@ ct_enrichment = compute_marker_enrichment(ct_scores)
 
 scaled_enrichments = t(scale(t(ct_enrichment)))
 
-#top_mouse_sncg = mouse_subclass_meta_markers %>% filter(cell_type == 'Sncg' & rank <= 50) %>% pull(gene)
-#top_primate_sncg = non_allen_clust_to_subclass_MetaMarkers %>% filter(cell_type == 'Sncg' & rank <= 50) %>% pull(gene)
-#top_primate_ancestral_sncg = non_allen_clust_to_subclass_MetaMarkers %>% filter(cell_type == 'Ancestral Sncg' & rank <= 50) %>% pull(gene)
-#top_primate_vip = non_allen_clust_to_subclass_MetaMarkers %>% filter(cell_type == 'Vip' & rank <= 50) %>% pull(gene)
+top_mouse_sncg = mouse_subclass_meta_markers %>% filter(cell_type == 'mouse_Sncg' & rank <= 50) %>% pull(gene)
+top_mouse_vip = mouse_subclass_meta_markers %>% filter(cell_type == 'mouse_Vip' & rank <= 50) %>% pull(gene)
+top_primate_sncg = non_allen_clust_to_subclass_MetaMarkers %>% filter(cell_type == 'Sncg' & rank <= 50) %>% pull(gene)
+top_primate_ancestral_sncg = non_allen_clust_to_subclass_MetaMarkers %>% filter(cell_type == 'Ancestral Sncg' & rank <= 50) %>% pull(gene)
+top_primate_vip = non_allen_clust_to_subclass_MetaMarkers %>% filter(cell_type == 'Vip' & rank <= 50) %>% pull(gene)
 
-#tree_shrew_inhibitory_seurat$agg_mouse_sncg_markers = scale(rowSums(FetchData(tree_shrew_inhibitory_seurat, vars = top_mouse_sncg, layer = 'data')))
-#tree_shrew_inhibitory_seurat$agg_primate_sncg_markers = scale(rowSums(FetchData(tree_shrew_inhibitory_seurat, vars = top_primate_sncg, layer = 'data')))
-#tree_shrew_inhibitory_seurat$agg_primate_vip_markers = scale(rowSums(FetchData(tree_shrew_inhibitory_seurat, vars = top_primate_vip, layer = 'data')))
-#tree_shrew_inhibitory_seurat$agg_primate_ancestral_sncg_markers = scale(rowSums(FetchData(tree_shrew_inhibitory_seurat, 
-#                                                                                    vars = top_primate_ancestral_sncg, layer = 'data')))
+tree_shrew_inhibitory_seurat$agg_mouse_sncg_markers = scale(rowMeans(log1p(FetchData(tree_shrew_inhibitory_seurat, vars = top_mouse_sncg, layer = 'data'))))
+tree_shrew_inhibitory_seurat$agg_mouse_vip_markers = scale(rowMeans(log1p(FetchData(tree_shrew_inhibitory_seurat, vars = top_mouse_vip, layer = 'data'))))
+tree_shrew_inhibitory_seurat$agg_primate_sncg_markers = scale(rowMeans(log1p(FetchData(tree_shrew_inhibitory_seurat, vars = top_primate_sncg, layer = 'data'))))
+tree_shrew_inhibitory_seurat$agg_primate_vip_markers = scale(rowMeans(log1p(FetchData(tree_shrew_inhibitory_seurat, vars = top_primate_vip, layer = 'data'))))
+tree_shrew_inhibitory_seurat$agg_primate_ancestral_sncg_markers = scale(rowMeans(log1p(FetchData(tree_shrew_inhibitory_seurat, 
+                                                                                    vars = top_primate_ancestral_sncg, layer = 'data'))))
 
 
 
@@ -2165,82 +2287,120 @@ tree_shrew_inhibitory_seurat$enrich_primate_sncg = ct_enrichment['all|Sncg' , ]
 tree_shrew_inhibitory_seurat$enrich_primate_vip = ct_enrichment['all|Vip' , ]
 tree_shrew_inhibitory_seurat$enrich_primate_ancestral_sncg = ct_enrichment['all|Ancestral Sncg' , ]
 
+tree_shrew_inhibitory_seurat$scaled_enrich_mouse_sncg = scaled_enrichments['all|mouse_Sncg' , ]
+tree_shrew_inhibitory_seurat$scaled_enrich_mouse_vip = scaled_enrichments['all|mouse_Vip' , ]
+tree_shrew_inhibitory_seurat$scaled_enrich_primate_sncg = scaled_enrichments['all|Sncg' , ]
+tree_shrew_inhibitory_seurat$scaled_enrich_primate_vip = scaled_enrichments['all|Vip' , ]
+tree_shrew_inhibitory_seurat$scaled_enrich_primate_ancestral_sncg = scaled_enrichments['all|Ancestral Sncg' , ]
+
 DimPlot(tree_shrew_inhibitory_seurat, reduction = "umap", label = T)
-DimPlot(tree_shrew_inhibitory_seurat, reduction = "umap", group.by = 'primate_cge_mge')
 
 
-FeaturePlot(tree_shrew_inhibitory_seurat, features = 'scaled_enrich_mouse_sncg') + 
-  scale_colour_gradientn(colours = rev(RColorBrewer::brewer.pal(n = 11, name = "RdYlBu")))
+
+
+
+DimPlot(tree_shrew_inhibitory_seurat, reduction = "umap", group.by = 'mammal_cge_mge')
+
+
+FeaturePlot(tree_shrew_inhibitory_seurat, features = 'scaled_enrich_mouse_sncg') +
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 0) + coord_fixed()
+ggsave(filename = 'scaled_mouse_sncg_enrich_tree_shrew.pdf', path = '../graphs/non_allen_data/umaps/', useDingbats = F,
+       height = 4, width = 5, device = 'pdf')
 
 FeaturePlot(tree_shrew_inhibitory_seurat, features = 'scaled_enrich_mouse_vip') + 
-  scale_colour_gradientn(colours = rev(RColorBrewer::brewer.pal(n = 11, name = "RdYlBu")))
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 0)+ coord_fixed()
+ggsave(filename = 'scaled_mouse_vip_enrich_tree_shrew.pdf', path = '../graphs/non_allen_data/umaps/', useDingbats = F,
+       height = 4, width = 5, device = 'pdf')
 
 FeaturePlot(tree_shrew_inhibitory_seurat, features = 'scaled_enrich_primate_sncg') + 
-  scale_colour_gradientn(colours = rev(RColorBrewer::brewer.pal(n = 11, name = "RdYlBu")))
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 0)+ coord_fixed()
+ggsave(filename = 'scaled_primate_sncg_enrich_tree_shrew.pdf', path = '../graphs/non_allen_data/umaps/', useDingbats = F,
+       height = 4, width = 5, device = 'pdf')
 
 FeaturePlot(tree_shrew_inhibitory_seurat, features = 'scaled_enrich_primate_vip') + 
-  scale_colour_gradientn(colours = rev(RColorBrewer::brewer.pal(n = 11, name = "RdYlBu")))
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 0)+ coord_fixed()
+ggsave(filename = 'scaled_primate_vip_enrich_tree_shrew.pdf', path = '../graphs/non_allen_data/umaps/', useDingbats = F,
+       height = 4, width = 5, device = 'pdf')
 
 FeaturePlot(tree_shrew_inhibitory_seurat, features = 'scaled_enrich_primate_ancestral_sncg') + 
-  scale_colour_gradientn(colours = rev(RColorBrewer::brewer.pal(n = 11, name = "RdYlBu")))
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 0)+ coord_fixed()
+ggsave(filename = 'scaled_priamte_ancestral_sncg_enrich_tree_shrew.pdf', path = '../graphs/non_allen_data/umaps/', useDingbats = F,
+       height = 4, width = 5, device = 'pdf')
+
+
 
 ```
+
+
+Try getting a cluster mean of the marker enrichments score and z-score that across the clusters like in the hierarchical plots
 
 ```{r}
 
+#Add a cge - mge label to each cluster, majority vote
 
-mouse_markers = top_markers %>% filter(cell_type =='mouse_Vip') %>% pull(gene)
-primate_markers = top_markers %>% filter(cell_type =='Vip') %>% pull(gene)
+tree_shrew_meta = tree_shrew_inhibitory_seurat[[]]
+
+clust_class_tree_shrew_mapping = tree_shrew_meta %>% group_by(seurat_clusters, primate_cge_mge ) %>% summarise(n= n()) %>% filter(n == max(n))
+
+tree_shrew_meta = tree_shrew_meta %>% select(seurat_clusters, enrich_mouse_sncg, enrich_mouse_vip, enrich_primate_sncg, enrich_primate_vip, enrich_primate_ancestral_sncg) %>%
+  group_by(seurat_clusters) %>%
+  summarise(mean_mouse_sncg = mean(enrich_mouse_sncg), mean_mouse_vip = mean(enrich_mouse_vip), 
+            mean_primate_sncg = mean(enrich_primate_sncg), mean_primate_vip = mean(enrich_primate_vip),
+            mean_primate_ancestral_sncg = mean(enrich_primate_ancestral_sncg)) %>%
+  as.data.frame()
+
+rownames(tree_shrew_meta) = tree_shrew_meta$seurat_clusters
+
+#Scale the average enrichments per cluster
+tree_shrew_meta = tree_shrew_meta %>% select(-c(seurat_clusters))
+tree_shrew_meta = scale(tree_shrew_meta)
+#col_mins = matrixStats::colMins(as.matrix(col_annot_data))
+#col_maxs = matrixStats::colMaxs(as.matrix(col_annot_data))
+
+tree_shrew_meta
+
+index = match(rownames(tree_shrew_meta), clust_class_tree_shrew_mapping$seurat_clusters )
+
+left_annot = ComplexHeatmap::rowAnnotation(class =clust_class_tree_shrew_mapping$primate_cge_mge[index],
+                                              col = list(class = c('CGE' = 'darkorchid', 'MGE' = 'goldenrod1')))
 
 
-table(mouse_markers %in% primate_markers)
+
+col_fun = circlize::colorRamp2(breaks = c(min(tree_shrew_meta), 0, max(tree_shrew_meta)), colors = c('blue','white','red'))
+ComplexHeatmap::Heatmap(tree_shrew_meta, name = 'z-scored marker enrichment',
+                        clustering_method_rows = 'average', clustering_method_columns = 'average',
+                        col = col_fun, left_annotation = left_annot, 
+                        column_title = 'Tree Shrew all clusters')
+
+pdf(file = '../graphs/non_allen_data/tree_shrew_cluster_Vip_Sncg_expr_heatmap.pdf', useDingbats = F, height = 6, width = 5)
+ComplexHeatmap::Heatmap(tree_shrew_meta, name = 'z-scored marker enrichment',
+                        clustering_method_rows = 'average', clustering_method_columns = 'average',
+                        col = col_fun, left_annotation = left_annot, 
+                        column_title = 'Tree Shrew all clusters')
+dev.off()
+
+
+
+
+ComplexHeatmap::Heatmap(tree_shrew_meta[c('1','11'), ], name = 'z-scored marker enrichment',
+                        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+                        col = col_fun,
+                        column_title = 'Tree Shrew putative Vip and Sncg clusters')
+
+
 
 
 ```
 
 
 ```{r}
+tree_shrew_inhibitory_seurat[[]]
 
-cluster_filt = tree_shrew_inhibitory_seurat$seurat_clusters %in% c(1, 11)
-
-column_color = tree_shrew_inhibitory_seurat$seurat_clusters[cluster_filt]
-
-cge_enrichs = tree_shrew_inhibitory_seurat[[]][cluster_filt , c('enrich_mouse_sncg','enrich_mouse_vip',
-                                                                'enrich_primate_sncg','enrich_primate_vip', 'enrich_primate_ancestral_sncg') ]
-
-cge_enrichs$cluster = column_color
-
-mean_enrichs = cge_enrichs %>% group_by(cluster) %>% summarise(mean_mouse_sncg = mean(enrich_mouse_sncg), mean_mouse_vip = mean(enrich_mouse_vip),
-                                                mean_primate_sncg = mean(enrich_primate_sncg), mean_primate_vip = mean(enrich_primate_vip),
-                                                mean_primate_ancestral_sncg = mean(enrich_primate_ancestral_sncg)) %>% as.data.frame()
-
-rownames(mean_enrichs) = mean_enrichs$cluster
-mean_enrichs = mean_enrichs %>% select(-c(cluster))
-mean_enrichs = as.matrix(mean_enrichs)
-
-max_norm_enrichs = cge_enrichs / rowMaxs(cge_enrichs)
-
-col_annot = ComplexHeatmap::HeatmapAnnotation(tree_shrew_cluster = column_color)
-
-col_fun = circlize::colorRamp2(breaks = c(0,1, 2), colors = c('white','orange','red'))
-ComplexHeatmap::Heatmap(mean_enrichs, name = 'marker_enrichment',
-                        col = col_fun)
+DimPlot(tree_shrew_inhibitory_seurat, reduction = "umap", group.by = 'mammal_cge_mge')
 
 
 
 ```
-
-
-
-
-```{r}
-
-
-
-
-
-```
-
 
 
 
