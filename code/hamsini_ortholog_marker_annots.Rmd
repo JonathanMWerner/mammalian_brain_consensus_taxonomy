@@ -1,0 +1,107 @@
+
+Checking out Hamsini's ortholog/paralog annotations for the mouse - primate subclass markers
+
+
+Currently just for Sestan dataset
+
+```{r}
+
+library(data.table)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C')
+
+
+```
+
+
+```{r}
+
+hamsini_path = '/vault/suresh/consensus_interneuron_taxonomy/Sestan/'
+
+list.files(hamsini_path)
+
+```
+
+
+```{r}
+mouse_human_paralogs = fread(paste0(hamsini_path,"mouse_human_marker_paralogs_list.csv" ))
+
+
+mouse_human_vip_orths_df = mouse_human_paralogs %>% group_by(cluster1, cluster2, homology_type) %>% 
+  summarise(n = n()) %>% filter(cluster1 %in% c('Vip','Sncg') & cluster2 %in% c(4,9,10,12,17,19) & homology_type == 'ortholog_one2one')
+
+order_plot = as.character(mouse_human_vip_orths_df %>% filter(cluster1 == 'Vip') %>% arrange(desc(n)) %>% pull(cluster2))
+
+
+mouse_human_vip_orths_df$cluster2 = as.character(mouse_human_vip_orths_df$cluster2)
+mouse_human_vip_orths_df$cluster2 = factor(mouse_human_vip_orths_df$cluster2, levels = order_plot)
+
+ggplot(mouse_human_vip_orths_df, aes(x = cluster2, y = n, color = cluster1, group = cluster1)) + 
+  geom_point() + geom_line() +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  ggtitle('Number of shared 1to1-orthologs: Human and Mouse') +
+  ylab('Number of shared orthologs') + xlab('Sestan Primate Vip and Sncg clusters')
+
+
+mouse_human_vip_orths_df = mouse_human_paralogs %>% group_by(cluster1, cluster2, homology_type) %>% 
+  summarise(n = n()) %>% filter(cluster1 %in% c('Vip','Sncg') &cluster2 %in% c(4,9,10,12,17,19) & homology_type == 'other_paralog')
+
+order_plot = as.character(mouse_human_vip_orths_df %>% filter(cluster1 == 'Vip') %>% arrange(desc(n)) %>% pull(cluster2))
+
+
+mouse_human_vip_orths_df$cluster2 = as.character(mouse_human_vip_orths_df$cluster2)
+mouse_human_vip_orths_df$cluster2 = factor(mouse_human_vip_orths_df$cluster2, levels = order_plot)
+
+ggplot(mouse_human_vip_orths_df, aes(x = cluster2, y = n, color = cluster1, group = cluster1)) + 
+  geom_point() + geom_line() +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  ggtitle('Number of shared paralogs: Human and Mouse') +
+  ylab('Number of shared paralogs') + xlab('Sestan Primate Vip and Sncg clusters')
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
