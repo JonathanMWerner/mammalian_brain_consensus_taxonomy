@@ -56,7 +56,7 @@ ggplot(mouse_human_vip_orths_df, aes(x = cluster2, y = n, color = cluster1, grou
 
 
 mouse_human_vip_orths_df = mouse_human_paralogs %>% group_by(cluster1, cluster2, homology_type) %>% 
-  summarise(n = n()) %>% filter(cluster1 %in% c('Vip','Sncg') &cluster2 %in% c(4,9,10,12,17,19) & homology_type == 'other_paralog')
+  summarise(n = n()) %>% filter(cluster1 %in% c('Vip','Sncg') &cluster2 %in% c(4,9,10,12,17,19) & homology_type == 'ortholog_manytomany')
 
 order_plot = as.character(mouse_human_vip_orths_df %>% filter(cluster1 == 'Vip') %>% arrange(desc(n)) %>% pull(cluster2))
 
@@ -74,10 +74,123 @@ ggplot(mouse_human_vip_orths_df, aes(x = cluster2, y = n, color = cluster1, grou
 ```
 
 
+```{r}
+mouse_chimp_paralogs = fread(paste0(hamsini_path,"mouse_chimp_marker_paralogs_list.csv" ))
 
 
+mouse_chimp_vip_orths_df = mouse_chimp_paralogs %>% group_by(cluster1, cluster2, homology_type) %>% 
+  summarise(n = n()) %>% filter(cluster1 %in% c('Vip','Sncg') & cluster2 %in% c(4,9,10,12,17,19) & homology_type == 'ortholog_one2one')
+
+order_plot = as.character(mouse_chimp_vip_orths_df %>% filter(cluster1 == 'Vip') %>% arrange(desc(n)) %>% pull(cluster2))
 
 
+mouse_chimp_vip_orths_df$cluster2 = as.character(mouse_chimp_vip_orths_df$cluster2)
+mouse_chimp_vip_orths_df$cluster2 = factor(mouse_chimp_vip_orths_df$cluster2, levels = order_plot)
+
+ggplot(mouse_chimp_vip_orths_df, aes(x = cluster2, y = n, color = cluster1, group = cluster1)) + 
+  geom_point() + geom_line() +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  ggtitle('Number of shared 1to1-orthologs: chimp and Mouse') +
+  ylab('Number of shared orthologs') + xlab('Sestan Primate Vip and Sncg clusters')
+
+
+mouse_chimp_vip_orths_df = mouse_chimp_paralogs %>% group_by(cluster1, cluster2, homology_type) %>% 
+  summarise(n = n()) %>% filter(cluster1 %in% c('Vip','Sncg') &cluster2 %in% c(4,9,10,12,17,19) & homology_type == 'ortholog_manytomany')
+
+order_plot = as.character(mouse_chimp_vip_orths_df %>% filter(cluster1 == 'Vip') %>% arrange(desc(n)) %>% pull(cluster2))
+
+
+mouse_chimp_vip_orths_df$cluster2 = as.character(mouse_chimp_vip_orths_df$cluster2)
+mouse_chimp_vip_orths_df$cluster2 = factor(mouse_chimp_vip_orths_df$cluster2, levels = order_plot)
+
+ggplot(mouse_chimp_vip_orths_df, aes(x = cluster2, y = n, color = cluster1, group = cluster1)) + 
+  geom_point() + geom_line() +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  ggtitle('Number of shared paralogs: chimp and Mouse') +
+  ylab('Number of shared paralogs') + xlab('Sestan Primate Vip and Sncg clusters')
+
+
+```
+
+
+```{r}
+mouse_macaque_paralogs = fread(paste0(hamsini_path,"mouse_macaque_marker_paralogs_list.csv" ))
+
+
+mouse_macaque_vip_orths_df = mouse_macaque_paralogs %>% group_by(cluster1, cluster2, homology_type) %>% 
+  summarise(n = n()) %>% filter(cluster1 %in% c('Vip','Sncg') & cluster2 %in% c(4,9,10,12,17,19) & homology_type == 'ortholog_one2one')
+
+order_plot = as.character(mouse_macaque_vip_orths_df %>% filter(cluster1 == 'Vip') %>% arrange(desc(n)) %>% pull(cluster2))
+
+
+mouse_macaque_vip_orths_df$cluster2 = as.character(mouse_macaque_vip_orths_df$cluster2)
+mouse_macaque_vip_orths_df$cluster2 = factor(mouse_macaque_vip_orths_df$cluster2, levels = order_plot)
+
+ggplot(mouse_macaque_vip_orths_df, aes(x = cluster2, y = n, color = cluster1, group = cluster1)) + 
+  geom_point() + geom_line() +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  ggtitle('Number of shared 1to1-orthologs: macaque and Mouse') +
+  ylab('Number of shared orthologs') + xlab('Sestan Primate Vip and Sncg clusters')
+
+
+mouse_macaque_vip_orths_df = mouse_macaque_paralogs %>% group_by(cluster1, cluster2, homology_type) %>% 
+  summarise(n = n()) %>% filter(cluster1 %in% c('Vip','Sncg') &cluster2 %in% c(4,9,10,12,17,19) & homology_type == 'ortholog_manytomany')
+
+order_plot = as.character(mouse_macaque_vip_orths_df %>% filter(cluster1 == 'Vip') %>% arrange(desc(n)) %>% pull(cluster2))
+
+
+mouse_macaque_vip_orths_df$cluster2 = as.character(mouse_macaque_vip_orths_df$cluster2)
+mouse_macaque_vip_orths_df$cluster2 = factor(mouse_macaque_vip_orths_df$cluster2, levels = order_plot)
+
+ggplot(mouse_macaque_vip_orths_df, aes(x = cluster2, y = n, color = cluster1, group = cluster1)) + 
+  geom_point() + geom_line() +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  ggtitle('Number of shared paralogs: macaque and Mouse') +
+  ylab('Number of shared paralogs') + xlab('Sestan Primate Vip and Sncg clusters')
+
+
+```
+
+
+```{r}
+mouse_marmoset_paralogs = fread(paste0(hamsini_path,"mouse_marmoset_marker_paralogs_list.csv" ))
+
+
+mouse_marmoset_vip_orths_df = mouse_marmoset_paralogs %>% group_by(cluster1, cluster2, homology_type) %>% 
+  summarise(n = n()) %>% filter(cluster1 %in% c('Vip','Sncg') & cluster2 %in% c(4,9,10,12,17,19) & homology_type == 'ortholog_one2one')
+
+#order_plot = as.character(mouse_marmoset_vip_orths_df %>% filter(cluster1 == 'Vip') %>% arrange(desc(n)) %>% pull(cluster2))
+#Manually setting order since the last three are all ties
+order_plot = c('12','10','4','9','19','17')
+
+mouse_marmoset_vip_orths_df$cluster2 = as.character(mouse_marmoset_vip_orths_df$cluster2)
+mouse_marmoset_vip_orths_df$cluster2 = factor(mouse_marmoset_vip_orths_df$cluster2, levels = order_plot)
+
+ggplot(mouse_marmoset_vip_orths_df, aes(x = cluster2, y = n, color = cluster1, group = cluster1)) + 
+  geom_point() + geom_line() +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  ggtitle('Number of shared 1to1-orthologs: marmoset and Mouse') +
+  ylab('Number of shared orthologs') + xlab('Sestan Primate Vip and Sncg clusters')
+
+
+mouse_marmoset_vip_orths_df = mouse_marmoset_paralogs %>% group_by(cluster1, cluster2, homology_type) %>% 
+  summarise(n = n()) %>% filter(cluster1 %in% c('Vip','Sncg') &cluster2 %in% c(4,9,10,12,17,19) & homology_type == 'ortholog_manytomany')
+
+#order_plot = as.character(mouse_marmoset_vip_orths_df %>% filter(cluster1 == 'Vip') %>% arrange(desc(n)) %>% pull(cluster2))
+#Manually setting order since the last three are all ties
+order_plot = c('12','10','4','9','19','17')
+
+mouse_marmoset_vip_orths_df$cluster2 = as.character(mouse_marmoset_vip_orths_df$cluster2)
+mouse_marmoset_vip_orths_df$cluster2 = factor(mouse_marmoset_vip_orths_df$cluster2, levels = order_plot)
+
+ggplot(mouse_marmoset_vip_orths_df, aes(x = cluster2, y = n, color = cluster1, group = cluster1)) + 
+  geom_point() + geom_line() +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  ggtitle('Number of shared paralogs: marmoset and Mouse') +
+  ylab('Number of shared paralogs') + xlab('Sestan Primate Vip and Sncg clusters')
+
+
+```
 
 
 
