@@ -2075,6 +2075,8 @@ mouse_subclass_meta_markers %>% filter(rank <= 5)
 
 mouse_genes = unique(mouse_subclass_meta_markers$gene)
 length(mouse_genes)
+
+mouse_subclass_meta_markers$cell_type = paste0('mouse_', mouse_subclass_meta_markers$cell_type)
 ```
 
 
@@ -2249,7 +2251,7 @@ And now look at expression in the tree shrew data
 
 ```{r}
 
-mouse_subclass_meta_markers$cell_type = paste0('mouse_', mouse_subclass_meta_markers$cell_type)
+#mouse_subclass_meta_markers$cell_type = paste0('mouse_', mouse_subclass_meta_markers$cell_type)
 
 
 all_meta_markers = rbind(mouse_subclass_meta_markers[ , c(1:4)], non_allen_clust_to_subclass_MetaMarkers[, c(1:4)] )
@@ -2393,11 +2395,65 @@ ComplexHeatmap::Heatmap(tree_shrew_meta[c('1','11'), ], name = 'z-scored marker 
 ```
 
 
+
+And jaccard index for the top 50 gene sets to see the overlaps
+
 ```{r}
-tree_shrew_inhibitory_seurat[[]]
 
-DimPlot(tree_shrew_inhibitory_seurat, reduction = "umap", group.by = 'mammal_cge_mge')
+all_meta_markers = rbind(mouse_subclass_meta_markers[ , c(1:4)], non_allen_clust_to_subclass_MetaMarkers[, c(1:4)] )
 
+top_markers = all_meta_markers %>% filter(rank <= 50)
+
+top_markers = top_markers %>% filter(cell_type %in% c('mouse_Vip','mouse_Sncg','Sncg','Vip', 'Ancestral Sncg', 'Chandelier','Pvalb','Sst','Sst Chodl',
+                                                      'Pax6','Lamp5','Lamp5 Lhx6'))
+
+
+for_jaccard_df = top_markers %>% filter(cell_type %in% c('mouse_Sncg','mouse_Vip','Vip','Sncg','Ancestral Sncg')) %>% 
+  select(cell_type, rank, gene) %>%
+  tidyr::pivot_wider(names_from = cell_type, values_from = gene) %>%
+  tibble::column_to_rownames(var = 'rank')
+
+
+
+jaccard <- function(a, b) {
+    intersection = length(intersect(a, b))
+    union = length(a) + length(b) - intersection
+    return (intersection/union)
+}
+
+
+jaccard_sim_mat = matrix(NA, ncol = ncol(for_jaccard_df), nrow = ncol(for_jaccard_df),
+                         dimnames = list(colnames(for_jaccard_df), colnames(for_jaccard_df)))
+overlap_mat = matrix(NA, ncol = ncol(for_jaccard_df), nrow = ncol(for_jaccard_df),
+                         dimnames = list(colnames(for_jaccard_df), colnames(for_jaccard_df)))
+for(i in 1:ncol(for_jaccard_df )){
+  for(j in 1:ncol(for_jaccard_df)){
+    
+    jaccard_sim_mat[i, j] = jaccard(for_jaccard_df[ ,i], for_jaccard_df[ ,j])
+    overlap_mat[i, j] = sum(for_jaccard_df[ ,i] %in% for_jaccard_df[ ,j])
+  }
+}
+
+
+overlap_mat
+
+ComplexHeatmap::Heatmap(jaccard_sim_mat, name = 'jaccard index',
+                        col=viridis::viridis(100),
+                        clustering_distance_rows = function(m) dist(1-m), clustering_distance_columns = function(m) dist(1-m),
+                        clustering_method_rows = 'average', clustering_method_columns = 'average',
+                        show_row_dend = F, column_title = 'Overlap in top 50 marker sets')
+
+
+
+#Highest overlap is 15 shared markers between primate vip and mouse vip
+
+pdf(file = '../graphs/non_allen_data/mouse_primate_vip_sncg_marker_jaccard_heatmap.pdf', useDingbats = F, height = 4, width = 5)
+ComplexHeatmap::Heatmap(jaccard_sim_mat, name = 'jaccard index',
+                        col=viridis::viridis(100),
+                        clustering_distance_rows = function(m) dist(1-m), clustering_distance_columns = function(m) dist(1-m),
+                        clustering_method_rows = 'average', clustering_method_columns = 'average',
+                        show_row_dend = F, column_title = 'Overlap in top 50 marker sets')
+dev.off()
 
 
 ```
