@@ -1,0 +1,97 @@
+
+
+
+Exploring marker gene variability across the allen+macosko mouse data and the allen primate data
+
+Using the original mouse subclass annotations
+
+
+```{r}
+library(Seurat)
+library(SingleCellExperiment)
+library(ggplot2)
+library(dplyr)
+library(MetaMarkers)
+
+```
+
+
+```{r}
+
+load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/mouse_primate_MN_integrated.Rdata')
+interneuron.combined$cell_subclass[interneuron.combined$cell_subclass == 'Serpinf1'] = 'Vip'
+
+interneuron.combined
+```
+
+Get the whole brain atlas clusters for Leon
+
+```{r}
+
+load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/20_3_25_interneuron_mouse_metadata.Rdata')
+interneuron_metadata
+
+table(interneuron_metadata$study)
+
+
+wba_cluster_df = interneuron_metadata %>% filter(study %in% c('macosko_wba','zeng_10xv3_wba','zeng_10xv2_wba')) %>% group_by(study, cell_cluster) %>%
+  summarise(n = n())
+
+
+
+
+macosko_df = wba_cluster_df %>% filter(study == 'macosko_wba') %>% select(study, cell_cluster)
+
+write.csv2(macosko_df, file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/macosko_mouse_wba_kept_clusters.csv', row.names = F)
+
+
+zeng_df = wba_cluster_df %>% filter(study != 'macosko_wba') %>% select(study, cell_cluster)
+
+write.csv2(zeng_df, file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/zeng_mouse_wba_kept_clusters.csv', row.names = F)
+
+
+```
+
+
+```{r}
+
+temp = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/data/zeng_mouse_wba_kept_clusters.csv')
+temp
+```
+
+
+
+```{r}
+
+zeng_wba_region_mapping = data.table::fread('/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/results/Zeng_mouse_wba_kept_clusters.region_counts.csv')
+
+table(zeng_wba_region_mapping$region_remap)
+
+
+
+macosko_wba_region_mapping = data.table::fread('/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/results/Macosko_mouse_wba_kept_clusters.region_counts.csv')
+
+table(macosko_wba_region_mapping$region_remap)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

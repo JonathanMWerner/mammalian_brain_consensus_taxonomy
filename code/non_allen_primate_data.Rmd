@@ -1348,6 +1348,7 @@ export_meta_markers(mouse_subclass_meta_markers, 'markers_to_share/mouse_subclas
 
 export_markers(sesten_integ_inhib_markers, 'markers_to_share/sestan_de_novo_cluster_markers.csv' )
 
+export_markers(caglayan_integ_inhib_markers, 'markers_to_share/caglayan_de_novo_cluster_markers.csv' )
 
 ```
 
@@ -1405,6 +1406,39 @@ export_markers(sestan_macaque_cluster_markers, 'markers_to_share/sestan_macaque_
 export_markers(sestan_marmoset_cluster_markers, 'markers_to_share/sestan_marmoset_de_novo_cluster_markers.csv')
 
 ```
+
+
+
+```{r}
+
+human_index = caglayan_inhib_copy$Species == 'human'
+caglayan_human = caglayan_inhib_copy[ , human_index]
+
+chimp_index = caglayan_inhib_copy$Species == 'chimp'
+caglayan_chimp = caglayan_inhib_copy[ , chimp_index]
+
+macaque_index = caglayan_inhib_copy$Species == 'macaque'
+caglayan_macaque = caglayan_inhib_copy[ , macaque_index]
+
+
+caglayan_human_cluster_markers = compute_markers(cpm(caglayan_human),caglayan_human$seurat_clusters )
+caglayan_chimp_cluster_markers = compute_markers(cpm(caglayan_chimp),caglayan_chimp$seurat_clusters )
+caglayan_macaque_cluster_markers = compute_markers(cpm(caglayan_macaque),caglayan_macaque$seurat_clusters )
+
+caglayan_human_cluster_markers
+caglayan_chimp_cluster_markers
+caglayan_macaque_cluster_markers
+
+
+export_markers(caglayan_human_cluster_markers, 'markers_to_share/caglayan_human_de_novo_cluster_markers.csv')
+export_markers(caglayan_chimp_cluster_markers, 'markers_to_share/caglayan_chimp_de_novo_cluster_markers.csv')
+export_markers(caglayan_macaque_cluster_markers, 'markers_to_share/caglayan_macaque_de_novo_cluster_markers.csv')
+
+```
+
+
+
+
 
 
 Compare DE correlations to the mouse Subclass markers
