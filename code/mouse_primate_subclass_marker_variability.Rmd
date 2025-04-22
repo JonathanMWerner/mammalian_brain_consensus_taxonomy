@@ -33,11 +33,15 @@ interneuron_metadata
 
 table(interneuron_metadata$study)
 
+```
+
+
+
+```{r}
+
 
 wba_cluster_df = interneuron_metadata %>% filter(study %in% c('macosko_wba','zeng_10xv3_wba','zeng_10xv2_wba')) %>% group_by(study, cell_cluster) %>%
   summarise(n = n())
-
-
 
 
 macosko_df = wba_cluster_df %>% filter(study == 'macosko_wba') %>% select(study, cell_cluster)
@@ -55,14 +59,6 @@ write.csv2(zeng_df, file = '/home/werner/projects/mouse_brain_consensus_taxonomy
 
 ```{r}
 
-temp = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/data/zeng_mouse_wba_kept_clusters.csv')
-temp
-```
-
-
-
-```{r}
-
 zeng_wba_region_mapping = data.table::fread('/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/results/Zeng_mouse_wba_kept_clusters.region_counts.csv')
 
 table(zeng_wba_region_mapping$region_remap)
@@ -76,11 +72,180 @@ table(macosko_wba_region_mapping$region_remap)
 ```
 
 
+```{r}
+
+
+
+
+```
 
 
 
 
 
+
+
+For the other datasets, Tasic18 is Primary Visual cortex (VISP) and Anterior Lateral Motor cortex (ALM)
+the zeng different technologies datasets are all primate motor cortex (MOp)
+
+```{r}
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+#zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba_primate_MN.rds')
+#zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba_primate_MN.rds')
+#zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba_primate_MN.rds')
+#zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba_primate_MN.rds')
+
+
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+```
+
+And the unprocessed tasic18, since this has the region metadata
+
+```{r}
+
+tasic18_full = readRDS(file = '/vault/werner/rotation/jonathan/data/tasic18.rds')
+table(as.character(tasic18_full$source.name), tasic18_full$characteristics..cell_subclass)
+
+#Just grab the GABAergic cells
+inhib_filt = colData(tasic18_full)$cell_class == 'GABAergic'
+tasic18_full = tasic18_full[ ,inhib_filt]
+
+table(colData(tasic18_full)$cell_cluster)
+ncol(tasic18_full)
+
+
+colData(tasic18_full)
+colData(tasic18)
+
+index = match(rownames(colData(tasic18)), tasic18_full$title)
+tasic18$region = as.character(tasic18_full$source.name[index])
+
+tasic18_region_mapping = as.data.frame(colData(tasic18)) %>% group_by(cell_cluster, region, primate_subclass) %>% summarise(n = n()) %>%
+  select(cell_cluster, primate_subclass, n, region)
+
+
+
+tasic18_region_mapping$region[tasic18_region_mapping$region == 'Anterior Lateral Motor Cortex (ALM)'] = 'ALM'
+tasic18_region_mapping$region[tasic18_region_mapping$region == 'Primary Visual Cortex (VISp)'] = 'VISP'
+
+table(tasic18_region_mapping$region)
+```
+
+
+```{r}
+
+macosko_clust_subclass_mapping = interneuron_metadata %>% filter(study == 'macosko_wba') %>% group_by(cell_cluster, primate_subclass) %>%
+  summarise(n = n())
+
+#Add primate subclass labels to the clusters
+index = match(macosko_wba_region_mapping$cell_cluster, macosko_clust_subclass_mapping$cell_cluster )
+macosko_wba_region_mapping$primate_subclass = macosko_clust_subclass_mapping$primate_subclass[index]
+
+macosko_wba_region_mapping = macosko_wba_region_mapping %>% filter(cell_count_Macosko != 0) %>%
+  select(cell_cluster, primate_subclass, cell_count_Macosko, region_remap)
+colnames(macosko_wba_region_mapping) = c('cell_cluster','primate_subclass','n','region')
+
+
+
+zeng_clust_subclass_mapping = interneuron_metadata %>% filter(study %in% c('zeng_10xv2_wba', 'zeng_10xv3_wba')) %>%
+  group_by(cell_cluster, primate_subclass) %>%
+  summarise(n = n())
+
+
+#Add primate subclass labels to the clusters
+index = match(zeng_wba_region_mapping$cell_cluster, zeng_clust_subclass_mapping$cell_cluster )
+zeng_wba_region_mapping$primate_subclass = zeng_clust_subclass_mapping$primate_subclass[index]
+
+zeng_wba_region_mapping = zeng_wba_region_mapping %>% filter(cell_count_Zeng != 0) %>%
+  select(cell_cluster, primate_subclass, cell_count_Zeng, region_remap)
+colnames(zeng_wba_region_mapping) = c('cell_cluster','primate_subclass','n','region')
+
+
+
+
+zeng_motor_cortex_df = interneuron_metadata %>% 
+  filter(study %in% c('zeng_10x_cells', 'zeng_10x_nuclei', 'zeng_smart_cells', 'zeng_smart_nuclei')) %>%
+  group_by(cell_cluster, primate_subclass) %>%
+  summarise(n = n()) %>% mutate(region = 'MOp')
+
+```
+
+
+```{r}
+
+all_region_mapping = do.call('rbind', 
+                             list(zeng_wba_region_mapping, macosko_wba_region_mapping, zeng_motor_cortex_df, tasic18_region_mapping))
+
+
+all_region_mapping
+
+
+all_region_mapping$primate_subclass = factor(all_region_mapping$primate_subclass,
+                                              levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+                                                         'Vip','Sncg','Pax6','Lamp5','Lamp5 Lhx6'))
+
+all_regions = unique(all_region_mapping$region)
+
+region_colors = MetBrewer::met.brewer("Moreau", n=20, type="continuous")
+region_colors = region_colors[1:20] 
+names(region_colors) =c(all_regions)
+
+
+# Stacked + percent
+ggplot(all_region_mapping, aes(fill=region, y=n, x=primate_subclass)) + 
+    geom_bar(position="fill", stat="identity") + ylab('% cell-type') + 
+  scale_fill_manual(values = region_colors) +
+  ggtitle('Regional contribution to orthologous subclasses') +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+ggsave(filename = 'region_stacked_orth_subclass_mouse.pdf',device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 6, width = 8)
+```
+
+```{r}
+
+
+all_regions = unique(all_region_mapping$region)
+
+pvalb_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Pvalb') %>% pull(region))
+print('Regions with no Pvalb cells...')
+all_regions[!all_regions %in% pvalb_regions]
+
+chandelier_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Chandelier') %>% pull(region))
+print('Regions with no Chandelier cells...')
+all_regions[!all_regions %in% chandelier_regions]
+
+sst_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Sst') %>% pull(region))
+print('Regions with no sst cells...')
+all_regions[!all_regions %in% sst_regions]
+
+sst_chodl_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Sst Chodl') %>% pull(region))
+print('Regions with no sst_chodl cells...')
+all_regions[!all_regions %in% sst_chodl_regions]
+
+vip_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Vip') %>% pull(region))
+print('Regions with no vip cells...')
+all_regions[!all_regions %in% vip_regions]
+
+pax6_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Pax6') %>% pull(region))
+print('Regions with no pax6 cells...')
+all_regions[!all_regions %in% pax6_regions]
+
+
+sncg_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Sncg') %>% pull(region))
+print('Regions with no sncg cells...')
+all_regions[!all_regions %in% sncg_regions]
+
+lamp5_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Lamp5') %>% pull(region))
+print('Regions with no lamp5 cells...')
+all_regions[!all_regions %in% lamp5_regions]
+
+lamp5_lhx6_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Lamp5 Lhx6') %>% pull(region))
+print('Regions with no lamp5_lhx6 cells...')
+all_regions[!all_regions %in% lamp5_lhx6_regions]
+
+```
 
 
 
