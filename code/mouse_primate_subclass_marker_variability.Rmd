@@ -425,7 +425,7 @@ take the top 10 primate markers for a subclass and just see where they are in th
 
 ```{r}
 
-top_primate_markers = primate_subclass_meta_markers %>% filter(cell_type == 'Vip' & rank <= 10) %>% pull(gene) 
+top_primate_markers = primate_subclass_meta_markers %>% filter(cell_type == 'Pax6' & rank <= 10) %>% pull(gene) 
 
 
 test_df = original_mouse_subclass_meta_markers %>% filter(gene %in% top_primate_markers) #%>% group_by(cell_type) %>%
@@ -468,7 +468,7 @@ primate_name_sake_genes = primate_name_sake_genes[index, ]
 mouse_name_sake_genes$primate_auroc = primate_name_sake_genes$primate_auroc
 
 #Set the order for plotting
-mouse_name_sake_genes$gene = factor(mouse_name_sake_genes$gene, levels = c('SST','CHODL','PVALB','TRPS1','LHX6','LAMP5','VIP','PAX6', 'SNCG'))
+mouse_name_sake_genes$gene = factor(mouse_name_sake_genes$gene, levels = c('SST','CHODL','PVALB','TRPS1','LHX6','LAMP5','VIP','SNCG', 'PAX6'))
 #Add a mouse subclass label
 mouse_name_sake_genes$plot_label = mouse_name_sake_genes$full_label
 mouse_name_sake_genes$plot_label[!mouse_name_sake_genes$plot_label %in% c('Chandelier_TRPS1','Pvalb_PVALB','Sst_SST', 'Sst Chodl_CHODL',
@@ -487,7 +487,7 @@ p1 = ggplot(mouse_name_sake_genes, aes(x = primate_auroc, y = mouse_auroc, color
   geom_label_repel(min.segment.length = 0, max.overlaps = Inf, hjust = 1, direction = 'y', nudge_x = -.3, show.legend = F) +
   geom_vline(xintercept = .5, color = 'black', linetype = 'dashed', alpha = .5) +
   geom_hline(yintercept = .5, color = 'black', linetype = 'dashed', alpha = .5) +
-  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass', 
+  scale_color_manual(values = celltype_color_palette, name = 'Subclass', 
                      breaks = c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Sncg')) +
   ylab('Mouse AUROC') + xlab('Primate AUROC') +
   theme_bw()+ ggtitle('Subclass namesake gene DE') +
@@ -524,47 +524,75 @@ Using the original subclass labels for the mouse data, cell_subclass, get the ma
 
 ```{r}
 
-num_total_markers = c(1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+get_avg_marker_enrichment = function(sce_obj, meta_markers, num_markers){
 
-all_summary_dfs = list()
-
-current_sce_obj = zeng_10xv2_wba
-
-
-for(i in 1:length(num_total_markers)){
-
-  current_markers = num_total_markers[i]
-  top_primate_markers = primate_subclass_meta_markers %>% filter(rank <= current_markers)
+  top_markers = meta_markers %>% filter(rank <= num_markers)
   
   #Compute enrichments
-  ct_scores = score_cells(log1p(cpm(current_sce_obj)), top_primate_markers)
+  ct_scores = score_cells(log1p(cpm(sce_obj)), top_markers)
   ct_enrichment = compute_marker_enrichment(ct_scores)
   #Add the mouse original subclass label to the cells
   dataset_cell_marker_enrichs_df = as.data.frame(t(ct_enrichment))
-  dataset_cell_marker_enrichs_df$mouse_subclass = current_sce_obj$cell_subclass
+  dataset_cell_marker_enrichs_df$mouse_subclass = sce_obj$cell_subclass
   #Get the mean enrichment for all the marker sets across the mouse subclass labels
   summary_marker_enrich_df = dataset_cell_marker_enrichs_df %>% group_by(mouse_subclass) %>% 
-    summarise(primate_sst = mean(`all|Sst`), primate_sst_chodl = mean(`all|Sst Chodl`),
-              primate_pvalb = mean(`all|Pvalb`), primate_chandelier = mean(`all|Chandelier`),
-              primate_lamp5 = mean(`all|Lamp5`), primate_lamp5_lhx6 = mean(`all|Lamp5 Lhx6`),
-              primate_vip = mean(`all|Vip`), primate_sncg = mean(`all|Sncg`),
-              primate_pax6 = mean(`all|Pax6`)) %>%
-    tidyr::pivot_longer(!mouse_subclass, names_to = 'primate_markers', values_to = 'mean_mouse_enrich') %>%
-    mutate(num_markers = current_markers)
+    summarise(`Primate Sst` = mean(`all|Sst`), `Primate Sst Chodl` = mean(`all|Sst Chodl`),
+              `Primate Pvalb` = mean(`all|Pvalb`), `Primate Chandelier` = mean(`all|Chandelier`),
+              `Primate Lamp5` = mean(`all|Lamp5`), `Primate Lamp5 Lhx6` = mean(`all|Lamp5 Lhx6`),
+              `Primate Vip` = mean(`all|Vip`), `Primate Sncg` = mean(`all|Sncg`),
+              `Primate Pax6` = mean(`all|Pax6`)) %>% tibble::column_to_rownames(var = "mouse_subclass")
+  summary_marker_enrich_df = as.matrix(summary_marker_enrich_df)
+    #tidyr::pivot_longer(!mouse_subclass, names_to = 'primate_markers', values_to = 'mean_mouse_enrich') %>%
+    #mutate(num_markers = current_markers)
   
-  all_summary_dfs[[i]] = summary_marker_enrich_df
+  #all_summary_dfs[[i]] = summary_marker_enrich_df
+  
+  return(summary_marker_enrich_df)
 
 }
 
 
-temp_rbind_dfs = do.call('rbind', all_summary_dfs)
+num_total_markers = c(1, 10, 25, 50, 100)
+
+all_enrich_dfs = list()
+
+for(i in 1:length(num_total_markers)){
+  
+
+  current_markers = num_total_markers[i]
+  
+  all_enrich_mats = vector(mode = 'list', length = 8)
+  
+  all_enrich_mats[[1]] = get_avg_marker_enrichment(tasic18, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[2]] = get_avg_marker_enrichment(zeng_10x_cells, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[3]] = get_avg_marker_enrichment(zeng_10x_nuclei, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[4]] = get_avg_marker_enrichment(zeng_smart_cells, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[5]] = get_avg_marker_enrichment(zeng_smart_nuclei, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[6]] = get_avg_marker_enrichment(zeng_10xv2_wba, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[7]] = get_avg_marker_enrichment(zeng_10xv3_wba, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[8]] = get_avg_marker_enrichment(macosko_wba, primate_subclass_meta_markers, num_markers = current_markers)
+  
+  dataset_avg_enrich_mat = Reduce('+', all_enrich_mats ) / 8
+  
+  
+  avg_enrich_df = reshape2::melt(dataset_avg_enrich_mat, varnames = c('Mouse Subclass','Primate Subclass markers'), value.name = 'avg_enrichment')
+  avg_enrich_df$num_markers = current_markers
+  
+  all_enrich_dfs[[i]] = avg_enrich_df
 
 
-ggplot(temp_rbind_dfs, aes(x = num_markers, y = mean_mouse_enrich, color = mouse_subclass, group = mouse_subclass)) + 
+}
+
+temp_enrich_dfs = do.call('rbind', all_enrich_dfs)
+
+
+ggplot(temp_enrich_dfs, aes(x = num_markers, y = avg_enrichment, color = `Mouse Subclass`, group = `Mouse Subclass`)) + 
   geom_point() +
   geom_line() +
-  scale_color_manual(values = celltype_color_palette) +
-  facet_wrap(~primate_markers, scales = 'free_y')
+  scale_x_continuous(breaks = num_total_markers) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  theme_bw() + ylab('Average expression enrichment') + xlab('Number of Primate subclass markers') +
+  facet_wrap(~`Primate Subclass markers`, scales = 'free_y') + ggtitle('Primate marker enrichment in Mouse subclasses')
 
 
 ```
@@ -607,7 +635,6 @@ compute_avg_dectection = function(sce_obj, meta_markers, num_markers){
   avg_detection_rates = (gene_annotations %*% detect_ratios) / num_markers
   return(avg_detection_rates)
 }
-
 
 
 
@@ -661,7 +688,7 @@ keep_index = temp_detect_dfs$full_label %in% c('Chandelier_Chandelier','Chandeli
                                                'Sncg_Sncg','Sncg_Vip',
                                                'Lamp5_Lamp5','Lamp5_Lamp5 Lhx6',
                                                'Lamp5 Lhx6_Lamp5 Lhx6','Lamp5 Lhx6_Lamp5',
-                                               'Pax6_Sncg','Pax6_Lamp5')
+                                               'Pax6_Sncg','Pax6_Vip')
 temp_detect_dfs$color_label = 'NA'
 temp_detect_dfs$color_label[keep_index] = as.character(temp_detect_dfs$`Mouse Subclass`)[keep_index]
 temp_detect_dfs
@@ -697,52 +724,312 @@ ratio of avg(agg_in_celltype) / avg(agg_in_all_other_cells)
 
 
 ```{r}
-num_markers = 100
-top_markers = primate_subclass_meta_markers %>% filter(rank <= num_markers)
-
-gene_annotations = as.matrix(table(top_markers$cell_type, top_markers$gene))
-
-#Just need the expression of the primate markers
-gene_index = rownames(tasic18) %in% top_markers$gene
-marker_exp = as.matrix(cpm(tasic18)[gene_index, ])
-
-index = match(rownames(marker_exp), colnames(gene_annotations))
-gene_annotations = gene_annotations[ , index]
-
-#Computes the aggregate expression for each marker set in each cell
-agg_marker_exp_mat = t(marker_exp) %*% t(gene_annotations)
 
 
-#Make sure the annotations line up with the actual expression data order, doing table() sorts the data
-celltype_annotations = as.matrix(table(colnames(tasic18), tasic18$cell_subclass))
-index = match(rownames(agg_marker_exp_mat), rownames(celltype_annotations))
-celltype_annotations = celltype_annotations[index, ]
+compute_signal_to_noise = function(sce_obj, meta_markers, num_markers){
 
-cell_totals = colSums(celltype_annotations)
-cell_totals_background = colSums(!celltype_annotations)
+  top_markers = meta_markers %>% filter(rank <= num_markers)
+  
+  gene_annotations = as.matrix(table(top_markers$cell_type, top_markers$gene))
+  
+  #Just need the expression of the primate markers
+  gene_index = rownames(sce_obj) %in% top_markers$gene
+  marker_exp = as.matrix(log1p(cpm(sce_obj))[gene_index, ])
+  
+  index = match(rownames(marker_exp), colnames(gene_annotations))
+  gene_annotations = gene_annotations[ , index]
+  
+  #Computes the aggregate expression for each marker set in each cell
+  agg_marker_exp_mat = t(marker_exp) %*% t(gene_annotations)
+  
+  
+  #Make sure the annotations line up with the actual expression data order, doing table() sorts the data
+  celltype_annotations = as.matrix(table(colnames(sce_obj), sce_obj$cell_subclass))
+  index = match(rownames(agg_marker_exp_mat), rownames(celltype_annotations))
+  celltype_annotations = celltype_annotations[index, ]
+  
+  cell_totals = colSums(celltype_annotations)
+  cell_totals_background = colSums(!celltype_annotations)
+  
+  
+  #This computes the average aggregate expression per cell-type
+  sum_aggs = t(agg_marker_exp_mat ) %*% celltype_annotations
+  avg_agg_exp = t(t(sum_aggs) / cell_totals)
+  
+  #This computes the average aggregate expression in the background cells
+  sum_aggs_background = t(agg_marker_exp_mat ) %*% !celltype_annotations
+  avg_agg_exp_background = t(t(sum_aggs_background) / cell_totals_background)
+  
+  #Divide to get a signal-to-noise ratio
+  signal_to_noise_mat = avg_agg_exp / avg_agg_exp_background
+
+  
+  return(list('agg_exp' = avg_agg_exp , 'signal_noise' = signal_to_noise_mat))
+}
 
 
-#This computes the average aggregate expression per cell-type
-sum_aggs = t(agg_marker_exp_mat ) %*% celltype_annotations
-avg_agg_exp = t(t(sum_aggs) / cell_totals)
-
-#This computes the average aggregate expression in the background cells
-sum_aggs_background = t(agg_marker_exp_mat ) %*% !celltype_annotations
-avg_agg_exp_background = t(t(sum_aggs_background) / cell_totals_background)
-
-#Just need the diagonals
-agg_signal_noise = diag(avg_agg_exp) / diag(avg_agg_exp_background)
-names(agg_signal_noise) = colnames(avg_agg_exp)
-agg_signal_noise
 ```
 
 
 ```{r}
 
-mat = matrix(c(1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6), nrow)
+num_total_markers = c(1, 10, 25, 50, 100)
+
+all_signal_noise_dfs = list()
+all_exp_dfs = list()
+
+for(i in 1:length(num_total_markers)){
+
+  current_markers = num_total_markers[i]
+
+  all_signal_noise_mats = vector(mode = 'list', length = 8)
+  all_exp_mats = vector(mode = 'list', length = 8)
+  
+  temp_results = compute_signal_to_noise(tasic18, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[1]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[1]] = temp_results[['signal_noise']]
+  
+  temp_results = compute_signal_to_noise(zeng_10x_cells, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[2]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[2]] = temp_results[['signal_noise']]  
+
+  temp_results = compute_signal_to_noise(zeng_10x_nuclei, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[3]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[3]] = temp_results[['signal_noise']] 
+  
+  temp_results = compute_signal_to_noise(zeng_smart_cells, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[4]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[4]] = temp_results[['signal_noise']]  
+  
+  temp_results = compute_signal_to_noise(zeng_smart_nuclei, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[5]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[5]] = temp_results[['signal_noise']]  
+  
+  temp_results = compute_signal_to_noise(zeng_10xv2_wba, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[6]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[6]] = temp_results[['signal_noise']]  
+  
+  temp_results = compute_signal_to_noise(zeng_10xv3_wba, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[7]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[7]] = temp_results[['signal_noise']]  
+  
+  temp_results = compute_signal_to_noise(macosko_wba, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[8]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[8]] = temp_results[['signal_noise']]
+  
+  dataset_avg_signal_noise_mat = Reduce('+', all_signal_noise_mats ) / 8
+  dataset_avg_exp_mat = Reduce('+', all_exp_mats ) / 8
+  
+  avg_signal_noise_df = reshape2::melt(dataset_avg_signal_noise_mat, varnames = c('Primate Subclass Markers','Mouse Subclass'), value.name = 'avg_signal_noise')
+  avg_signal_noise_df$num_markers = current_markers
+  
+  all_signal_noise_dfs[[i]] = avg_signal_noise_df
+  
+  avg_exp_df = reshape2::melt(dataset_avg_exp_mat, varnames = c('Primate Subclass Markers','Mouse Subclass'), value.name = 'avg_agg_exp')
+  avg_exp_df$num_markers = current_markers
+  
+  all_exp_dfs[[i]] = avg_exp_df
+
+
+}
+
+temp_signal_noise_dfs = do.call('rbind', all_signal_noise_dfs )
+temp_exp_dfs = do.call('rbind', all_exp_dfs )
+
+temp_signal_noise_dfs$full_label = paste(temp_signal_noise_dfs$`Primate Subclass Markers`, temp_signal_noise_dfs$`Mouse Subclass`, sep = '_')
+table(temp_signal_noise_dfs$full_label)
+keep_index = temp_signal_noise_dfs$full_label %in% c('Chandelier_Chandelier','Chandelier_Pvalb',
+                                               'Pvalb_Pvalb','Pvalb_Chandelier',
+                                               'Sst_Sst','Sst_Sst Chodl',
+                                               'Sst Chodl_Sst Chodl','Sst Chodl_Sst',
+                                               'Vip_Vip','Vip_Sncg',
+                                               'Sncg_Sncg','Sncg_Vip',
+                                               'Lamp5_Lamp5','Lamp5_Lamp5 Lhx6',
+                                               'Lamp5 Lhx6_Lamp5 Lhx6','Lamp5 Lhx6_Lamp5',
+                                               'Pax6_Sncg', 'Pax6_Vip')
+temp_signal_noise_dfs$color_label = 'NA'
+temp_signal_noise_dfs$color_label[keep_index] = as.character(temp_signal_noise_dfs$`Mouse Subclass`)[keep_index]
+temp_signal_noise_dfs
+```
+
+
+
+
+```{r}
+
+temp_signal_noise_dfs$`Primate Subclass Markers` = paste0('Primate ', temp_signal_noise_dfs$`Primate Subclass Markers` )
+
+temp_signal_noise_dfs$`Primate Subclass Markers` = factor(temp_signal_noise_dfs$`Primate Subclass Markers`, 
+                                                          levels = c('Primate Sst','Primate Sst Chodl','Primate Pvalb','Primate Chandelier',
+                                                                     'Primate Lamp5 Lhx6','Primate Lamp5','Primate Vip','Primate Sncg','Primate Pax6'))
+
+temp_exp_dfs$`Primate Subclass Markers` = paste0('Primate ', temp_exp_dfs$`Primate Subclass Markers` )
+
+temp_exp_dfs$`Primate Subclass Markers` = factor(temp_exp_dfs$`Primate Subclass Markers`, 
+                                                          levels = c('Primate Sst','Primate Sst Chodl','Primate Pvalb','Primate Chandelier',
+                                                                     'Primate Lamp5 Lhx6','Primate Lamp5','Primate Vip','Primate Sncg','Primate Pax6'))
+
+
+temp_signal_noise_dfs$color_label = factor(temp_signal_noise_dfs$color_label, levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+                                                                                                           'Lamp5 Lhx6','Lamp5','Vip','Sncg','Pax6', 'NA'))
+
+#temp_exp_dfs$`Primate Subclass Markers` = factor(temp_exp_dfs$`Primate Subclass Markers`, levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+#                                                                                                           'Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))
+
+#temp_exp_dfs$color_label = factor(temp_exp_dfs$color_label, levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+#                                                                                                           'Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg', 'NA'))
+
+
+
+
+
+p3 = ggplot(temp_signal_noise_dfs, aes(x = num_markers, y = avg_signal_noise, color =`Mouse Subclass`, group = `Mouse Subclass`)) + 
+  geom_point() +
+  geom_line() +
+  scale_x_continuous(breaks = num_total_markers) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  theme_bw() + ylab('Average signal-to-noise ratio') + xlab('Number of Primate subclass markers') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free_y') + ggtitle('Signal-to-Noise of Primate marker expression in Mouse subclasses')
+
+p3
+ggsave(plot = p3, filename = 'avg_signal_noise_primate_in_mouse.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 6, width = 8)
+
+
+temp_exp_dfs = temp_exp_dfs %>% group_by(`Primate Subclass Markers`, num_markers) %>% mutate(zscore_exp = scale(avg_agg_exp))
+
+
+
+p4 = ggplot(temp_exp_dfs, aes(x = num_markers, y = zscore_exp, color =`Mouse Subclass`, group = `Mouse Subclass`)) + 
+  geom_point() +
+  geom_line() +
+  scale_x_continuous(breaks = num_total_markers) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  theme_bw() + ylab('Average aggregate expression') + xlab('Number of Primate subclass markers') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free_y') + ggtitle('Aggregate expression of Primate markers in Mouse subclasses')
+
+p4
+ggsave(plot = p4, filename = 'avg_exp_primate_in_mouse.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 6, width = 8)
 
 
 ```
+
+
+
+Re order the enrichment df to match the other stat dfs
+And add a scaling of the enrichment values
+
+```{r}
+
+temp_enrich_dfs = temp_enrich_dfs %>% group_by(num_markers, `Mouse Subclass`) %>% arrange( as.character(`Primate Subclass markers`), .by_group = T)
+
+table(temp_signal_noise_dfs$`Mouse Subclass` == temp_enrich_dfs$`Mouse Subclass`)
+table(temp_signal_noise_dfs$`Primate Subclass Markers` == temp_enrich_dfs$`Primate Subclass markers`)
+
+table(temp_exp_dfs$`Mouse Subclass` == temp_enrich_dfs$`Mouse Subclass`)
+table(temp_exp_dfs$`Primate Subclass Markers` == temp_enrich_dfs$`Primate Subclass markers`)
+
+
+
+temp_enrich_dfs = temp_enrich_dfs %>% group_by(`Primate Subclass markers`, num_markers) %>% mutate(zscore_enrich = scale(avg_enrichment))
+
+
+```
+
+
+
+
+```{r}
+
+all_stats_df = temp_signal_noise_dfs
+all_stats_df$avg_agg_exp = temp_exp_dfs$avg_agg_exp
+all_stats_df$zscore_exp = temp_exp_dfs$zscore_exp
+all_stats_df$avg_enrich_exp = temp_enrich_dfs$avg_enrichment
+all_stats_df$zscore_enrich = temp_enrich_dfs$zscore_enrich
+
+marker_colors = c('white','grey70','grey50','grey30','black')
+names(marker_colors) = as.character(num_total_markers)
+
+all_stats_df$num_markers = as.character(all_stats_df$num_markers)
+all_stats_df$num_markers = factor(all_stats_df$num_markers, levels = c(as.character(num_total_markers)))
+
+
+p5 = ggplot(all_stats_df, aes( y = avg_signal_noise, x = avg_agg_exp , color =color_label, group = `Mouse Subclass`)) + 
+  geom_point(shape = 21,size = 2, aes(fill = num_markers)) +
+  geom_line() +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  scale_fill_manual(values = marker_colors, name = '# markers') +
+  theme_bw() + ylab('Average signal-to-noise ratio') + xlab('Average aggregate expression') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free_y') + ggtitle('Primate marker expression in Mouse subclasses')
+
+p5
+
+ggsave(plot = p5, filename = 'exp_vs_signal_noise_primate_in_mouse.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 6, width = 8)
+
+
+p6 = ggplot(all_stats_df, aes( x = avg_agg_exp, y =avg_enrich_exp , color =color_label, group = `Mouse Subclass`)) + 
+  geom_point(shape = 21,size = 2, aes(fill = num_markers)) +
+  geom_line() + 
+  #coord_cartesian(ylim=c(0, 3.5)) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  scale_fill_manual(values = marker_colors, name = '# markers') +
+  theme_bw() + ylab('Expression enrichment') + xlab('Aggregate expression') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free') + ggtitle('Primate marker expression in Mouse subclasses')
+
+p6
+
+ggsave(plot = p6, filename = 'enrichment_vs_agg_exp_primate_in_mouse.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 6, width = 8)
+
+```
+
+```{r}
+
+
+all_stats_df %>% group_by(`Primate Subclass Markers`, `Mouse Subclass`) %>% summarise(mean_enrichment = mean(avg_enrich_exp)) %>%
+  group_by(`Primate Subclass Markers`) %>% arrange(desc(mean_enrichment), .by_group = T)
+
+```
+
+And plot the Primate Sncg and Primate Pax6 enrichment against each other for the Mouse Sncg subclass
+
+```{r}
+
+snapshot_df = all_stats_df %>% filter(`Primate Subclass Markers` %in% c('Primate Sncg','Primate Pax6') & `Mouse Subclass` == 'Sncg') %>%
+  select(`Primate Subclass Markers`, `Mouse Subclass`, avg_enrich_exp, num_markers) %>% 
+  tidyr::pivot_wider(names_from = `Primate Subclass Markers`, values_from = avg_enrich_exp)
+
+
+p7 = ggplot(snapshot_df , aes(x = `Primate Sncg`, y = `Primate Pax6`, color = `Mouse Subclass`)) +
+  geom_point(shape = 21,size = 5, aes(fill = num_markers)) +
+  geom_abline(slope = 1, intercept = 0, color = 'red') +
+  ylim(0, 2.8) + xlim(0, 2) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  scale_fill_manual(values = marker_colors, name = '# markers') +
+  ggtitle('Mouse Sncg Subclass') + ylab('Primate Pax6 marker enrichment') + xlab('Primate Sncg marker enrichment') +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
+p7
+
+ggsave(plot = p7, filename = 'mouse_snch_primate_sncg_pax6_enrichment.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 2.5, width = 4)
+
+
+```
+
+
+```{r}
+
+saveRDS(all_stats_df, file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/mouse_primate_marker_comp/all_stats_df.rds')
+
+```
+
+
+
 
 
 
