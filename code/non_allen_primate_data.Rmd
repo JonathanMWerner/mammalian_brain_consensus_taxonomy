@@ -280,6 +280,17 @@ export_markers(caglayan_human_inhib_class_markers, '/inkwell03/werner/sc_data/pr
 
 ```{r}
 
+
+caglayan_macaque_inhib_class_markers = read_markers('/inkwell03/werner/sc_data/primate_caglayan_konopka/species_meta_markers/macaque_gaba_class_markers.csv.gz' )
+caglayan_chimp_inhib_class_markers = read_markers( '/inkwell03/werner/sc_data/primate_caglayan_konopka/species_meta_markers/chimp_gaba_class_markers.csv.gz' )
+caglayan_human_inhib_class_markers = read_markers( '/inkwell03/werner/sc_data/primate_caglayan_konopka/species_meta_markers/human_gaba_class_markers.csv.gz' )
+
+```
+
+
+
+```{r}
+#PAX6
 pax6_sp_1 = caglayan_human_inhib_class_markers %>% filter(gene == 'PAX6') %>% 
   select(cell_type, gene, fold_change) %>% 
   mutate(species = 'human')
@@ -296,7 +307,42 @@ pax6_sp_3 = caglayan_macaque_inhib_class_markers %>% filter(gene == 'PAX6') %>%
 pax6_DE_df = do.call('rbind', list(pax6_sp_1 , pax6_sp_2 , pax6_sp_3))
 pax6_DE_df = pax6_DE_df %>% tidyr::pivot_wider(names_from = cell_type, values_from = fold_change)
 
+#LAMP5
+lamp5_sp_1 = caglayan_human_inhib_class_markers %>% filter(gene == 'LAMP5') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'human')
 
+lamp5_sp_2 = caglayan_chimp_inhib_class_markers %>% filter(gene == 'LAMP5') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'chimp')
+
+lamp5_sp_3 = caglayan_macaque_inhib_class_markers %>% filter(gene == 'LAMP5') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'macaque')
+
+
+lamp5_DE_df = do.call('rbind', list(lamp5_sp_1 , lamp5_sp_2 , lamp5_sp_3))
+lamp5_DE_df = lamp5_DE_df %>% tidyr::pivot_wider(names_from = cell_type, values_from = fold_change)
+
+#VIP
+vip_sp_1 = caglayan_human_inhib_class_markers %>% filter(gene == 'VIP') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'human')
+
+vip_sp_2 = caglayan_chimp_inhib_class_markers %>% filter(gene == 'VIP') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'chimp')
+
+vip_sp_3 = caglayan_macaque_inhib_class_markers %>% filter(gene == 'VIP') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'macaque')
+
+
+vip_DE_df = do.call('rbind', list(vip_sp_1 , vip_sp_2 , vip_sp_3))
+vip_DE_df = vip_DE_df %>% tidyr::pivot_wider(names_from = cell_type, values_from = fold_change)
+
+
+#SNCG
 sncg_sp_1 = caglayan_human_inhib_class_markers %>% filter(gene == 'SNCG') %>% 
   select(cell_type, gene, fold_change) %>% 
   mutate(species = 'human')
@@ -314,18 +360,21 @@ sncg_DE_df = do.call('rbind', list(sncg_sp_1 , sncg_sp_2 , sncg_sp_3))
 sncg_DE_df = sncg_DE_df %>% tidyr::pivot_wider(names_from = cell_type, values_from = fold_change)
 
 
-marker_gene_df = rbind(pax6_DE_df, sncg_DE_df)
+marker_gene_df = rbind(pax6_DE_df, lamp5_DE_df, vip_DE_df, sncg_DE_df)
 
 
 
-ggplot(marker_gene_df  , aes(x = log2(CGE), y = log2(MGE), color = gene, shape = species)) + geom_point(size = 5,alpha = .75) +
+ggplot(marker_gene_df  , aes(x = log2(CGE), y = log2(MGE), color = gene, shape = species)) + geom_point(size = 5,alpha = .5) +
   xlab('CGE log2(FC)') + ylab('MGE log2(FC)') +
-  scale_color_manual(values = c('SNCG' = celltype_color_palette[['Sncg']], 'PAX6' = celltype_color_palette[['Pax6']])) + 
+  scale_color_manual(values = c('SNCG' = celltype_color_palette[['Sncg']], 
+                                'PAX6' = celltype_color_palette[['Pax6']],
+                                'LAMP5' = celltype_color_palette[['Lamp5']],
+                                'VIP' = celltype_color_palette[['Vip']])) + 
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'red') +
   geom_vline(xintercept = 0, linetype = 'dashed', color = 'red') +
   theme_classic() + ggtitle('Caglayan cross-primate data')
 
-ggsave(filename = 'caglayan_pax6_sncg_MGE_CGE_DE_scatter.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+ggsave(filename = 'caglayan_pax6_sncg_vip_lamp5_MGE_CGE_DE_scatter.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
        useDingbats = F, height = 3, width = 4)
 
 
@@ -802,7 +851,7 @@ gc()
 
 
 ```{r}
-
+#pax6
 pax6_sp_1 = sestan_human_inhib_class_markers %>% filter(gene == 'PAX6') %>% 
   select(cell_type, gene, fold_change) %>% 
   mutate(species = 'human')
@@ -822,7 +871,48 @@ pax6_sp_4 = sestan_marmoset_inhib_class_markers %>% filter(gene == 'PAX6') %>%
 pax6_DE_df = do.call('rbind', list(pax6_sp_1 , pax6_sp_2 , pax6_sp_3, pax6_sp_4))
 pax6_DE_df = pax6_DE_df %>% tidyr::pivot_wider(names_from = cell_type, values_from = fold_change)
 
+#Lamp5
+lamp5_sp_1 = sestan_human_inhib_class_markers %>% filter(gene == 'LAMP5') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'human')
 
+lamp5_sp_2 = sestan_chimp_inhib_class_markers %>% filter(gene == 'LAMP5') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'chimp')
+
+lamp5_sp_3 = sestan_macaque_inhib_class_markers %>% filter(gene == 'LAMP5') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'macaque')
+
+lamp5_sp_4 = sestan_marmoset_inhib_class_markers %>% filter(gene == 'LAMP5') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'marmoset')
+
+lamp5_DE_df = do.call('rbind', list(lamp5_sp_1 , lamp5_sp_2 , lamp5_sp_3, lamp5_sp_4))
+lamp5_DE_df = lamp5_DE_df %>% tidyr::pivot_wider(names_from = cell_type, values_from = fold_change)
+
+#Vip
+vip_sp_1 = sestan_human_inhib_class_markers %>% filter(gene == 'VIP') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'human')
+
+vip_sp_2 = sestan_chimp_inhib_class_markers %>% filter(gene == 'VIP') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'chimp')
+
+vip_sp_3 = sestan_macaque_inhib_class_markers %>% filter(gene == 'VIP') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'macaque')
+
+vip_sp_4 = sestan_marmoset_inhib_class_markers %>% filter(gene == 'VIP') %>% 
+  select(cell_type, gene, fold_change) %>% 
+  mutate(species = 'marmoset')
+
+vip_DE_df = do.call('rbind', list(vip_sp_1 , vip_sp_2 , vip_sp_3, vip_sp_4))
+vip_DE_df = vip_DE_df %>% tidyr::pivot_wider(names_from = cell_type, values_from = fold_change)
+
+
+#sncg
 sncg_sp_1 = sestan_human_inhib_class_markers %>% filter(gene == 'SNCG') %>% 
   select(cell_type, gene, fold_change) %>% 
   mutate(species = 'human')
@@ -844,18 +934,21 @@ sncg_DE_df = do.call('rbind', list(sncg_sp_1 , sncg_sp_2 , sncg_sp_3, sncg_sp_4)
 sncg_DE_df = sncg_DE_df %>% tidyr::pivot_wider(names_from = cell_type, values_from = fold_change)
 
 
-marker_gene_df = rbind(pax6_DE_df, sncg_DE_df)
+marker_gene_df = rbind(pax6_DE_df, sncg_DE_df, vip_DE_df, lamp5_DE_df)
 
 
 
-ggplot(marker_gene_df  , aes(x = log2(CGE), y = log2(MGE), color = gene, shape = species)) + geom_point(size = 5,alpha = .75) +
-  xlab('CGE log2(FC)') + ylab('MGE log2(FC)') +
-  scale_color_manual(values = c('SNCG' = celltype_color_palette[['Sncg']], 'PAX6' = celltype_color_palette[['Pax6']])) + 
+ggplot(marker_gene_df  , aes(x = log2(CGE), y = log2(MGE), color = gene, shape = species)) + geom_point(size = 5,alpha = .5) +
+  xlab('CGE log2(FC)') + ylab('MGE log2(FC)') + ylim(-7, 4) + xlim(-4, 7) +
+  scale_color_manual(values = c('SNCG' = celltype_color_palette[['Sncg']], 
+                                'PAX6' = celltype_color_palette[['Pax6']],
+                                'LAMP5' = celltype_color_palette[['Lamp5']], 
+                                'VIP' = celltype_color_palette[['Vip']])) + 
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'red') +
   geom_vline(xintercept = 0, linetype = 'dashed', color = 'red') +
   theme_classic() + ggtitle('Sesten cross-primate data')
 
-ggsave(filename = 'sesten_pax6_sncg_MGE_CGE_DE_scatter.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+ggsave(filename = 'sesten_pax6_sncg_vip_lamp5_MGE_CGE_DE_scatter.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
        useDingbats = F, height = 3, width = 4)
 
 
