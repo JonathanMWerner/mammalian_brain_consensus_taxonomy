@@ -100,17 +100,6 @@ mouse_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
 
 
 
-
-```{r}
-
-sesten_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_ma_sestan/sestan_integrated_gaba.rds')
-
-sesten_gaba_data
-table(sesten_gaba_data$seurat_clusters)
-
-```
-
-
 And the mouse data with all primate subclass and orthology annotations
 
 ```{r}
@@ -137,11 +126,29 @@ zeng_smart_cells$cell_subclass = as.character(zeng_smart_cells$cell_subclass)
 ```
 
 
-Filter the mouse data to just the mouse Vip and Mouse Sncg clusters.
-Filter for the gene intersect across all the data
-Convert Sestan into a SCE object, split by species
-Run 1vsBest MN
+```{r}
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
+zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
+zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
+zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
+zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
+zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
+macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
 
+gc()
+```
+
+
+
+```{r}
+
+sesten_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_ma_sestan/sestan_integrated_gaba.rds')
+
+sesten_gaba_data
+table(sesten_gaba_data$seurat_clusters)
+
+```
 
 ```{r}
 
@@ -463,6 +470,8 @@ sesten_mouse_subclass_best_hits = readRDS(file = '/home/werner/projects/mouse_br
 
 
 default metaneighbor graph
+
+
 ```{r}
 
 cluster_graph = makeClusterGraph(sesten_mouse_subclass_best_hits , low_threshold = .6)

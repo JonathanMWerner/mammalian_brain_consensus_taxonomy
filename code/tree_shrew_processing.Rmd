@@ -2709,7 +2709,11 @@ export_markers(tree_shrew_vip_sncg_markers , 'markers_to_share/specific_comps/tr
 
 ```
 
+```{r}
 
+tree_shrew_vip_sncg_markers = read_markers( 'markers_to_share/specific_comps/tree_shrew_Vip_vs_Sncg_markers.csv.gz')
+tree_shrew_vip_sncg_markers %>% filter(cell_type == 'Vip')
+```
 
 
 
