@@ -157,7 +157,7 @@ cluster_markers = list(
 
 ```{r}
 
-construct_cell_taxonomy = function(sc_exp, dataset_name, marker_list, num_markers = 50, clust_method = 'average'){
+construct_cell_taxonomy = function(sc_exp, dataset_name, marker_list, num_markers = 50, clust_method = 'ward.D2'){
 
   
   current_dataset_markers = marker_list[[dataset_name]]
@@ -355,8 +355,8 @@ interneuron.combined$cell_subclass[interneuron.combined$cell_subclass == 'Serpin
 
 ```{r}
 
-interneuron.combined[[]] %>% filter(study %in% c('zeng_10xv2_wba','zeng_10xv3_wba')) %>% 
-  group_by(cell_cluster, primate_subclass) %>% summarise(n = n())
+interneuron.combined[[]] %>% group_by(study, primate_subclass) %>% 
+  summarise(n = n())
 
 ```
 
@@ -412,7 +412,12 @@ gene_index = rownames(interneuron.combined@assays$integrated@data) %in% use_gene
 exp_data = interneuron.combined@assays$integrated@data[gene_index, ]
 #Compute centroids of gene expression per cluster
 exp_data = as.data.frame(t(as.matrix(exp_data)))
-exp_data = exp_data %>% mutate(cluster = interneuron.combined$cell_cluster)
+
+interneuron.combined$study_clust = paste(interneuron.combined$study, interneuron.combined$cell_cluster, sep = '_')
+
+#exp_data = exp_data %>% mutate(cluster = interneuron.combined$cell_cluster)
+exp_data = exp_data %>% mutate(cluster = interneuron.combined$study_clust)
+
 
 centroids = exp_data %>% group_by(cluster) %>% summarize(across(which(colnames(exp_data)!= 'cluster'), median)) %>% as.data.frame()
 #Get back into genes on rows and subclass on columns
@@ -423,19 +428,35 @@ centroids = t(centroids[ ,2:ncol(centroids)])
 centroid_corr = cor(centroids, method = 'spearman')
 
 #Hierarchical clusting on the correlation distance matrix
-hclust_avg <- hclust(as.dist(1-centroid_corr), method = 'average')
+hclust_avg <- hclust(as.dist(1-centroid_corr), method = 'ward.D2')
 
-dataset_subclasses = interneuron.combined[[]][ , c('cell_subclass','cell_cluster','primate_subclass', 'study')]
-dataset_subclasses = dataset_subclasses %>% filter(!duplicated(cell_cluster))
+dataset_subclasses = interneuron.combined[[]][ , c('cell_subclass','study_clust','primate_subclass', 'study')]
+dataset_subclasses = dataset_subclasses %>% filter(!duplicated(study_clust))
 
-clust_index = match(colnames(centroid_corr), dataset_subclasses$cell_cluster)
+clust_index = match(colnames(centroid_corr), dataset_subclasses$study_clust)
 original_subclass = dataset_subclasses$cell_subclass[clust_index]
 orthologous_subclass = dataset_subclasses$primate_subclass[clust_index]
 study_label = dataset_subclasses$study[clust_index]
 
 study_colors = MetBrewer::met.brewer("Veronese", n=8, type="continuous")
 study_colors = study_colors[1:8] 
-names(study_colors) = names(table(study_label))
+names(study_colors) = c('tasic18','zeng_10x_cells','zeng_10x_nuclei','zeng_smart_cells',
+                        'zeng_smart_nuclei','zeng_10xv2_wba','zeng_10xv3_wba','macosko_wba')
+
+
+#study_colors = MetBrewer::met.brewer("Veronese", n=8, type="continuous")
+#study_colors = study_colors[1:8] 
+#names(study_colors) =c('Allen Institute single-cell Smart-seq v4 2018',
+#                       'Allen Institute single-cell 10xV2 2021',
+#                       'Allen Institute single-nuclei 10xV2 2021',
+#                       'Allen Institute single-cell Smart-seq v4 2021',
+#                       'Allen Institute single-nuclei Smart-seq v4 2021',
+#                       'Allen Institute single-cell 10xV2 2023',
+#                       'Allen Institute single-cell 10xV3 2023',
+#                       'Broad Institute single-nuclei 10xV3 2023')
+
+
+
 
 
 column_ha = HeatmapAnnotation(original_subclass = original_subclass, 
