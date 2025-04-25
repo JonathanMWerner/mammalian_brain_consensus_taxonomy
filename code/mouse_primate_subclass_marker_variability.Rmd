@@ -1029,11 +1029,49 @@ saveRDS(all_stats_df, file = '/home/werner/projects/mouse_brain_consensus_taxono
 ```
 
 
+```{r}
+
+all_stats_df = readRDS('/home/werner/projects/mouse_brain_consensus_taxonomy/data/mouse_primate_marker_comp/all_stats_df.rds')
+
+```
+
+```{r}
+num_total_markers = c(1, 10, 25, 50, 100)
+marker_colors = c('white','grey70','grey50','grey30','black')
+names(marker_colors) = as.character(num_total_markers)
 
 
 
+ggplot(all_stats_df, aes( y = avg_signal_noise, x= avg_enrich_exp, color =color_label, group = `Mouse Subclass`)) + 
+  geom_point(shape = 21,size = 2, aes(fill = num_markers)) +
+  geom_line() + 
+  #coord_cartesian(ylim=c(0, 3.5)) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  scale_fill_manual(values = marker_colors, name = '# markers') +
+  theme_bw() + ylab('Expression enrichment') + xlab('Aggregate expression') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free') + ggtitle('Primate marker expression in Mouse subclasses')
 
 
+```
+
+
+```{r}
+
+p6 = ggplot(all_stats_df, aes( x = avg_agg_exp, y =avg_enrich_exp , color =color_label, group = `Mouse Subclass`)) + 
+  geom_point(shape = 21,size = 3, aes(fill = num_markers)) +
+  geom_line(linewidth = 1) + geom_hline(yintercept = 1, color = 'black', linetype = 'dashed') +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  scale_fill_manual(values = marker_colors, name = '# markers') +
+  theme_bw() + ylab('Mouse expression enrichment') + xlab('Aggregate mouse expression') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free') + ggtitle('Primate marker expression in Mouse subclasses')
+
+p6
+
+ggsave(plot = p6, filename = 'enrichment_vs_agg_exp_primate_in_mouse.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 6, width = 8)
+
+
+```
 
 
 
