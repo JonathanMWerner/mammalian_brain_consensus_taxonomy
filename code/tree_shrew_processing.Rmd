@@ -2244,6 +2244,10 @@ export_meta_markers(non_allen_clust_to_subclass_MetaMarkers, 'markers_to_share/n
 ```{r}
 
 non_allen_clust_to_subclass_MetaMarkers = read_meta_markers( 'markers_to_share/non_allen_subclass_with_ancient_SNCG_metaMarkers.csv.gz')
+
+
+non_allen_clust_to_subclass_MetaMarkers %>% filter(gene == 'PARM1')
+
 ```
 
 
@@ -2567,10 +2571,10 @@ get_specific_metamarkers('Sncg','Ancestral Sncg', 'markers_to_share/specific_com
 ```{r}
 
 primate_vip_vs_ancestral_sncg_metaMarkers = read_meta_markers('markers_to_share/specific_comps/non_allen_Vip_vs_ancestral_Sncg_metaMarkers.csv.gz')
-primate_vip_vs_ancestral_sncg_metaMarkers %>% filter(rank <= 20)
+primate_vip_vs_ancestral_sncg_metaMarkers %>% filter(gene == 'PTPRZ1')
 
 primate_vip_vs_sncg_metaMarkers = read_meta_markers('markers_to_share/specific_comps/non_allen_Vip_vs_Sncg_metaMarkers.csv.gz')
-primate_vip_vs_sncg_metaMarkers %>% filter(rank <= 20)
+primate_vip_vs_sncg_metaMarkers %>% filter(gene == 'SLC35D3')
 
 primate_sncg_vs_ancestral_sncg_metaMarkers = read_meta_markers('markers_to_share/specific_comps/non_allen_Sncg_vs_ancestral_Sncg_metaMarkers.csv.gz')
 primate_sncg_vs_ancestral_sncg_metaMarkers %>% filter(rank <= 20)

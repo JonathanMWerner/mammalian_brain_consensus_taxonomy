@@ -1519,13 +1519,27 @@ row_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-m), method = "averag
 col_dendrogram <- stats::as.dendrogram(stats::hclust(dist(1-t(m)), method = "average"))
 
 
-#And the primate subclass colors
+#And the primate subclass colors and colors for each species
 primate_subclass = rownames(test_metasubclass_hits)
 primate_subclass = sapply(strsplit(primate_subclass, '|', fixed = T), '[[', 2)
 primate_subclass = gsub('_',' ', primate_subclass)
 
+primate_species = sapply(strsplit(rownames(test_metasubclass_hits), '|', fixed = T), '[[', 1)
+primate_species = sapply(strsplit(primate_species, '_', fixed = T), '[[', 1)
+
+
 row_ha = rowAnnotation(primate_subclass = primate_subclass,
-                              col = list(primate_subclass = celltype_color_palette), show_legend = F)
+                       primate_species = primate_species,
+                       col = list(primate_subclass = celltype_color_palette,
+                                  primate_species = c('human' = 'black', 'chimp' = 'grey25', 'gorilla' = 'grey40', 'macaca' = 'grey70', 'marmoset' = 'grey90')),
+                       show_legend = F)
+
+#Custom order for species
+row_df = data.frame(species = primate_species, subclass = primate_subclass, row_index = 1:length(primate_subclass))
+row_df = row_df %>% group_by(subclass) %>% arrange(match(species, c('human','chimp','gorilla','macaca','marmoset')), .by_group = T) %>%
+  arrange(match(subclass, c("Pvalb", "Sst", 'Sst Chodl','Vip','Pax6', 'Sncg', 'Chandelier', 'Lamp5', 'Lamp5 Lhx6')))
+row_custom_order = row_df$row_index
+
 
 
 index = match(colnames(test_metasubclass_hits),  max_avg_mapping$mouse_mcluster )
@@ -1546,14 +1560,14 @@ ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = au
 
 ht_mc = draw(ht_mc)
 
-pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/annot_primate_subclass_mouse_metacluster_heatmap.pdf',
-    useDingbats = F, height = 8, width = 20)
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/annot_primate_subclass_mouse_metacluster_heatmap_v2.pdf',
+   useDingbats = F, height = 8, width = 20)
 ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
-                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
-                        column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
-                        column_names_gp = gpar(fontsize = 4),
-                        row_names_gp = gpar(fontsize = 8),
-                        left_annotation = row_ha, top_annotation = col_ha)
+                       row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
+                       column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
+                       column_names_gp = gpar(fontsize = 4),
+                       row_names_gp = gpar(fontsize = 8),
+                       left_annotation = row_ha, top_annotation = col_ha)
 
 ht_mc = draw(ht_mc)
 dev.off()
@@ -1561,8 +1575,6 @@ dev.off()
 
 mouse_match_prim_sub = reshape2::melt(test_metasubclass_hits)
 mouse_match_prim_sub$primate_subclass = sapply(strsplit(as.character(mouse_match_prim_sub$Var1), fixed = T, split = '|'), '[[', 2)
-
-mouse_match_prim_sub %>% filter(Var2 == 'zeng_10xv2_wba|Sst Chodl Gaba_4')
 
 index = match(mouse_match_prim_sub$Var2, max_avg_mapping$mouse_mcluster)
 
@@ -1581,7 +1593,7 @@ mouse_match_prim_sub = mouse_match_prim_sub %>% group_by(Var2, Var1) %>%
 custom_order = match(as.character(mouse_match_prim_sub$Var2), colnames(test_metasubclass_hits))
 
 ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
-                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram, show_row_dend = F,
+                        row_order = row_custom_order, cluster_rows = F,
                         column_order = custom_order, cluster_columns = F,
                         column_names_gp = gpar(fontsize = 4),
                         row_names_gp = gpar(fontsize = 8),
@@ -1589,10 +1601,10 @@ ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = au
 
 ht_mc = draw(ht_mc)
 
-pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/custom_annot_primate_subclass_mouse_metacluster_heatmap.pdf',
-    useDingbats = F, height = 8, width = 20)
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/custom_annot_primate_subclass_mouse_metacluster_heatmap_v2.pdf',
+   useDingbats = F, height = 8, width = 20)
 ht_mc = ComplexHeatmap::Heatmap(test_metasubclass_hits, name = 'AUROC', col = auroc_cols,
-                        row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram, show_row_dend = F,
+                        row_order = row_custom_order, cluster_rows = F,
                         column_order = custom_order, cluster_columns = F,
                         column_names_gp = gpar(fontsize = 4),
                         row_names_gp = gpar(fontsize = 8),
