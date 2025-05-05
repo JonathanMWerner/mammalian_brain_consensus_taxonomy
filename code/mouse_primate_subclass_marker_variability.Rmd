@@ -88,18 +88,6 @@ table(macosko_wba_region_mapping$region_remap)
 ```
 
 
-```{r}
-
-
-
-
-```
-
-
-
-
-
-
 
 For the other datasets, Tasic18 is Primary Visual cortex (VISP) and Anterior Lateral Motor cortex (ALM)
 the zeng different technologies datasets are all primate motor cortex (MOp)
@@ -267,8 +255,47 @@ Do a heatmap instead
 
 ```{r}
 
+all_regions = unique(all_region_mapping$region)
+
+all_region_subclasses = paste(rep(all_regions, 9), c(rep('Pvalb',length(all_regions)), rep('Chandelier',length(all_regions)),rep('Sst',length(all_regions)),
+  rep('Sst Chodl',length(all_regions)),rep('Vip',length(all_regions)),rep('Sncg',length(all_regions)),
+  rep('Pax6',length(all_regions)),rep('Lamp5',length(all_regions)),rep('Lamp5 Lhx6',length(all_regions))), sep = '_')
+
+all_region_mapping$primate_subclass = as.character(all_region_mapping$primate_subclass)
+all_region_mapping$region_subclass = paste(all_region_mapping$region, all_region_mapping$primate_subclass, sep = '_')
+
+#Missing region and subclass intersections, get 0 counts
+missing_region_subclasses = all_region_subclasses[!all_region_subclasses %in% all_region_mapping$region_subclass ]
+
+missing_regions = sapply(strsplit(missing_region_subclasses, split = '_', fixed = T), '[[',1)
+missing_subclasses = sapply(strsplit(missing_region_subclasses, split = '_', fixed = T), '[[',2)
+
+missing_df = data.frame(cell_cluster = NA, primate_subclass = missing_subclasses, n = 0, 
+                        region = missing_regions , region_subclass = missing_region_subclasses )
+
+all_region_mapping = rbind(all_region_mapping, missing_df)
 
 
+subclass_region_mat = all_region_mapping %>% select(primate_subclass, n, region) %>% group_by(region, primate_subclass) %>%
+  summarise(total = sum(n)) %>% tidyr::pivot_wider(names_from = region, values_from = total) %>%
+  tibble::column_to_rownames(var = 'primate_subclass')
+
+subclass_region_mat = as.matrix(subclass_region_mat)
+
+
+col_fun = circlize::colorRamp2(breaks = c(0,log10(2), max(log10(subclass_region_mat+1))), colors = c('grey','white','red'))
+ComplexHeatmap::Heatmap(log10(subclass_region_mat+1), col = col_fun, name = 'log10( cell count + 1 )',
+                        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+                        show_row_dend = F, show_column_dend = F)
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/region_orth_mouse_subclass_heatmap.pdf',
+    useDingbats = F, height = 4, width = 6)
+ComplexHeatmap::Heatmap(log10(subclass_region_mat+1), col = col_fun, name = 'log10( cell count + 1 )',
+                        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+                        show_row_dend = F, show_column_dend = F)
+
+dev.off()
 
 ```
 
