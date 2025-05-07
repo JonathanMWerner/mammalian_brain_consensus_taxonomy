@@ -1377,6 +1377,31 @@ mouse_genes = rownames(tasic18)
 
 
 ```{r}
+
+zeng_10x_cells$cell_cluster = as.character(zeng_10x_cells$cell_cluster)
+zeng_10x_cells$cell_subclass = as.character(zeng_10x_cells$cell_subclass)
+zeng_10x_nuclei$cell_cluster = as.character(zeng_10x_nuclei$cell_cluster)
+zeng_10x_nuclei$cell_subclass = as.character(zeng_10x_nuclei$cell_subclass)
+zeng_smart_nuclei$cell_cluster = as.character(zeng_smart_nuclei$cell_cluster)
+zeng_smart_nuclei$cell_subclass = as.character(zeng_smart_nuclei$cell_subclass)
+zeng_smart_cells$cell_cluster = as.character(zeng_smart_cells$cell_cluster)
+zeng_smart_cells$cell_subclass = as.character(zeng_smart_cells$cell_subclass)
+
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
+zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
+zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
+zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
+zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
+zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
+macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
+
+gc()
+```
+
+
+
+```{r}
 tree_shrew_genes = rownames(tree_shrew_inhibitory_sce)
 
 intersect_genes = intersect(mouse_genes, tree_shrew_genes)
@@ -1503,9 +1528,9 @@ length(global_hvgs)
 Sys.time() - start
 ```
 
-Just use the top 1000 hvgs
+Just use the top 2000 hvgs
 ```{r}
-global_hvgs = global_hvgs[1:1000]
+global_hvgs = global_hvgs[1:2000]
 
 ```
 
@@ -1869,9 +1894,9 @@ length(global_hvgs)
 Sys.time() - start
 ```
 
-Just use the top 1000 hvgs
+Just use the top 2000 hvgs
 ```{r}
-global_hvgs = global_hvgs[1:1000]
+global_hvgs = global_hvgs[1:2000]
 
 ```
 
@@ -2032,6 +2057,102 @@ dev.off()
 rm(human_10x, human_ss, chimp_10x, chimp_ss, gorilla_10x, gorilla_ss, macaca_10x, marmoset_10x, merged_tree_shrew_primate)
 gc()
 ```
+
+
+##############################
+Assign tree shrew clusters to subclass labels and get tree shrew subclass markers
+Using the mouse and primate MetaNeighbor results to tree shrew and looking at the subclass marker enrichment of mouse and primate markers in the tree shrew
+
+#########################
+
+
+0 - Some enrichment for mouse and primate Sst and Sst Chodl, but MNs with mouse Sst and is intermediate with Primate Sst and Sst Chodl. Is closest to Sst generally.
+1 - Vip all around
+2 - Enrichment for mouse and primate Pax6, some enrichment for primate Sncg. Mouse MN is Pax6, intermediate Pax6 and Sncg for primate MN, But closest tree shrew transcriptomic match is 13, which is a clear Pax6 all around, except with weak mouse Pax6 marker enrichment
+3 - Pvalb all around
+4 - Lamp5Lhx6 all around
+5 - Pax6 all around
+6 - Sst all around
+7 - Lamp5Lhx6 all around
+8 - Pvalb all around
+9 - Chandelier all around
+10 - Sst outlier with Sst Chodl enrichment for both Primate and Mouse, but is Sst in Mouse and Sst Chodl in Primates. Likely Sst Chodl
+11 - Sncg all around
+12 - Lamp5 all around
+13 - Pax6, but with weak Mouse Pax6 marker enrichment
+14 - Seems intermediate with Sst and Sst Chodl, closest match is tree shrew 0 which is mostly Sst
+15 - Pax6 all around
+16 - No clear enrichment for anything, is Chandelier in primate MN, but between Lamp5Lhx6 and Pvalb in Mouse MN. Likely exclude
+17 - No clear enrichment for anything, is Vip and Sncg intermediate in primate MN, but Lamp5 in Mouse MN. Likely exclude
+18 - No clear enrichment for anything, is Chandelier in primate MN, but off on its own in the Mouse MN. Likely exclude
+
+16 and 18 are transcriptomically similar and with the other tree shrew Pvalb clusters
+17 is transcriptomically similar to tree shrew Lamp5, but more so to 16 and 18.
+
+Final assignment
+c('3' = 'Pvalb', '8' = 'Pvalb',
+'9' = 'Chandelier',
+'0' = 'Sst', '6' = 'Sst', '14' = 'Sst',
+'10' = 'Sst Chodl',
+'1' = 'Vip',
+'11' = 'Sncg',
+'2' = 'Pax6', '5' = 'Pax6', '13' = 'Pax6', '15' = 'Pax6',
+'12' = 'Lamp5',
+'4' = 'Lamp5Lhx6', '7' = 'Lamp5Lhx6',
+'16' = 'other', '17' = 'other', '18' = 'other')
+
+```{r}
+
+tree_shrew_inhibitory_sce$primate_subclass
+
+tree_shrew_clust_subclass_mapping = c('3' = 'Pvalb', '8' = 'Pvalb',
+'9' = 'Chandelier',
+'0' = 'Sst', '6' = 'Sst', '14' = 'Sst',
+'10' = 'Sst Chodl',
+'1' = 'Vip',
+'11' = 'Sncg',
+'2' = 'Pax6', '5' = 'Pax6', '13' = 'Pax6', '15' = 'Pax6',
+'12' = 'Lamp5',
+'4' = 'Lamp5Lhx6', '7' = 'Lamp5Lhx6',
+'16' = 'other', '17' = 'other', '18' = 'other')
+
+
+
+tree_shrew_inhibitory_sce$orthologous_subclass = tree_shrew_clust_subclass_mapping[as.character(tree_shrew_inhibitory_sce$cell_cluster)]
+
+table(tree_shrew_inhibitory_sce$orthologous_subclass)
+
+#Get and save subclass markers for the TreeShrew
+
+
+tree_shrew_ortho_subclass_markers = compute_markers(cpm(tree_shrew_inhibitory_sce), tree_shrew_inhibitory_sce$orthologous_subclass)
+gc()
+
+
+tree_shrew_ortho_subclass_markers %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = 20)
+
+
+tree_shrew_ortho_subclass_markers %>% filter(gene == 'NPAS1') %>% arrange(desc(auroc))
+
+```
+
+
+```{r}
+
+
+MetaMarkers::export_markers(tree_shrew_ortho_subclass_markers,
+                            '/home/werner/projects/mouse_brain_consensus_taxonomy/code/markers_to_share/tree_shrew_ortho_subclass_markers.csv')
+
+```
+
+
+#######################################
+Look at mouse Vip and Sncg marker enrichment
+Look at primate Vip, ancestral Sncg, and Sncg marker enrichment
+
+In the tree shrew subclasses
+
+############################
 
 
 
