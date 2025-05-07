@@ -1108,6 +1108,339 @@ ggsave(plot = p6, filename = 'enrichment_vs_agg_exp_primate_in_mouse.pdf', path 
 
 
 
+#########################################
+
+Now check out marker enrichment of the mouse Vip and Sncg markers in the Primate Vip, Ancestral Sncg, and Sncg subclasses
+
+For both the Sestan and Caglayan datasets,
+
+Then the tree shrew as well, looking at Mouse Vip and Sncg, then Primate Vip, Ancestral Sncg, and Sncg marker enrichment
+
+So just need the mouse orthologous MetaMarkers and then the Sestan, Caglayan, and tree shrew datasets
+######################################
+
+
+```{r}
+
+mouse_subclass_meta_markers = read_meta_markers('markers_to_share/mouse_subclass_metaMarkers.csv.gz')
+mouse_subclass_meta_markers %>% filter(rank <= 5)
+
+
+```
+
+```{r}
+
+sesten_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_ma_sestan/sestan_integrated_gaba.rds')
+
+DefaultAssay(sesten_gaba_data) <- "RNA"
+
+sesten_gaba_data = as.SingleCellExperiment(sesten_gaba_data)
+names(assays(sesten_gaba_data)) = c('counts','cpm')
+
+colnames(colData(sesten_gaba_data))
+
+
+```
+
+Map the de novo clusters to their subclasses, denoting that cluster 17 in Sestan is putative proto-Sncg
+```{r}
+
+sestan_clust_to_subclass = rep(NA, length = ncol(sesten_gaba_data))
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(25)] = 'Sst Chodl'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(2, 5, 7, 13, 14, 18, 21)] = 'Sst'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(8)] = 'Chandelier'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(0,3,6,23)] = 'Pvalb'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(15, 1)] = 'Lamp5'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(11)] = 'Lamp5 Lhx6'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(22, 24)] = 'Pax6'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(16, 20)] = 'Sncg'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(17)] = 'Ancestral Sncg'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(4, 9, 10, 12, 19)] = 'Vip'
+
+table(sestan_clust_to_subclass)
+table(is.na(sestan_clust_to_subclass))
+
+sesten_gaba_data$clust_to_subclass = sestan_clust_to_subclass
+
+
+table(sesten_gaba_data$species,sesten_gaba_data$clust_to_subclass )
+
+```
+
+
+And now compute Mouse Vip and Mouse Sncg marker enrichment as we increase the number of markers
+
+```{r}
+
+
+get_mouse_in_primate_marker_enrichment = function(sce_obj, meta_markers, num_markers){
+
+  top_markers = meta_markers  %>% filter(rank <= num_markers)
+  
+  #Compute enrichments
+  ct_scores = score_cells(log1p(cpm(sce_obj)), top_markers)
+  ct_enrichment = compute_marker_enrichment(ct_scores)
+  #Add the subclass labels
+  dataset_cell_marker_enrichs_df = as.data.frame(t(ct_enrichment))
+  dataset_cell_marker_enrichs_df$subclass_labels = sce_obj$clust_to_subclass
+  #Get the mean enrichment for all the marker sets across the mouse subclass labels
+  summary_marker_enrich_df = dataset_cell_marker_enrichs_df %>% group_by(subclass_labels) %>% 
+    summarise(`mouse Sst` = mean(`all|Sst`), `mouse Sst Chodl` = mean(`all|Sst Chodl`),
+              `mouse Pvalb` = mean(`all|Pvalb`), `mouse Chandelier` = mean(`all|Chandelier`),
+              `mouse Lamp5` = mean(`all|Lamp5`), `mouse Lamp5 Lhx6` = mean(`all|Lamp5 Lhx6`),
+              `mouse Vip` = mean(`all|Vip`), `mouse Sncg` = mean(`all|Sncg`),
+              `mouse Pax6` = mean(`all|Pax6`)) %>% tibble::column_to_rownames(var = "subclass_labels")
+  
+  summary_marker_enrich_df = as.matrix(summary_marker_enrich_df)
+  summary_marker_enrich_df = reshape2::melt(summary_marker_enrich_df, 
+                                            varnames = c('Primate subclass','Mouse subclass'), value.name = 'Mouse Marker enrichment')
+  
+  summary_marker_enrich_df = summary_marker_enrich_df %>% mutate(num_markers = num_markers)
+
+  return(summary_marker_enrich_df)
+
+}
+
+
+all_num_markers = 1:50
+
+all_mouse_in_sestan_list = vector(mode = 'list', length = length(all_num_markers))
+
+for(i in 1:length(all_num_markers)){
+  current_markers = all_num_markers[i]
+  all_mouse_in_sestan_list[[i]] = get_mouse_in_primate_marker_enrichment(sesten_gaba_data, mouse_subclass_meta_markers, num_markers = current_markers)
+}
+
+
+sestan_mouse_marker_enrichments = do.call('rbind', all_mouse_in_sestan_list)
+
+plotting_df = sestan_mouse_marker_enrichments %>% 
+  filter(`Primate subclass` %in% c('Ancestral Sncg','Sncg','Vip') & `Mouse subclass` %in% c('mouse Vip','mouse Sncg'))
+
+df_vip = plotting_df %>% filter(`Mouse subclass` == 'mouse Vip') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+df_sncg = plotting_df %>% filter(`Mouse subclass` == 'mouse Sncg') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+
+colnames(df_vip) = c('Primate subclass','Mouse Vip enrichment','num_markers')
+colnames(df_sncg) = c('Primate subclass','Mouse Sncg enrichment','num_markers')
+
+df_vip$`Mouse Sncg enrichment` = df_sncg$`Mouse Sncg enrichment`
+
+
+
+ggplot(df_vip, aes(x = num_markers, y = `Mouse Vip enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line() + ggtitle('Mouse Vip markers in Sestan Primate subclasses') + xlab('Number of Mouse MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+#Top 3 Mouse Sncg markers are NR2F2, SDK2, and NRG3
+
+ggplot(df_vip, aes(x = num_markers, y = `Mouse Sncg enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line()  + ggtitle('Mouse Sncg markers in Sestan Primate subclasses') + xlab('Number of Mouse MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+
+
+```
+
+And same thing with the Caglayan dataset
+
+```{r}
+caglayan_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_caglayan_konopka/caglayan_gaba_processed.rds')
+
+DefaultAssay(caglayan_gaba_data) = 'RNA'
+
+caglayan_gaba_data = as.SingleCellExperiment(caglayan_gaba_data)
+names(assays(caglayan_gaba_data)) = c('counts','cpm')
+
+
+caglayan_clust_to_subclass = rep(NA, length = ncol(caglayan_gaba_data))
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(28)] = 'Sst Chodl'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(1, 4, 6, 8, 10, 21, 22)] = 'Sst'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(12)] = 'Chandelier'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(0,3,15, 16, 23)] = 'Pvalb'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(2,14,27)] = 'Lamp5'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(9)] = 'Lamp5 Lhx6'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(24, 25)] = 'Pax6'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(19)] = 'Sncg'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(20)] = 'Ancestral Sncg'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(5, 7, 11, 13, 17, 18, 26)] = 'Vip'
+
+table(caglayan_clust_to_subclass)
+table(is.na(caglayan_clust_to_subclass))
+
+caglayan_gaba_data$clust_to_subclass = caglayan_clust_to_subclass
+
+```
+
+
+```{r}
+
+
+all_num_markers = 1:50
+
+all_mouse_in_caglayan_list = vector(mode = 'list', length = length(all_num_markers))
+
+for(i in 1:length(all_num_markers)){
+  current_markers = all_num_markers[i]
+  all_mouse_in_caglayan_list[[i]] = get_mouse_in_primate_marker_enrichment(caglayan_gaba_data, mouse_subclass_meta_markers, num_markers = current_markers)
+}
+
+
+caglayan_mouse_marker_enrichments = do.call('rbind', all_mouse_in_caglayan_list)
+
+plotting_df = caglayan_mouse_marker_enrichments %>% 
+  filter(`Primate subclass` %in% c('Ancestral Sncg','Sncg','Vip') & `Mouse subclass` %in% c('mouse Vip','mouse Sncg'))
+
+df_vip = plotting_df %>% filter(`Mouse subclass` == 'mouse Vip') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+df_sncg = plotting_df %>% filter(`Mouse subclass` == 'mouse Sncg') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+
+colnames(df_vip) = c('Primate subclass','Mouse Vip enrichment','num_markers')
+colnames(df_sncg) = c('Primate subclass','Mouse Sncg enrichment','num_markers')
+
+df_vip$`Mouse Sncg enrichment` = df_sncg$`Mouse Sncg enrichment`
+
+
+
+ggplot(df_vip, aes(x = num_markers, y = `Mouse Vip enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line() + ggtitle('Mouse Vip markers in Caglayan Primate subclasses') + xlab('Number of Mouse MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+#Top 3 Mouse Sncg markers are NR2F2, SDK2, and NRG3
+
+ggplot(df_vip, aes(x = num_markers, y = `Mouse Sncg enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line()  + ggtitle('Mouse Sncg markers in Caglayan Primate subclasses') + xlab('Number of Mouse MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+
+
+```
+
+
+And the primate metamarkers
+
+```{r}
+all_primate_markers = list(
+    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
+)
+
+
+all_primate_markers$human_10x$cell_type[all_primate_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$human_ss$cell_type[all_primate_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$chimp_10x$cell_type[all_primate_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$chimp_ss$cell_type[all_primate_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$gorilla_10x$cell_type[all_primate_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$gorilla_ss$cell_type[all_primate_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$macaca_10x$cell_type[all_primate_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$marmoset_10x$cell_type[all_primate_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+primate_subclass_meta_markers = make_meta_markers(all_primate_markers, detailed_stats = TRUE)
+
+primate_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+
+```
+
+
+```{r}
+
+all_num_markers = 1:50
+
+all_primate_in_sestan_list = vector(mode = 'list', length = length(all_num_markers))
+
+for(i in 1:length(all_num_markers)){
+  current_markers = all_num_markers[i]
+  all_primate_in_sestan_list[[i]] = get_mouse_in_primate_marker_enrichment(sesten_gaba_data, primate_subclass_meta_markers, num_markers = current_markers)
+}
+
+
+sestan_primate_marker_enrichments = do.call('rbind', all_primate_in_sestan_list)
+
+plotting_df = sestan_primate_marker_enrichments %>% 
+  filter(`Primate subclass` %in% c('Ancestral Sncg','Sncg','Vip') & `Mouse subclass` %in% c('mouse Vip','mouse Sncg'))
+
+df_vip = plotting_df %>% filter(`Mouse subclass` == 'mouse Vip') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+df_sncg = plotting_df %>% filter(`Mouse subclass` == 'mouse Sncg') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+
+colnames(df_vip) = c('Primate subclass','Primate Vip enrichment','num_markers')
+colnames(df_sncg) = c('Primate subclass','Primate Sncg enrichment','num_markers')
+
+df_vip$`Primate Sncg enrichment` = df_sncg$`Primate Sncg enrichment`
+
+
+
+ggplot(df_vip, aes(x = num_markers, y = `Primate Vip enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line() + ggtitle('primate Vip markers in Sestan Primate subclasses') + xlab('Number of primate MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+#Top 3 primate Sncg markers are NR2F2, SDK2, and NRG3
+
+ggplot(df_vip, aes(x = num_markers, y = `Primate Sncg enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line()  + ggtitle('primate Sncg markers in Sestan Primate subclasses') + xlab('Number of primate MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+
+
+```
+
+
+```{r}
+
+all_num_markers = 1:50
+
+all_primate_in_caglayan_list = vector(mode = 'list', length = length(all_num_markers))
+
+for(i in 1:length(all_num_markers)){
+  current_markers = all_num_markers[i]
+  all_primate_in_caglayan_list[[i]] = get_mouse_in_primate_marker_enrichment(caglayan_gaba_data, primate_subclass_meta_markers, num_markers = current_markers)
+}
+
+
+caglayan_primate_marker_enrichments = do.call('rbind', all_primate_in_caglayan_list)
+
+plotting_df = caglayan_primate_marker_enrichments %>% 
+  filter(`Primate subclass` %in% c('Ancestral Sncg','Sncg','Vip') & `Mouse subclass` %in% c('mouse Vip','mouse Sncg'))
+
+df_vip = plotting_df %>% filter(`Mouse subclass` == 'mouse Vip') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+df_sncg = plotting_df %>% filter(`Mouse subclass` == 'mouse Sncg') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+
+colnames(df_vip) = c('Primate subclass','Primate Vip enrichment','num_markers')
+colnames(df_sncg) = c('Primate subclass','Primate Sncg enrichment','num_markers')
+
+df_vip$`Primate Sncg enrichment` = df_sncg$`Primate Sncg enrichment`
+
+
+
+ggplot(df_vip, aes(x = num_markers, y = `Primate Vip enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line() + ggtitle('primate Vip markers in Caglayan Primate subclasses') + xlab('Number of primate MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+#Top 3 primate Sncg markers are NR2F2, SDK2, and NRG3
+
+ggplot(df_vip, aes(x = num_markers, y = `Primate Sncg enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line()  + ggtitle('primate Sncg markers in Caglayan Primate subclasses') + xlab('Number of primate MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+
+
+```
+
+
+save all the enrichments, play around with different visualizations
+
+```{r}
+save(caglayan_primate_marker_enrichments, caglayan_mouse_marker_enrichments, sestan_primate_marker_enrichments, sestan_mouse_marker_enrichments,
+     file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/non_allen_data/mouse_and_primate_marker_enrichments_dfs.Rdata')
+
+```
+
 
 
 
