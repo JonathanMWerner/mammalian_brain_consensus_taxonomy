@@ -1878,7 +1878,7 @@ global_hvgs = global_hvgs[1:1000]
 
 ```
 
-Trying a metaneighbor when grouping the mouse clusters at the subclass level
+Trying a metaneighbor when grouping the primate clusters at the subclass level
 
 
 ```{r}
@@ -2068,6 +2068,264 @@ dev.off()
 
 
 
+###############################################################
+And now the caglayan dataset metaneighbor for mouse and primates
+
+
+###############################################################
+
+
+
+
+And the mouse data with all primate subclass and orthology annotations
+
+```{r}
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba_primate_MN.rds')
+zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba_primate_MN.rds')
+zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba_primate_MN.rds')
+zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba_primate_MN.rds')
+zeng_10xv2_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba_primate_MN.rds')
+zeng_10xv3_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv3_gaba_primate_MN.rds')
+macosko_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba_primate_MN.rds')
+
+mouse_genes = rownames(tasic18)
+
+zeng_10x_cells$cell_cluster = as.character(zeng_10x_cells$cell_cluster)
+zeng_10x_cells$cell_subclass = as.character(zeng_10x_cells$cell_subclass)
+zeng_10x_nuclei$cell_cluster = as.character(zeng_10x_nuclei$cell_cluster)
+zeng_10x_nuclei$cell_subclass = as.character(zeng_10x_nuclei$cell_subclass)
+zeng_smart_nuclei$cell_cluster = as.character(zeng_smart_nuclei$cell_cluster)
+zeng_smart_nuclei$cell_subclass = as.character(zeng_smart_nuclei$cell_subclass)
+zeng_smart_cells$cell_cluster = as.character(zeng_smart_cells$cell_cluster)
+zeng_smart_cells$cell_subclass = as.character(zeng_smart_cells$cell_subclass)
+
+```
+
+
+```{r}
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
+zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
+zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
+zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
+zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
+zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
+macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
+
+gc()
+```
+
+
+
+```{r}
+
+caglayan_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_caglayan_konopka/caglayan_gaba_processed.rds')
+
+caglayan_gaba_data
+table(caglayan_gaba_data$seurat_clusters)
+
+
+
+DefaultAssay(caglayan_gaba_data ) = 'RNA'
+
+
+caglayan_gaba_data = as.SingleCellExperiment(caglayan_gaba_data)
+names(assays(caglayan_gaba_data)) = c('counts','cpm')
+
+caglayan_gaba_data
+
+caglayan_genes = rownames(caglayan_gaba_data)
+
+
+intersect_genes = intersect(mouse_genes, caglayan_genes)
+length(intersect_genes)
+
+```
+
+first split and filter the sestan data
+```{r}
+table(caglayan_gaba_data$Species)
+
+caglayan_gene_index = rownames(caglayan_gaba_data) %in% intersect_genes
+
+human_cell_index = caglayan_gaba_data$Species == 'human'
+chimp_cell_index = caglayan_gaba_data$Species == 'chimp'
+macaque_cell_index = caglayan_gaba_data$Species == 'macaque'
+
+
+caglayan_human = caglayan_gaba_data[caglayan_gene_index, human_cell_index]
+caglayan_chimp = caglayan_gaba_data[caglayan_gene_index, chimp_cell_index]
+caglayan_macaque = caglayan_gaba_data[caglayan_gene_index, macaque_cell_index]
+
+rm(caglayan_gaba_data)
+gc()
+
+
+
+```
+
+
+now filter the mouse_data
+
+```{r}
+#tasic18
+tasic18$cell_subclass[tasic18$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+tasic18$cell_subclass[tasic18$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+tasic18$cell_subclass[tasic18$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+tasic18$cell_subclass[tasic18$cell_subclass == 'Serpinf1'] = 'Vip'
+
+keep_meta = colData(tasic18)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+keep_meta$primate_specific_cluster = rep(NA, length = nrow(keep_meta))
+colData(tasic18) = keep_meta
+
+mouse_gene_index = rownames(tasic18) %in% intersect_genes
+tasic18 = tasic18[mouse_gene_index, ]
+
+#zeng_10x_cells
+zeng_10x_cells$cell_subclass[as.character(zeng_10x_cells$cell_cluster) == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_10x_cells$cell_subclass[as.character(zeng_10x_cells$cell_cluster) == 'Pvalb Vipr2'] = 'Chandelier'
+zeng_10x_cells$cell_subclass[as.character(zeng_10x_cells$cell_cluster) == 'Sst Chodl'] = 'Sst Chodl'
+
+keep_meta = colData(zeng_10x_cells)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+keep_meta$primate_specific_cluster = rep(NA, length = nrow(keep_meta))
+colData(zeng_10x_cells) = keep_meta
+
+mouse_gene_index = rownames(zeng_10x_cells) %in% intersect_genes
+zeng_10x_cells = zeng_10x_cells[mouse_gene_index, ]
+
+#zeng_10x_nuclei
+zeng_10x_nuclei$cell_subclass[as.character(zeng_10x_nuclei$cell_cluster) == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_10x_nuclei$cell_subclass[as.character(zeng_10x_nuclei$cell_cluster) == 'Pvalb Vipr2'] = 'Chandelier'
+zeng_10x_nuclei$cell_subclass[as.character(zeng_10x_nuclei$cell_cluster) == 'Sst Chodl'] = 'Sst Chodl'
+
+keep_meta = colData(zeng_10x_nuclei)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+keep_meta$primate_specific_cluster = rep(NA, length = nrow(keep_meta))
+colData(zeng_10x_nuclei) = keep_meta
+
+mouse_gene_index = rownames(zeng_10x_nuclei) %in% intersect_genes
+zeng_10x_nuclei = zeng_10x_nuclei[mouse_gene_index, ]
+
+#zeng_smart_nuclei
+zeng_smart_nuclei$cell_subclass[as.character(zeng_smart_nuclei$cell_cluster) == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_smart_nuclei$cell_subclass[as.character(zeng_smart_nuclei$cell_cluster) == 'Pvalb Vipr2'] = 'Chandelier'
+zeng_smart_nuclei$cell_subclass[as.character(zeng_smart_nuclei$cell_cluster) == 'Sst Chodl'] = 'Sst Chodl'
+
+keep_meta = colData(zeng_smart_nuclei)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+keep_meta$primate_specific_cluster = rep(NA, length = nrow(keep_meta))
+colData(zeng_smart_nuclei) = keep_meta
+
+mouse_gene_index = rownames(zeng_smart_nuclei) %in% intersect_genes
+zeng_smart_nuclei = zeng_smart_nuclei[mouse_gene_index, ]
+
+#zeng_smart_cells
+zeng_smart_cells$cell_subclass[as.character(zeng_smart_cells$cell_cluster) == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_smart_cells$cell_subclass[as.character(zeng_smart_cells$cell_cluster) == 'Pvalb Vipr2'] = 'Chandelier'
+zeng_smart_cells$cell_subclass[as.character(zeng_smart_cells$cell_cluster) == 'Sst Chodl'] = 'Sst Chodl'
+
+keep_meta = colData(zeng_smart_cells)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+keep_meta$primate_specific_cluster = rep(NA, length = nrow(keep_meta))
+colData(zeng_smart_cells) = keep_meta
+
+mouse_gene_index = rownames(zeng_smart_cells) %in% intersect_genes
+zeng_smart_cells = zeng_smart_cells[mouse_gene_index, ]
+
+#zeng_10xv2_wba
+keep_meta = colData(zeng_10xv2_wba)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+keep_meta$primate_specific_cluster = rep(NA, length = nrow(keep_meta))
+colData(zeng_10xv2_wba) = keep_meta
+
+mouse_gene_index = rownames(zeng_10xv2_wba) %in% intersect_genes
+zeng_10xv2_wba = zeng_10xv2_wba[mouse_gene_index, ]
+
+#zeng_10xv3_wba
+keep_meta = colData(zeng_10xv3_wba)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+keep_meta$primate_specific_cluster = rep(NA, length = nrow(keep_meta))
+colData(zeng_10xv3_wba) = keep_meta
+
+mouse_gene_index = rownames(zeng_10xv3_wba) %in% intersect_genes
+zeng_10xv3_wba = zeng_10xv3_wba[mouse_gene_index, ]
+
+#macosko_wba
+keep_meta = colData(macosko_wba)[ , c('cell_cluster','cell_subclass','primate_subclass')]
+keep_meta$primate_specific_cluster = rep(NA, length = nrow(keep_meta))
+colData(macosko_wba) = keep_meta
+
+mouse_gene_index = rownames(macosko_wba) %in% intersect_genes
+macosko_wba = macosko_wba[mouse_gene_index, ]
+
+gc()
+```
+
+
+
+```{r}
+
+
+human_meta = data.frame(cell_cluster = as.character(caglayan_human$seurat_clusters), cell_subclass = NA, primate_subclass = NA) %>% DataFrame()
+colData(caglayan_human) = human_meta
+
+chimp_meta = data.frame(cell_cluster = as.character(caglayan_chimp$seurat_clusters), cell_subclass = NA, primate_subclass = NA) %>% DataFrame()
+colData(caglayan_chimp) = chimp_meta
+
+macaque_meta = data.frame(cell_cluster = as.character(caglayan_macaque$seurat_clusters), cell_subclass = NA, primate_subclass = NA) %>% DataFrame()
+colData(caglayan_macaque) = macaque_meta
+
+```
+
+
+
+
+```{r}
+
+caglayan_mouse_sce_list = list(
+  tasic18 = tasic18,
+  zeng_10x_cells = zeng_10x_cells,
+  zeng_10x_nuclei = zeng_10x_nuclei,
+  zeng_smart_cells = zeng_smart_cells,
+  zeng_smart_nuclei = zeng_smart_nuclei,
+  zeng_10xv2_wba = zeng_10xv2_wba,
+  zeng_10xv3_wba = zeng_10xv3_wba,
+  macosko_wba = macosko_wba, 
+  caglayan_human = caglayan_human, 
+  caglayan_chimp = caglayan_chimp,
+  caglayan_macaque = caglayan_macaque
+)
+
+```
+
+
+
+
+```{r}
+merged_caglayan_mouse = mergeSCE(caglayan_mouse_sce_list)
+dim(merged_caglayan_mouse)
+colData(merged_caglayan_mouse)
+
+```
+
+
+Get rid of the list of sce objects for space
+```{r}
+
+rm(caglayan_mouse_sce_list)
+gc()
+
+merged_caglayan_mouse
+```
+
+```{r}
+
+saveRDS(merged_caglayan_mouse, 
+        file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/non_allen_data/merged_caglayan_mouse_sce.rds')
+
+```
+
+```{r}
+
+merged_caglayan_mouse = readRDS(file =  '/inkwell03/werner/mouse_brain_consensus_taxonomy/non_allen_data/merged_caglayan_mouse_sce.rds')
+
+```
 
 
 
@@ -2075,6 +2333,706 @@ dev.off()
 
 
 
+Run MetaNeighbor
+
+Get highly variable genes
+```{r}
+start = Sys.time()
+global_hvgs = variableGenes(dat = merged_caglayan_mouse , exp_labels = merged_caglayan_mouse$study_id, min_recurrence = 5)
+length(global_hvgs)
+Sys.time() - start
+```
+
+Just use the top 1000 hvgs
+```{r}
+global_hvgs = global_hvgs[1:1000]
+
+```
+
+Trying a metaneighbor when grouping the mouse clusters at the subclass level
+
+
+```{r}
+
+table(grepl('caglayan', merged_caglayan_mouse$study_id))
+
+
+mouse_subclass_primate_cluster = merged_caglayan_mouse$primate_subclass
+primate_index = grepl('caglayan', merged_caglayan_mouse$study_id)
+mouse_subclass_primate_cluster[primate_index] = as.character(merged_caglayan_mouse$cell_cluster)[primate_index]
+
+table(mouse_subclass_primate_cluster)
+
+
+merged_caglayan_mouse$mouse_subclass_primate_cluster = mouse_subclass_primate_cluster
+
+```
+
+
+
+
+
+```{r}
+start = Sys.time()
+caglayan_mouse_subclass_best_hits = MetaNeighborUS(var_genes = global_hvgs, 
+                              dat = merged_caglayan_mouse, 
+                              study_id = merged_caglayan_mouse$study_id,
+                              cell_type = merged_caglayan_mouse$mouse_subclass_primate_cluster,
+                              fast_version = T,
+                              one_vs_best = T, symmetric_output = F)
+
+
+Sys.time() - start
+gc()
+
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/caglayan_vs_mouse_subclass_1vsbest.pdf', 
+    useDingbats = F, height = 25, width = 25)
+plotHeatmap(caglayan_mouse_subclass_best_hits, cex = .5)
+dev.off()
+
+
+
+start = Sys.time()
+caglayan_mouse_subclass_aurocs = MetaNeighborUS(var_genes = global_hvgs, 
+                              dat = merged_caglayan_mouse, 
+                              study_id = merged_caglayan_mouse$study_id,
+                              cell_type = merged_caglayan_mouse$mouse_subclass_primate_cluster,
+                              fast_version = T)
+Sys.time() - start
+gc()
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/caglayan_vs_mouse_subclass_aurocs.pdf', 
+    useDingbats = F, height = 25, width = 25)
+plotHeatmap(caglayan_mouse_subclass_aurocs, cex = .2)
+dev.off()
+
+
+```
+
+
+```{r}
+
+saveRDS(caglayan_mouse_subclass_best_hits, 
+        file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/caglayan_vs_mouse_subclass_1vsbestMN.rds')
+
+saveRDS(caglayan_mouse_subclass_aurocs, 
+        file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/caglayan_vs_mouse_subclass_full_aurocs.rds')
+
+```
+
+```{r}
+
+caglayan_mouse_subclass_best_hits = readRDS(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/caglayan_vs_mouse_subclass_1vsbestMN.rds')
+
+
+```
+
+
+
+
+
+default metaneighbor graph
+
+
+```{r}
+
+cluster_graph = makeClusterGraph(caglayan_mouse_subclass_best_hits , low_threshold = .6)
+
+plotClusterGraph(cluster_graph, merged_caglayan_mouse$study_id, 
+                 merged_caglayan_mouse$mouse_subclass_primate_cluster, size_factor = 3)
+
+
+
+```
+
+
+```{r}
+
+mouse_subclass_mappings_df = as.data.frame(colData(merged_caglayan_mouse)) %>% filter(!grepl('caglayan', study_id)) %>%
+  mutate(study_clust_label = paste(study_id, mouse_subclass_primate_cluster, sep = '|')) %>%
+  filter(!duplicated(study_clust_label))
+
+
+temp_cluster_graph = cluster_graph
+#Subclass colors for the mouse clusters
+mouse_colors = celltype_color_palette[mouse_subclass_mappings_df$primate_subclass]
+names(mouse_colors) = as.character(mouse_subclass_mappings_df$study_clust_label)
+
+
+vertex_study <- factor(igraph::V(temp_cluster_graph)$name)
+#Grab the primate cluster names 
+primate_clusts = as.character(vertex_study[grepl('caglayan', vertex_study)])
+#And add those to the vertex colors
+primate_colors = rep('grey', length = length(primate_clusts))
+names(primate_colors) = primate_clusts
+
+#Grab the mouse subclasses
+#mouse_subclasses = as.character(vertex_study[!grepl('caglayan', vertex_study)])
+#Just the subclass labels
+#sub_label = sapply(strsplit(mouse_subclasses, split = '|', fixed = T), '[[', 2)
+#mouse_colors = celltype_color_palette[sub_label]
+#names(mouse_colors) = mouse_subclasses
+#All together
+vertex_colors = c(mouse_colors, primate_colors)
+
+#Set up the vertex colors
+levels(vertex_study) <- vertex_colors[levels(vertex_study)]
+
+igraph::V(temp_cluster_graph)$color <- as.character(vertex_study)
+igraph::V(temp_cluster_graph)$label.color <- "black"
+
+#Just the cluster name as the label, excluding the study
+full_vertex_labels = igraph::V(temp_cluster_graph)$name
+vertex_labels = sapply(strsplit(igraph::V(temp_cluster_graph)$name, split = '|', fixed = T), '[[', 2)
+igraph::V(temp_cluster_graph)$label <- vertex_labels
+
+
+
+igraph::E(temp_cluster_graph)$width <- igraph::E(temp_cluster_graph)$weight
+igraph::E(temp_cluster_graph)$color <- c("orange","darkgray")[as.numeric(igraph::E(temp_cluster_graph)$weight >= 0.5) + 1]
+
+size_factor=1
+plot(temp_cluster_graph,
+     vertex.size = 8,
+     vertex.label.cex=1.5,
+     vertex.label.family="Helvetica",
+     vertex.label.font=1,
+     vertex.frame.color = 'black',
+     edge.width = igraph::E(temp_cluster_graph)$width * 5,
+     edge.arrow.size=.1*5,
+     edge.arrow.width=0.5*5)
+graphics::legend(
+    "topleft", legend = names(celltype_color_palette), pt.bg = celltype_color_palette,
+    pt.cex = 2, cex = 0.5*2, pch=21
+)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/caglayan_vs_mouse_subclass_1vsbest_cluster_graph.pdf', 
+    useDingbats = F, height = 10, width = 10)
+plot(temp_cluster_graph,
+     vertex.size = 8,
+     vertex.label.cex=1.5,
+     vertex.label.family="Helvetica",
+     vertex.label.font=1,
+     vertex.frame.color = 'black',
+     edge.width = igraph::E(temp_cluster_graph)$width * 5,
+     edge.arrow.size=.1*5,
+     edge.arrow.width=0.5*5)
+graphics::legend(
+    "topleft", legend = names(celltype_color_palette), pt.bg = celltype_color_palette,
+    pt.cex = 2, cex = 0.5*2, pch=21
+)
+dev.off()
+```
+
+
+
+
+
+
+And now metaNeighbor just using the allen primate data
+
+```{r}
+
+human_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_10x_gaba.rds')
+human_ss = readRDS( file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_ss_gaba.rds')
+
+chimp_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_10x_gaba.rds')
+chimp_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_ss_gaba.rds')
+
+gorilla_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_10x_gaba.rds')
+gorilla_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_ss_gaba.rds')
+
+macaca_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/macaca_data_10x_gaba.rds')
+
+marmoset_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
+
+```
+
+```{r}
+
+head(rownames(human_10x))
+head(rownames(chimp_10x))
+head(rownames(gorilla_10x))
+head(rownames(marmoset_10x))
+head(rownames(macaca_10x))
+
+nrow(human_10x)
+
+allen_primate_genes = rownames(human_10x)
+
+```
+
+
+
+```{r}
+
+caglayan_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_caglayan_konopka/caglayan_gaba_processed.rds')
+
+caglayan_gaba_data
+table(caglayan_gaba_data$seurat_clusters)
+
+
+
+DefaultAssay(caglayan_gaba_data ) = 'RNA'
+
+
+caglayan_gaba_data = as.SingleCellExperiment(caglayan_gaba_data)
+names(assays(caglayan_gaba_data)) = c('counts','cpm')
+
+caglayan_gaba_data
+
+caglayan_genes = rownames(caglayan_gaba_data)
+
+
+intersect_genes = intersect(allen_primate_genes, caglayan_genes)
+length(intersect_genes)
+
+```
+
+
+
+```{r}
+caglayan_gene_index = rownames(caglayan_gaba_data) %in% intersect_genes
+
+human_cell_index = caglayan_gaba_data$Species == 'human'
+chimp_cell_index = caglayan_gaba_data$Species == 'chimp'
+macaque_cell_index = caglayan_gaba_data$Species == 'macaque'
+
+
+caglayan_human = caglayan_gaba_data[caglayan_gene_index, human_cell_index]
+caglayan_chimp = caglayan_gaba_data[caglayan_gene_index, chimp_cell_index]
+caglayan_macaque = caglayan_gaba_data[caglayan_gene_index, macaque_cell_index]
+
+rm(caglayan_gaba_data)
+gc()
+
+
+human_meta = data.frame(cell_cluster = as.character(caglayan_human$seurat_clusters), cell_subclass = NA) %>% DataFrame()
+colData(caglayan_human) = human_meta
+chimp_meta = data.frame(cell_cluster = as.character(caglayan_chimp$seurat_clusters), cell_subclass = NA) %>% DataFrame()
+colData(caglayan_chimp) = chimp_meta
+macaque_meta = data.frame(cell_cluster = as.character(caglayan_macaque$seurat_clusters), cell_subclass = NA) %>% DataFrame()
+colData(caglayan_macaque) = macaque_meta
+
+
+```
+
+
+
+
+
+
+Add the mappings to the primate consensus clusters
+This contains the mappings between the cross_species_clusters, cluster_labels, subclass_labels, and the consensus_cluster_labels as used in the publication. This is all of the ~80 cross-species clusters, only 57 are consensus clusters (present across all 5 primates).
+Filter the data down to just the consensus clusters for the mouse metaneighbor comparison and use the consensus cluster annotations
+```{r}
+
+primate_cluster_mappings = data.table::fread('../data/cross_species_mapping_cls86.csv')
+primate_cluster_mappings
+```
+
+Add the consensus cluster label and then filter out cells not in a consensus cluster
+```{r}
+
+index = match(human_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+human_10x = human_10x[ ,!is.na(human_10x$consensus_cluster_label)]
+
+index = match(human_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+human_ss = human_ss[ ,!is.na(human_ss$consensus_cluster_label)]
+
+
+index = match(chimp_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+chimp_10x = chimp_10x[ ,!is.na(chimp_10x$consensus_cluster_label)]
+
+index = match(chimp_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+chimp_ss = chimp_ss[ ,!is.na(chimp_ss$consensus_cluster_label)]
+
+
+index = match(gorilla_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+gorilla_10x = gorilla_10x[ ,!is.na(gorilla_10x$consensus_cluster_label)]
+
+index = match(gorilla_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+gorilla_ss = gorilla_ss[ ,!is.na(gorilla_ss$consensus_cluster_label)]
+
+
+index = match(macaca_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+macaca_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+macaca_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+macaca_10x = macaca_10x[ ,!is.na(macaca_10x$consensus_cluster_label)]
+
+index = match(marmoset_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+marmoset_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+marmoset_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+marmoset_10x = marmoset_10x[ ,!is.na(marmoset_10x$consensus_cluster_label)]
+
+gc()
+
+```
+
+
+```{r}
+#Human
+#Change metdata columns to match other datasets
+human_10x$cluster_label = human_10x$consensus_cluster_label
+
+keep_meta = colData(human_10x)[ , c('subclass_label','cluster_label')]
+colnames(keep_meta) = c('cell_subclass','cell_cluster')
+colData(human_10x)= keep_meta
+
+#Change metadata columns to match other datasets
+human_ss$cluster_label = human_ss$consensus_cluster_label
+
+keep_meta = colData(human_ss)[ , c('subclass_label','cluster_label')]
+colnames(keep_meta) = c('cell_subclass','cell_cluster')
+colData(human_ss)= keep_meta
+
+
+#Chimp
+#Change metdata columns to match other datasets
+chimp_10x$cluster_label = chimp_10x$consensus_cluster_label
+
+keep_meta = colData(chimp_10x)[ , c('subclass_label','cluster_label')]
+colnames(keep_meta) = c('cell_subclass','cell_cluster')
+colData(chimp_10x)= keep_meta
+
+#Change metadata columns to match other datasets
+chimp_ss$cluster_label = chimp_ss$consensus_cluster_label
+
+keep_meta = colData(chimp_ss)[ , c('subclass_label','cluster_label')]
+colnames(keep_meta) = c('cell_subclass','cell_cluster')
+colData(chimp_ss)= keep_meta
+
+#gorilla
+#Change metdata columns to match other datasets
+gorilla_10x$cluster_label = gorilla_10x$consensus_cluster_label
+
+keep_meta = colData(gorilla_10x)[ , c('subclass_label','cluster_label')]
+colnames(keep_meta) = c('cell_subclass','cell_cluster')
+colData(gorilla_10x)= keep_meta
+
+#Change metadata columns to match other datasets
+gorilla_ss$cluster_label = gorilla_ss$consensus_cluster_label
+
+keep_meta = colData(gorilla_ss)[ , c('subclass_label','cluster_label')]
+colnames(keep_meta) = c('cell_subclass','cell_cluster')
+colData(gorilla_ss)= keep_meta
+
+
+#macaca
+#Change metdata columns to match other datasets
+macaca_10x$cluster_label = macaca_10x$consensus_cluster_label
+
+keep_meta = colData(macaca_10x)[ , c('subclass_label','cluster_label')]
+colnames(keep_meta) = c('cell_subclass','cell_cluster')
+colData(macaca_10x)= keep_meta
+
+#marmoset
+#Change metdata columns to match other datasets
+marmoset_10x$cluster_label = marmoset_10x$consensus_cluster_label
+
+keep_meta = colData(marmoset_10x)[ , c('subclass_label','cluster_label')]
+colnames(keep_meta) = c('cell_subclass','cell_cluster')
+colData(marmoset_10x)= keep_meta
+
+
+```
+
+Filter the allen primate data for the shared genes
+
+
+```{r}
+
+gene_index = rownames(human_10x) %in% intersect_genes
+human_10x = human_10x[gene_index, ]
+gene_index = rownames(human_ss) %in% intersect_genes
+human_ss = human_ss[gene_index, ]
+gene_index = rownames(chimp_10x) %in% intersect_genes
+chimp_10x = chimp_10x[gene_index, ]
+gene_index = rownames(chimp_ss) %in% intersect_genes
+chimp_ss = chimp_ss[gene_index, ]
+gene_index = rownames(gorilla_10x) %in% intersect_genes
+gorilla_10x = gorilla_10x[gene_index, ]
+gene_index = rownames(gorilla_ss) %in% intersect_genes
+gorilla_ss = gorilla_ss[gene_index, ]
+gene_index = rownames(macaca_10x) %in% intersect_genes
+macaca_10x = macaca_10x[gene_index, ]
+gene_index = rownames(marmoset_10x) %in% intersect_genes
+marmoset_10x = marmoset_10x[gene_index, ]
+
+```
+
+
+
+
+```{r}
+
+caglayan_primate_sce_list = list(
+  human_10x = human_10x,
+  human_ss = human_ss,
+  chimp_10x = chimp_10x, 
+  chimp_ss = chimp_ss,
+  gorilla_10x = gorilla_10x, 
+  gorilla_ss = gorilla_ss,
+  marmoset_10x = marmoset_10x,
+  macaca_10x = macaca_10x,
+  caglayan_human = caglayan_human, 
+  caglayan_chimp = caglayan_chimp,
+  caglayan_macaque = caglayan_macaque
+)
+
+```
+
+
+
+
+```{r}
+merged_caglayan_primate = mergeSCE(caglayan_primate_sce_list)
+dim(merged_caglayan_primate)
+
+```
+
+
+Get rid of the list of sce objects for space
+```{r}
+
+rm(caglayan_primate_sce_list)
+gc()
+
+merged_caglayan_primate
+```
+
+```{r}
+
+saveRDS(merged_caglayan_primate, 
+        file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/non_allen_data/merged_caglayan_primate_sce.rds')
+
+```
+
+```{r}
+
+merged_caglayan_primate = readRDS(file =  '/inkwell03/werner/mouse_brain_consensus_taxonomy/non_allen_data/merged_caglayan_primate_sce.rds')
+
+```
+
+
+
+
+Run MetaNeighbor
+
+Get highly variable genes
+```{r}
+start = Sys.time()
+global_hvgs = variableGenes(dat = merged_caglayan_primate , exp_labels = merged_caglayan_primate$study_id, min_recurrence = 5)
+length(global_hvgs)
+Sys.time() - start
+```
+
+Just use the top 1000 hvgs
+```{r}
+global_hvgs = global_hvgs[1:1000]
+
+```
+
+Trying a metaneighbor when grouping the primate clusters at the subclass level
+
+
+```{r}
+
+table(grepl('caglayan', merged_caglayan_primate$study_id))
+
+
+primate_subclass_primate_cluster = merged_caglayan_primate$cell_subclass
+primate_index = grepl('caglayan', merged_caglayan_primate$study_id)
+primate_subclass_primate_cluster[primate_index] = as.character(merged_caglayan_primate$cell_cluster)[primate_index]
+
+table(primate_subclass_primate_cluster)
+
+
+merged_caglayan_primate$primate_subclass_primate_cluster = primate_subclass_primate_cluster
+
+```
+
+
+
+
+
+```{r}
+start = Sys.time()
+caglayan_primate_subclass_best_hits = MetaNeighborUS(var_genes = global_hvgs, 
+                              dat = merged_caglayan_primate, 
+                              study_id = merged_caglayan_primate$study_id,
+                              cell_type = merged_caglayan_primate$primate_subclass_primate_cluster,
+                              fast_version = T,
+                              one_vs_best = T, symmetric_output = F)
+
+
+Sys.time() - start
+gc()
+
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/caglayan_vs_primate_subclass_1vsbest.pdf', 
+    useDingbats = F, height = 25, width = 25)
+plotHeatmap(caglayan_primate_subclass_best_hits, cex = .5)
+dev.off()
+
+
+
+start = Sys.time()
+caglayan_primate_subclass_aurocs = MetaNeighborUS(var_genes = global_hvgs, 
+                              dat = merged_caglayan_primate, 
+                              study_id = merged_caglayan_primate$study_id,
+                              cell_type = merged_caglayan_primate$primate_subclass_primate_cluster,
+                              fast_version = T)
+Sys.time() - start
+gc()
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/caglayan_vs_primate_subclass_aurocs.pdf', 
+    useDingbats = F, height = 25, width = 25)
+plotHeatmap(caglayan_primate_subclass_aurocs, cex = .2)
+dev.off()
+
+
+```
+
+
+```{r}
+
+saveRDS(caglayan_primate_subclass_best_hits, 
+        file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/caglayan_vs_primate_subclass_1vsbestMN.rds')
+
+saveRDS(caglayan_primate_subclass_aurocs, 
+        file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/caglayan_vs_primate_subclass_full_aurocs.rds')
+
+```
+
+```{r}
+
+caglayan_primate_subclass_best_hits = readRDS(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/caglayan_vs_primate_subclass_1vsbestMN.rds')
+
+
+```
+
+```{r}
+primate_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5_Lhx6"='#935F50',
+                           "Pax6"='#71238C')
+
+
+```
+
+
+
+default metaneighbor graph
+```{r}
+
+cluster_graph = makeClusterGraph(caglayan_primate_subclass_best_hits , low_threshold = .6)
+
+plotClusterGraph(cluster_graph, merged_caglayan_primate$study_id, 
+                 merged_caglayan_primate$primate_subclass_primate_cluster, size_factor = 3)
+
+
+
+```
+
+
+
+
+
+```{r}
+
+primate_subclass_mappings_df = as.data.frame(colData(merged_caglayan_primate)) %>% filter(!grepl('caglayan', study_id)) %>%
+  mutate(study_clust_label = paste(study_id, primate_subclass_primate_cluster, sep = '|')) %>%
+  filter(!duplicated(study_clust_label))
+
+
+temp_cluster_graph = cluster_graph
+#Subclass colors for the allen clusters
+allen_colors = primate_color_palette[primate_subclass_mappings_df$cell_subclass]
+names(allen_colors) = as.character(primate_subclass_mappings_df$study_clust_label)
+
+
+vertex_study <- factor(igraph::V(temp_cluster_graph)$name)
+#Grab the primate cluster names 
+primate_clusts = as.character(vertex_study[grepl('caglayan', vertex_study)])
+#And add those to the vertex colors
+primate_colors = rep('grey', length = length(primate_clusts))
+names(primate_colors) = primate_clusts
+
+
+#All together
+vertex_colors = c(allen_colors, primate_colors)
+
+#Set up the vertex colors
+levels(vertex_study) <- vertex_colors[levels(vertex_study)]
+
+igraph::V(temp_cluster_graph)$color <- as.character(vertex_study)
+igraph::V(temp_cluster_graph)$label.color <- "black"
+
+#Just the cluster name as the label, excluding the study
+full_vertex_labels = igraph::V(temp_cluster_graph)$name
+vertex_labels = sapply(strsplit(igraph::V(temp_cluster_graph)$name, split = '|', fixed = T), '[[', 2)
+igraph::V(temp_cluster_graph)$label <- vertex_labels
+
+
+
+igraph::E(temp_cluster_graph)$width <- igraph::E(temp_cluster_graph)$weight
+igraph::E(temp_cluster_graph)$color <- c("orange","darkgray")[as.numeric(igraph::E(temp_cluster_graph)$weight >= 0.5) + 1]
+
+size_factor=1
+plot(temp_cluster_graph,
+     vertex.size = 8,
+     vertex.label.cex=1.5,
+     vertex.label.family="Helvetica",
+     vertex.label.font=1,
+     vertex.frame.color = 'black',
+     edge.width = igraph::E(temp_cluster_graph)$width * 5,
+     edge.arrow.size=.1*5,
+     edge.arrow.width=0.5*5)
+graphics::legend(
+    "topleft", legend = names(primate_color_palette), pt.bg = primate_color_palette,
+    pt.cex = 2, cex = 0.5*2, pch=21
+)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/caglayan_vs_primate_subclass_1vsbest_cluster_graph.pdf', 
+    useDingbats = F, height = 10, width = 10)
+plot(temp_cluster_graph,
+     vertex.size = 8,
+     vertex.label.cex=1.5,
+     vertex.label.family="Helvetica",
+     vertex.label.font=1,
+     vertex.frame.color = 'black',
+     edge.width = igraph::E(temp_cluster_graph)$width * 5,
+     edge.arrow.size=.1*5,
+     edge.arrow.width=0.5*5)
+graphics::legend(
+    "topleft", legend = names(primate_color_palette), pt.bg = primate_color_palette,
+    pt.cex = 2, cex = 0.5*2, pch=21
+)
+dev.off()
+```
 
 
 
