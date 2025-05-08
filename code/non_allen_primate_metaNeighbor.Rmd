@@ -2428,6 +2428,9 @@ saveRDS(caglayan_mouse_subclass_aurocs,
 caglayan_mouse_subclass_best_hits = readRDS(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/caglayan_vs_mouse_subclass_1vsbestMN.rds')
 
 
+caglayan_mouse_subclass_aurocs = readRDS(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/caglayan_vs_mouse_subclass_full_aurocs.rds')
+
+
 ```
 
 
@@ -2926,6 +2929,9 @@ saveRDS(caglayan_primate_subclass_aurocs,
 
 caglayan_primate_subclass_best_hits = readRDS(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/caglayan_vs_primate_subclass_1vsbestMN.rds')
 
+caglayan_primate_subclass_aurocs = readRDS(file =
+                                             '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/non_allen_data/caglayan_vs_primate_subclass_full_aurocs.rds')
+
 
 ```
 
@@ -3035,6 +3041,102 @@ dev.off()
 ```
 
 
+And what about just highlighting the wackyness of cluster 20?
+
+
+```{r}
+
+test_refs = c('human_10x|Vip','human_ss|Vip','chimp_10x|Vip','chimp_ss|Vip',
+              'gorilla_10x|Vip','gorilla_ss|Vip', 'macaque_10x|Vip','marmoset_10x|Vip')
+
+r_index = rownames(caglayan_primate_subclass_aurocs) %in% test_refs
+c_index = grepl('caglayan', colnames(caglayan_primate_subclass_aurocs))
+
+cag_clust_vip_aurocs = colMeans(caglayan_primate_subclass_aurocs[r_index, c_index])
+
+
+test_refs = c('human_10x|Sncg','human_ss|Sncg','chimp_10x|Sncg','chimp_ss|Sncg',
+              'gorilla_10x|Sncg','gorilla_ss|Sncg', 'macaque_10x|Sncg','marmoset_10x|Sncg')
+
+r_index = rownames(caglayan_primate_subclass_aurocs) %in% test_refs
+c_index = grepl('caglayan', colnames(caglayan_primate_subclass_aurocs))
+
+cag_clust_sncg_aurocs = colMeans(caglayan_primate_subclass_aurocs[r_index, c_index])
+
+
+temp_df = data.frame(cag_clust_vip_aurocs = cag_clust_vip_aurocs, cag_clust_sncg_aurocs = cag_clust_sncg_aurocs )
+
+
+temp_df$cluster = sapply(strsplit(rownames(temp_df), split = "|", fixed = T), '[[', 2)
+
+temp_df = temp_df %>% group_by(cluster) %>% summarise(mean_vip_auroc = mean(cag_clust_vip_aurocs), 
+                                            mean_sncg_auroc = mean(cag_clust_sncg_aurocs))
+
+
+ggplot(temp_df, aes(x = mean_vip_auroc, y = mean_sncg_auroc, label = cluster)) + geom_point(size = 3) +
+  geom_label_repel(min.segment.length = 0, force = .5, nudge_x = .025) +
+  geom_abline(slope = 1, intercept = 0, color = 'red', linetype = 'dashed') +
+  ylim(.7,1) + xlim(.7, 1) + theme_bw() + xlab('Average Primate Vip AUROC') + ylab('Average Primate Sncg AUROC') +
+  ggtitle('Caglayan vs Primate MetaNeighbor')
+
+```
+
+
+
+
+And what about just highlighting the wackyness of cluster 20?
+
+
+```{r}
+
+test_refs = c('tasic18|Vip','zeng_10x_cells|Vip','zeng_10x_nuclei|Vip','zeng_smart_cells|Vip',
+              'zeng_smart_nuclei|Vip','zeng_10xv2_wba|Vip', 'zeng_10xv3_wba|Vip','macosko_wba|Vip')
+
+r_index = rownames(caglayan_mouse_subclass_aurocs) %in% test_refs
+c_index = grepl('caglayan', colnames(caglayan_mouse_subclass_aurocs))
+
+cag_clust_vip_aurocs = colMeans(caglayan_mouse_subclass_aurocs[r_index, c_index])
+
+
+test_refs = c('tasic18|Sncg','zeng_10x_cells|Sncg','zeng_10x_nuclei|Sncg','zeng_smart_cells|Sncg',
+              'zeng_smart_nuclei|Sncg','zeng_10xv2_wba|Sncg', 'zeng_10xv3_wba|Sncg','macosko_wba|Sncg')
+
+r_index = rownames(caglayan_mouse_subclass_aurocs) %in% test_refs
+c_index = grepl('caglayan', colnames(caglayan_mouse_subclass_aurocs))
+
+cag_clust_sncg_aurocs = colMeans(caglayan_mouse_subclass_aurocs[r_index, c_index])
+
+
+temp_df = data.frame(cag_clust_vip_aurocs = cag_clust_vip_aurocs, cag_clust_sncg_aurocs = cag_clust_sncg_aurocs )
+
+
+temp_df$cluster = sapply(strsplit(rownames(temp_df), split = "|", fixed = T), '[[', 2)
+
+temp_df = temp_df %>% group_by(cluster) %>% summarise(mean_vip_auroc = mean(cag_clust_vip_aurocs), 
+                                            mean_sncg_auroc = mean(cag_clust_sncg_aurocs))
+
+
+ggplot(temp_df, aes(x = mean_vip_auroc, y = mean_sncg_auroc, label = cluster)) + geom_point(size = 3) +
+  geom_label_repel(min.segment.length = 0, force = .5, nudge_x = .025) +
+  geom_abline(slope = 1, intercept = 0, color = 'red', linetype = 'dashed') +
+  theme_bw() + xlab('Average Mouse Vip AUROC') + ylab('Average Mouse Sncg AUROC') +
+  ggtitle('Caglayan vs Mouse MetaNeighbor')
+
+```
+
+
+
+
+
+```{r}
+
+test_mat = matrix(c(1:10), nrow = 2, dimnames = list(c('A','B'),c('C','D', 'E','F','G')))
+
+test_mat
+
+reshape2::melt(test_mat)
+
+```
 
 
 

@@ -722,7 +722,7 @@ merged_mammal_sce = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/da
 Get highly variable genes
 ```{r}
 start = Sys.time()
-global_hvgs = variableGenes(dat = merged_mammal_sce, exp_labels = merged_mammal_sce$study_id, min_recurrence = 8)
+global_hvgs = variableGenes(dat = merged_mammal_sce, exp_labels = merged_mammal_sce$study_id, min_recurrence = 4)
 length(global_hvgs)
 Sys.time() - start
 
@@ -1051,7 +1051,7 @@ max_avg_mapping$orthology = rep('high_orthology', length = nrow(max_avg_mapping)
 max_avg_mapping$orthology[max_avg_mapping$mean_subclass < 0.6] = 'low_orthology'
 
 index = match(colnames(avg_metaclust_matrix), max_avg_mapping$mouse_mcluster)
-max_avg_mapping[index, ]
+max_avg_mapping[index, ] %>% arrange(primate_subclass)
 
 col_ha = HeatmapAnnotation(orthology = max_avg_mapping$orthology[index],
                            col = list(orthology = c('high_orthology' = 'black', 'low_orthology' = 'grey')))
@@ -2658,96 +2658,95 @@ readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/for_Leon/mouse_vip_pri
 
 ```
 
-
-
-
-
-###################
-Old metamarkers
-
-
-################
-
-
-
-
-
-
-
-Compute metamarkers using the primate subclass labels, ignoring the outlier metaclusters
+Check out the top 10 primate markers for Vip, Pax6, Sncg, and Lamp5 in the integrated mouse data
 
 ```{r}
 library(MetaMarkers)
 
-cell_index = tasic18$MN_meta_cluster != 'outliers'
-tasic_markers = compute_markers(tasic18@assays$originalexp@data[ , cell_index], tasic18$primate_subclass[cell_index])
-gc()
-cell_index = zeng_10x_cells$MN_meta_cluster != 'outliers'
-zeng_10x_cells_markers = compute_markers(zeng_10x_cells@assays$originalexp@data[ , cell_index], zeng_10x_cells$primate_subclass[cell_index])
-gc()
-cell_index = zeng_10x_nuclei$MN_meta_cluster != 'outliers'
-zeng_10x_nuclei_markers = compute_markers(zeng_10x_nuclei@assays$originalexp@data[ , cell_index], zeng_10x_nuclei$primate_subclass[cell_index])
-gc()
-cell_index = zeng_smart_cells$MN_meta_cluster != 'outliers'
-zeng_smart_cells_markers = compute_markers(zeng_smart_cells@assays$originalexp@data[ , cell_index], zeng_smart_cells$primate_subclass[cell_index])
-gc()
-cell_index = zeng_smart_nuclei$MN_meta_cluster != 'outliers'
-zeng_smart_nuclei_markers = compute_markers(zeng_smart_nuclei@assays$originalexp@data[ , cell_index], zeng_smart_nuclei$primate_subclass[cell_index])
-gc()
-cell_index = zeng_10xv2_wba$MN_meta_cluster != 'outliers'
-zeng_wb_10xv2_markers = compute_markers(zeng_10xv2_wba@assays$originalexp@data[ , cell_index], zeng_10xv2_wba$primate_subclass[cell_index])
-gc()
-cell_index = zeng_10xv3_wba$MN_meta_cluster != 'outliers'
-zeng_wb_10xv3_markers = compute_markers(zeng_10xv3_wba@assays$originalexp@data[ , cell_index], zeng_10xv3_wba$primate_subclass[cell_index])
-gc()
-
-
-```
-
-
-
-```{r}
-setwd('/home/werner/projects/lamp5_lhx6_meta/code')
-export_markers(tasic_markers, "meta_markers/mouse/primate_subclass/tasic_markers.csv")
-export_markers(zeng_10x_cells_markers, "meta_markers/mouse/primate_subclass/zeng_10x_cells_markers.csv")
-export_markers(zeng_10x_nuclei_markers, "meta_markers/mouse/primate_subclass/zeng_10x_nuclei_markers.csv")
-export_markers(zeng_smart_cells_markers, "meta_markers/mouse/primate_subclass/zeng_smart_cells_markers.csv")
-export_markers(zeng_smart_nuclei_markers, "meta_markers/mouse/primate_subclass/zeng_smart_nuclei_markers.csv")
-
-export_markers(zeng_wb_10xv2_markers, "meta_markers/mouse/primate_subclass/zeng_wb_10xv2_markers.csv")
-export_markers(zeng_wb_10xv3_markers, "meta_markers/mouse/primate_subclass/zeng_wb_10xv3_markers.csv")
-```
-
-
-```{r}
-
-markers = list(
-    tasic = read_markers("meta_markers/mouse/primate_subclass/tasic_markers.csv.gz"),
-    zeng_10x_cells = read_markers("meta_markers/mouse/primate_subclass/zeng_10x_cells_markers.csv.gz"), 
-    zeng_10x_nuclei = read_markers("meta_markers/mouse/primate_subclass/zeng_10x_nuclei_markers.csv.gz"),
-    zeng_smart_cells = read_markers("meta_markers/mouse/primate_subclass/zeng_smart_cells_markers.csv.gz"),
-    zeng_smart_nuclei = read_markers("meta_markers/mouse/primate_subclass/zeng_smart_nuclei_markers.csv.gz"),
-    zeng_wb_10xv2 = read_markers("meta_markers/mouse/primate_subclass/zeng_wb_10xv2_markers.csv.gz"),
-    zeng_wb_10xv3 = read_markers("meta_markers/mouse/primate_subclass/zeng_wb_10xv3_markers.csv.gz")
+primate_markers = list(
+    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
 )
 
-inhib_meta_markers = make_meta_markers(markers, detailed_stats = TRUE)
 
-inhib_meta_markers %>% filter(rank <= 10)
+primate_markers$human_10x$cell_type[primate_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+primate_markers$human_ss$cell_type[primate_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+primate_markers$chimp_10x$cell_type[primate_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+primate_markers$chimp_ss$cell_type[primate_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+primate_markers$gorilla_10x$cell_type[primate_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+primate_markers$gorilla_ss$cell_type[primate_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+primate_markers$macaca_10x$cell_type[primate_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+primate_markers$marmoset_10x$cell_type[primate_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+primate_subclass_meta_markers = make_meta_markers(primate_markers, detailed_stats = TRUE)
+
+primate_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+
 
 ```
 
 ```{r}
-celltype_color_palette = c("Chandelier"='#F641A8', 
-                           "Pvalb"='#D93137', 
-                           "Sst"='#FF9900', 
-                           "Sst Chodl"='yellow', 
-                           "Lamp5"='#DA808C',
-                           "Sncg"='#DF70FF',
-                           "Vip"='#A45FBF', 
-                           "Lamp5 Lhx6"='#935F50',
-                           "Pax6"='#71238C',
-                           'Sncg_Vip' = 'grey', 'Sncg_Pax6' = 'grey50')
+
+DefaultAssay(object = interneuron.combined) = 'originalexp'
+
+
+#top_primate_pax6_markers = primate_subclass_meta_markers %>% filter(cell_type == 'Pax6' & rank <= 100) %>% pull(gene)
+#top_primate_vip_markers = primate_subclass_meta_markers %>% filter(cell_type == 'Vip' & rank <= 100) %>% pull(gene)
+#top_primate_sncg_markers = primate_subclass_meta_markers %>% filter(cell_type == 'Sncg' & rank <= 100) %>% pull(gene)
+#top_primate_lamp5_markers = primate_subclass_meta_markers %>% filter(cell_type == 'Lamp5' & rank <= 100) %>% pull(gene)
+
+
+#integrated_genes = rownames(interneuron.combined@assays$integrated@scale.data)
+#all_genes = rownames(interneuron.combined@assays$originalexp@data)
+
+#gene_index = integrated_genes %in% top_primate_pax6_markers
+#interneuron.combined$avg_top_primate_pax6_zscore = colMeans(interneuron.combined@assays$integrated@scale.data[gene_index, ])
+
+#gene_index = integrated_genes %in% top_primate_lamp5_markers
+#interneuron.combined$avg_top_primate_lamp5_zscore = colMeans(interneuron.combined@assays$integrated@scale.data[gene_index, ])
+
+#gene_index = integrated_genes %in% top_primate_vip_markers
+#interneuron.combined$avg_top_primate_vip_zscore = colMeans(interneuron.combined@assays$integrated@scale.data[gene_index, ])
+
+#gene_index = integrated_genes %in% top_primate_sncg_markers
+#interneuron.combined$avg_top_primate_sncg_zscore = colMeans(interneuron.combined@assays$integrated@scale.data[gene_index, ])
+
+
+
+top_markers = primate_subclass_meta_markers %>% filter(cell_type %in% c('Pax6', 'Lamp5', 'Vip', 'Sncg') & rank <= 50)
+
+ct_scores = score_cells(log1p(interneuron.combined@assays$originalexp@data), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+
+interneuron.combined$primate_pax6_enrichment = ct_enrichment['all|Pax6', ]
+interneuron.combined$primate_lamp5_enrichment = ct_enrichment['all|Lamp5', ]
+interneuron.combined$primate_vip_enrichment = ct_enrichment['all|Vip', ]
+interneuron.combined$primate_sncg_enrichment = ct_enrichment['all|Sncg', ]
+
+
+DimPlot(interneuron.combined, group.by = 'primate_subclass', cols = celltype_color_palette) + 
+  ggtitle('Orthologous primate subclass')
+
+
+FeaturePlot(interneuron.combined, features = 'primate_pax6_enrichment') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 1 )
+
+FeaturePlot(interneuron.combined, features = 'primate_sncg_enrichment') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 1 )
+
+FeaturePlot(interneuron.combined, features = 'primate_vip_enrichment') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 1 )
+
+FeaturePlot(interneuron.combined, features = 'primate_lamp5_enrichment') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 1 )
 
 ```
 
@@ -2755,388 +2754,6 @@ celltype_color_palette = c("Chandelier"='#F641A8',
 
 
 
-Vizualize marker expression
-
-```{r}
-
-outlier_index = tasic18$MN_meta_cluster != 'outliers'
-tasic18 = tasic18[ , outlier_index]
-
-top_markers = unique(inhib_meta_markers %>% filter(rank <= 25) %>% pull(gene))
-primate_subclasses = names(table(tasic18$primate_subclass))
-
-
-gene_index = rownames(tasic18) %in% top_markers
-exp_data = tasic18@assays$originalexp@data[gene_index, ]
-index = match(top_markers, rownames(exp_data))
-exp_data = exp_data[index, ]
-
-marker_mean_exp = matrix(data = NA, nrow = nrow(exp_data), ncol = length(primate_subclasses ),
-                         dimnames = list(top_markers, primate_subclasses))
-
-
-cell_index = tasic18$primate_subclass == 'Pvalb'
-marker_mean_exp[ ,'Pvalb'] = rowMeans(exp_data[ ,cell_index])
-cell_index = tasic18$primate_subclass == 'Chandelier'
-marker_mean_exp[ ,'Chandelier'] = rowMeans(exp_data[ ,cell_index])
-cell_index = tasic18$primate_subclass == 'Sst'
-marker_mean_exp[ ,'Sst'] = rowMeans(exp_data[ ,cell_index])
-cell_index = tasic18$primate_subclass == 'Sst Chodl'
-marker_mean_exp[ ,'Sst Chodl'] = rowMeans(exp_data[ ,cell_index])
-cell_index = tasic18$primate_subclass == 'Vip'
-marker_mean_exp[ ,'Vip'] = rowMeans(exp_data[ ,cell_index])
-cell_index = tasic18$primate_subclass == 'Sncg'
-marker_mean_exp[ ,'Sncg'] = rowMeans(exp_data[ ,cell_index])
-cell_index = tasic18$primate_subclass == 'Pax6'
-marker_mean_exp[ ,'Pax6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = tasic18$primate_subclass == 'Lamp5'
-marker_mean_exp[ ,'Lamp5'] = rowMeans(exp_data[ ,cell_index])
-cell_index = tasic18$primate_subclass == 'Lamp5 Lhx6'
-marker_mean_exp[ ,'Lamp5 Lhx6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = tasic18$primate_subclass == 'Sncg_Pax6'
-marker_mean_exp[ ,'Sncg_Pax6'] = rowMeans(exp_data[ ,cell_index])
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-
-ComplexHeatmap::Heatmap(marker_mean_exp, clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2', name = 'z-score',
-                        show_row_names = F, column_title = 'tasic18')
-
-
-all.genes <- rownames(tasic18)
-tasic18 <- ScaleData(tasic18, features = all.genes)
-tasic18 <- RunPCA(tasic18, features = VariableFeatures(object = tasic18), verbose = F)
-tasic18 <- RunUMAP(tasic18 , dims = 1:20, verbose = F)
-DimPlot(tasic18, reduction = "umap", group.by = 'primate_subclass', cols = celltype_color_palette)
-```
-
-```{r}
-
-outlier_index = zeng_10x_cells$MN_meta_cluster != 'outliers'
-zeng_10x_cells = zeng_10x_cells[ , outlier_index]
-
-top_markers = unique(inhib_meta_markers %>% filter(rank <= 25) %>% pull(gene))
-primate_subclasses = names(table(zeng_10x_cells$primate_subclass))
-
-
-gene_index = rownames(zeng_10x_cells) %in% top_markers
-exp_data = zeng_10x_cells@assays$originalexp@data[gene_index, ]
-index = match(top_markers, rownames(exp_data))
-exp_data = exp_data[index, ]
-
-marker_mean_exp = matrix(data = NA, nrow = nrow(exp_data), ncol = length(primate_subclasses ),
-                         dimnames = list(top_markers, primate_subclasses))
-
-
-cell_index = zeng_10x_cells$primate_subclass == 'Pvalb'
-marker_mean_exp[ ,'Pvalb'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_cells$primate_subclass == 'Chandelier'
-marker_mean_exp[ ,'Chandelier'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_cells$primate_subclass == 'Sst'
-marker_mean_exp[ ,'Sst'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_cells$primate_subclass == 'Sst Chodl'
-marker_mean_exp[ ,'Sst Chodl'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_cells$primate_subclass == 'Vip'
-marker_mean_exp[ ,'Vip'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_cells$primate_subclass == 'Sncg'
-marker_mean_exp[ ,'Sncg'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_cells$primate_subclass == 'Pax6'
-marker_mean_exp[ ,'Pax6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_cells$primate_subclass == 'Lamp5'
-marker_mean_exp[ ,'Lamp5'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_cells$primate_subclass == 'Lamp5 Lhx6'
-marker_mean_exp[ ,'Lamp5 Lhx6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_cells$primate_subclass == 'Sncg_Pax6'
-marker_mean_exp[ ,'Sncg_Pax6'] = rowMeans(exp_data[ ,cell_index])
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-
-ComplexHeatmap::Heatmap(marker_mean_exp, clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2', name = 'z-score',
-                        show_row_names = F, column_title = 'zeng_10x_cells')
-
-all.genes <- rownames(zeng_10x_cells)
-zeng_10x_cells <- ScaleData(zeng_10x_cells, features = all.genes)
-zeng_10x_cells <- RunPCA(zeng_10x_cells, features = VariableFeatures(object = zeng_10x_cells), verbose = F)
-zeng_10x_cells <- RunUMAP(zeng_10x_cells , dims = 1:20, verbose = F)
-DimPlot(zeng_10x_cells, reduction = "umap", group.by = 'primate_subclass', cols = celltype_color_palette)
-```
-
-
-
-```{r}
-
-outlier_index = zeng_smart_cells$MN_meta_cluster != 'outliers'
-zeng_smart_cells = zeng_smart_cells[ , outlier_index]
-
-top_markers = unique(inhib_meta_markers %>% filter(rank <= 25) %>% pull(gene))
-primate_subclasses = names(table(zeng_smart_cells$primate_subclass))
-
-
-gene_index = rownames(zeng_smart_cells) %in% top_markers
-exp_data = zeng_smart_cells@assays$originalexp@data[gene_index, ]
-index = match(top_markers, rownames(exp_data))
-exp_data = exp_data[index, ]
-
-marker_mean_exp = matrix(data = NA, nrow = nrow(exp_data), ncol = length(primate_subclasses ),
-                         dimnames = list(top_markers, primate_subclasses))
-
-
-cell_index = zeng_smart_cells$primate_subclass == 'Pvalb'
-marker_mean_exp[ ,'Pvalb'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_cells$primate_subclass == 'Chandelier'
-marker_mean_exp[ ,'Chandelier'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_cells$primate_subclass == 'Sst'
-marker_mean_exp[ ,'Sst'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_cells$primate_subclass == 'Sst Chodl'
-marker_mean_exp[ ,'Sst Chodl'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_cells$primate_subclass == 'Vip'
-marker_mean_exp[ ,'Vip'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_cells$primate_subclass == 'Sncg'
-marker_mean_exp[ ,'Sncg'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_cells$primate_subclass == 'Pax6'
-marker_mean_exp[ ,'Pax6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_cells$primate_subclass == 'Lamp5'
-marker_mean_exp[ ,'Lamp5'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_cells$primate_subclass == 'Lamp5 Lhx6'
-marker_mean_exp[ ,'Lamp5 Lhx6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_cells$primate_subclass == 'Sncg_Pax6'
-marker_mean_exp[ ,'Sncg_Pax6'] = rowMeans(exp_data[ ,cell_index])
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-
-ComplexHeatmap::Heatmap(marker_mean_exp, clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2', name = 'z-score',
-                        show_row_names = F, column_title = 'zeng_smart_cells')
-
-all.genes <- rownames(zeng_smart_cells)
-zeng_smart_cells <- ScaleData(zeng_smart_cells, features = all.genes)
-zeng_smart_cells <- RunPCA(zeng_smart_cells, features = VariableFeatures(object = zeng_smart_cells), verbose = F)
-zeng_smart_cells <- RunUMAP(zeng_smart_cells , dims = 1:20, verbose = F)
-DimPlot(zeng_smart_cells, reduction = "umap", group.by = 'primate_subclass', cols = celltype_color_palette)
-```
-
-
-
-```{r}
-
-outlier_index = zeng_10x_nuclei$MN_meta_cluster != 'outliers'
-zeng_10x_nuclei = zeng_10x_nuclei[ , outlier_index]
-
-top_markers = unique(inhib_meta_markers %>% filter(rank <= 25) %>% pull(gene))
-primate_subclasses = names(table(zeng_10x_nuclei$primate_subclass))
-
-
-gene_index = rownames(zeng_10x_nuclei) %in% top_markers
-exp_data = zeng_10x_nuclei@assays$originalexp@data[gene_index, ]
-index = match(top_markers, rownames(exp_data))
-exp_data = exp_data[index, ]
-
-marker_mean_exp = matrix(data = NA, nrow = nrow(exp_data), ncol = length(primate_subclasses ),
-                         dimnames = list(top_markers, primate_subclasses))
-
-
-cell_index = zeng_10x_nuclei$primate_subclass == 'Pvalb'
-marker_mean_exp[ ,'Pvalb'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_nuclei$primate_subclass == 'Chandelier'
-marker_mean_exp[ ,'Chandelier'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_nuclei$primate_subclass == 'Sst'
-marker_mean_exp[ ,'Sst'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_nuclei$primate_subclass == 'Sst Chodl'
-marker_mean_exp[ ,'Sst Chodl'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_nuclei$primate_subclass == 'Vip'
-marker_mean_exp[ ,'Vip'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_nuclei$primate_subclass == 'Sncg'
-marker_mean_exp[ ,'Sncg'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_nuclei$primate_subclass == 'Pax6'
-marker_mean_exp[ ,'Pax6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_nuclei$primate_subclass == 'Lamp5'
-marker_mean_exp[ ,'Lamp5'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_nuclei$primate_subclass == 'Lamp5 Lhx6'
-marker_mean_exp[ ,'Lamp5 Lhx6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10x_nuclei$primate_subclass == 'Sncg_Pax6'
-marker_mean_exp[ ,'Sncg_Pax6'] = rowMeans(exp_data[ ,cell_index])
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-
-ComplexHeatmap::Heatmap(marker_mean_exp, clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2', name = 'z-score',
-                        show_row_names = F, column_title = 'zeng_10x_nuclei')
-
-
-all.genes <- rownames(zeng_10x_nuclei)
-zeng_10x_nuclei <- ScaleData(zeng_10x_nuclei, features = all.genes)
-zeng_10x_nuclei <- RunPCA(zeng_10x_nuclei, features = VariableFeatures(object = zeng_10x_nuclei), verbose = F)
-zeng_10x_nuclei <- RunUMAP(zeng_10x_nuclei , dims = 1:20, verbose = F)
-DimPlot(zeng_10x_nuclei, reduction = "umap", group.by = 'primate_subclass', cols = celltype_color_palette)
-```
-
-
-```{r}
-
-outlier_index = zeng_smart_nuclei$MN_meta_cluster != 'outliers'
-zeng_smart_nuclei = zeng_smart_nuclei[ , outlier_index]
-
-top_markers = unique(inhib_meta_markers %>% filter(rank <= 25) %>% pull(gene))
-primate_subclasses = names(table(zeng_smart_nuclei$primate_subclass))
-
-
-gene_index = rownames(zeng_smart_nuclei) %in% top_markers
-exp_data = zeng_smart_nuclei@assays$originalexp@data[gene_index, ]
-index = match(top_markers, rownames(exp_data))
-exp_data = exp_data[index, ]
-
-marker_mean_exp = matrix(data = NA, nrow = nrow(exp_data), ncol = length(primate_subclasses ),
-                         dimnames = list(top_markers, primate_subclasses))
-
-
-cell_index = zeng_smart_nuclei$primate_subclass == 'Pvalb'
-marker_mean_exp[ ,'Pvalb'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_nuclei$primate_subclass == 'Chandelier'
-marker_mean_exp[ ,'Chandelier'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_nuclei$primate_subclass == 'Sst'
-marker_mean_exp[ ,'Sst'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_nuclei$primate_subclass == 'Sst Chodl'
-marker_mean_exp[ ,'Sst Chodl'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_nuclei$primate_subclass == 'Vip'
-marker_mean_exp[ ,'Vip'] = rowMeans(exp_data[ ,cell_index])
-#cell_index = zeng_smart_nuclei$primate_subclass == 'Sncg'
-#marker_mean_exp[ ,'Sncg'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_nuclei$primate_subclass == 'Pax6'
-marker_mean_exp[ ,'Pax6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_nuclei$primate_subclass == 'Lamp5'
-marker_mean_exp[ ,'Lamp5'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_nuclei$primate_subclass == 'Lamp5 Lhx6'
-marker_mean_exp[ ,'Lamp5 Lhx6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_smart_nuclei$primate_subclass == 'Sncg_Pax6'
-marker_mean_exp[ ,'Sncg_Pax6'] = rowMeans(exp_data[ ,cell_index])
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-
-ComplexHeatmap::Heatmap(marker_mean_exp, clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2', name = 'z-score',
-                        show_row_names = F, column_title = 'zeng_smart_nuclei')
-
-
-
-all.genes <- rownames(zeng_smart_nuclei)
-zeng_smart_nuclei <- ScaleData(zeng_smart_nuclei, features = all.genes)
-zeng_smart_nuclei <- RunPCA(zeng_smart_nuclei, features = VariableFeatures(object = zeng_smart_nuclei), verbose = F)
-zeng_smart_nuclei <- RunUMAP(zeng_smart_nuclei , dims = 1:20, verbose = F)
-DimPlot(zeng_smart_nuclei, reduction = "umap", group.by = 'primate_subclass', cols = celltype_color_palette)
-```
-
-
-```{r}
-
-outlier_index = zeng_10xv2_wba$MN_meta_cluster != 'outliers'
-zeng_10xv2_wba = zeng_10xv2_wba[ , outlier_index]
-
-top_markers = unique(inhib_meta_markers %>% filter(rank <= 25) %>% pull(gene))
-primate_subclasses = names(table(zeng_10xv2_wba$primate_subclass))
-
-
-gene_index = rownames(zeng_10xv2_wba) %in% top_markers
-exp_data = zeng_10xv2_wba@assays$originalexp@data[gene_index, ]
-index = match(top_markers, rownames(exp_data))
-exp_data = exp_data[index, ]
-
-marker_mean_exp = matrix(data = NA, nrow = nrow(exp_data), ncol = length(primate_subclasses ),
-                         dimnames = list(top_markers, primate_subclasses))
-
-
-cell_index = zeng_10xv2_wba$primate_subclass == 'Pvalb'
-marker_mean_exp[ ,'Pvalb'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv2_wba$primate_subclass == 'Chandelier'
-marker_mean_exp[ ,'Chandelier'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv2_wba$primate_subclass == 'Sst'
-marker_mean_exp[ ,'Sst'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv2_wba$primate_subclass == 'Sst Chodl'
-marker_mean_exp[ ,'Sst Chodl'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv2_wba$primate_subclass == 'Vip'
-marker_mean_exp[ ,'Vip'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv2_wba$primate_subclass == 'Sncg'
-marker_mean_exp[ ,'Sncg'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv2_wba$primate_subclass == 'Pax6'
-marker_mean_exp[ ,'Pax6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv2_wba$primate_subclass == 'Lamp5'
-marker_mean_exp[ ,'Lamp5'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv2_wba$primate_subclass == 'Lamp5 Lhx6'
-marker_mean_exp[ ,'Lamp5 Lhx6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv2_wba$primate_subclass == 'Sncg_Pax6'
-marker_mean_exp[ ,'Sncg_Pax6'] = rowMeans(exp_data[ ,cell_index])
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-
-ComplexHeatmap::Heatmap(marker_mean_exp, clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2', name = 'z-score',
-                        show_row_names = F, column_title = 'zeng_10xv2_wba')
-
-
-all.genes <- rownames(zeng_10xv2_wba)
-zeng_10xv2_wba <- ScaleData(zeng_10xv2_wba, features = all.genes)
-zeng_10xv2_wba <- RunPCA(zeng_10xv2_wba, features = VariableFeatures(object = zeng_10xv2_wba), verbose = F)
-zeng_10xv2_wba <- RunUMAP(zeng_10xv2_wba , dims = 1:20, verbose = F)
-DimPlot(zeng_10xv2_wba, reduction = "umap", group.by = 'primate_subclass', cols = celltype_color_palette)
-```
-
-
-```{r}
-
-outlier_index = zeng_10xv3_wba$MN_meta_cluster != 'outliers'
-zeng_10xv3_wba = zeng_10xv3_wba[ , outlier_index]
-
-top_markers = unique(inhib_meta_markers %>% filter(rank <= 25) %>% pull(gene))
-primate_subclasses = names(table(zeng_10xv3_wba$primate_subclass))
-
-
-gene_index = rownames(zeng_10xv3_wba) %in% top_markers
-exp_data = zeng_10xv3_wba@assays$originalexp@data[gene_index, ]
-index = match(top_markers, rownames(exp_data))
-exp_data = exp_data[index, ]
-
-marker_mean_exp = matrix(data = NA, nrow = nrow(exp_data), ncol = length(primate_subclasses ),
-                         dimnames = list(top_markers, primate_subclasses))
-
-
-cell_index = zeng_10xv3_wba$primate_subclass == 'Pvalb'
-marker_mean_exp[ ,'Pvalb'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv3_wba$primate_subclass == 'Chandelier'
-marker_mean_exp[ ,'Chandelier'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv3_wba$primate_subclass == 'Sst'
-marker_mean_exp[ ,'Sst'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv3_wba$primate_subclass == 'Sst Chodl'
-marker_mean_exp[ ,'Sst Chodl'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv3_wba$primate_subclass == 'Vip'
-marker_mean_exp[ ,'Vip'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv3_wba$primate_subclass == 'Sncg'
-marker_mean_exp[ ,'Sncg'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv3_wba$primate_subclass == 'Pax6'
-marker_mean_exp[ ,'Pax6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv3_wba$primate_subclass == 'Lamp5'
-marker_mean_exp[ ,'Lamp5'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv3_wba$primate_subclass == 'Lamp5 Lhx6'
-marker_mean_exp[ ,'Lamp5 Lhx6'] = rowMeans(exp_data[ ,cell_index])
-cell_index = zeng_10xv3_wba$primate_subclass == 'Sncg_Pax6'
-marker_mean_exp[ ,'Sncg_Pax6'] = rowMeans(exp_data[ ,cell_index])
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-marker_mean_exp = t(scale(t(marker_mean_exp)))
-
-
-ComplexHeatmap::Heatmap(marker_mean_exp, clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2', name = 'z-score',
-                        show_row_names = F, column_title = 'zeng_10xv3_wba')
-
-all.genes <- rownames(zeng_10xv3_wba)
-zeng_10xv3_wba <- ScaleData(zeng_10xv3_wba, features = all.genes)
-zeng_10xv3_wba <- RunPCA(zeng_10xv3_wba, features = VariableFeatures(object = zeng_10xv3_wba), verbose = F)
-zeng_10xv3_wba <- RunUMAP(zeng_10xv3_wba , dims = 1:20, verbose = F)
-DimPlot(zeng_10xv3_wba, reduction = "umap", group.by = 'primate_subclass', cols = celltype_color_palette)
-```
 
 
 
