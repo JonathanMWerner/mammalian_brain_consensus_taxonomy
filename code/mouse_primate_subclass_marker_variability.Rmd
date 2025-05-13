@@ -484,13 +484,13 @@ Try the name sake genes, comparing the primate and the mouse aurocs
 
 #Get the primate name sake gene DE
 primate_name_sake_genes = primate_subclass_meta_markers %>% 
-  filter(gene %in% c('PVALB','SST','CHODL','VIPR2','LHX6','LAMP5','VIP','SNCG','PAX6') & cell_type != 'Pax6') %>%
+  filter(gene %in% c('PVALB','SST','CHODL','NKX2-1','LHX6','LAMP5','VIP','SNCG','PAX6') & cell_type != 'Pax6') %>%
   mutate(primate_auroc = auroc) %>% select(cell_type, gene, primate_auroc)
 
 primate_name_sake_genes$full_label = paste(primate_name_sake_genes$cell_type, primate_name_sake_genes$gene, sep = '_' )
 
 #Get the mouse name sake gene DE
-mouse_name_sake_genes = original_mouse_subclass_meta_markers %>% filter(gene %in% c('PVALB','SST','CHODL','VIPR2','LHX6','LAMP5','VIP','SNCG','PAX6')) %>%
+mouse_name_sake_genes = original_mouse_subclass_meta_markers %>% filter(gene %in% c('PVALB','SST','CHODL','NKX2-1','LHX6','LAMP5','VIP','SNCG','PAX6')) %>%
   mutate(mouse_auroc = auroc) %>% select(cell_type, gene, mouse_auroc)
 
 mouse_name_sake_genes$full_label = paste(mouse_name_sake_genes$cell_type, mouse_name_sake_genes$gene, sep = '_' )
@@ -502,10 +502,10 @@ primate_name_sake_genes = primate_name_sake_genes[index, ]
 mouse_name_sake_genes$primate_auroc = primate_name_sake_genes$primate_auroc
 
 #Set the order for plotting
-mouse_name_sake_genes$gene = factor(mouse_name_sake_genes$gene, levels = c('SST','CHODL','PVALB','VIPR2','LHX6','LAMP5','VIP','SNCG', 'PAX6'))
+mouse_name_sake_genes$gene = factor(mouse_name_sake_genes$gene, levels = c('SST','CHODL','PVALB','NKX2-1','LHX6','LAMP5','VIP','SNCG', 'PAX6'))
 #Add a mouse subclass label
 mouse_name_sake_genes$plot_label = mouse_name_sake_genes$full_label
-mouse_name_sake_genes$plot_label[!mouse_name_sake_genes$plot_label %in% c('Chandelier_VIPR2','Pvalb_PVALB','Sst_SST', 'Sst Chodl_CHODL',
+mouse_name_sake_genes$plot_label[!mouse_name_sake_genes$plot_label %in% c('Chandelier_NKX2-1','Pvalb_PVALB','Sst_SST', 'Sst Chodl_CHODL',
                                                                           'Lamp5_LAMP5','Lamp5 Lhx6_LHX6','Sncg_SNCG','Vip_VIP','Sncg_PAX6')] = NA
 
 mouse_name_sake_genes$plot_label = sapply(strsplit(mouse_name_sake_genes$plot_label, split = '_', fixed = T), '[[', 1)
@@ -518,7 +518,7 @@ library(ggrepel)
 
 p1 = ggplot(mouse_name_sake_genes, aes(x = primate_auroc, y = mouse_auroc, color = cell_type, label = plot_label)) +
   geom_point(size = 3, alpha = .75) + ylim(0,1) + xlim(0,1) +
-  geom_label_repel(min.segment.length = 0, max.overlaps = Inf, hjust = 1, direction = 'y', nudge_x = -.35, show.legend = F) +
+  geom_label_repel(min.segment.length = 0, max.overlaps = Inf, hjust = 1, direction = 'y', nudge_x = -.4,box.padding = .1, show.legend = F) +
   geom_vline(xintercept = .5, color = 'black', linetype = 'dashed', alpha = .5) +
   geom_hline(yintercept = .5, color = 'black', linetype = 'dashed', alpha = .5) +
   scale_color_manual(values = celltype_color_palette, name = 'Subclass', 
@@ -1123,6 +1123,7 @@ Mouse Vip - Primate Vip
 
 ```{r}
 
+
 get_avg_marker_enrichment_2 = function(sce_obj, study_label, meta_markers, num_markers){
 
   #Get an annotation for the previous mouse and now orthologous primate subclass labels
@@ -1130,6 +1131,9 @@ get_avg_marker_enrichment_2 = function(sce_obj, study_label, meta_markers, num_m
   primate_subclass = paste0('Primate_', sce_obj$primate_subclass)
   sce_obj$combined_subclass_label = paste(mouse_subclass, primate_subclass, sep = '|')
 
+  orth_filt = sce_obj$orthology == 'high_orthology'
+  sce_obj = sce_obj[ ,orth_filt ]
+  
   top_markers = meta_markers %>% filter(rank <= num_markers)
   
   #Compute enrichments
@@ -1171,7 +1175,7 @@ for(i in 1:length(num_total_markers)){
   all_enrich_dfs = all_enrich_dfs %>% group_by(combined_subclass, primate_marker_set) %>% 
     summarise(overall_mean_enrichment = mean(mean_enrichment), sd_mean_enrichment = sd(mean_enrichment)) %>%
     mutate(num_markers = current_num_markers)
-
+  
   total_enrich_dfs_list[[i]] = all_enrich_dfs
 
 }
@@ -1217,6 +1221,9 @@ plotting_df$label_color[index] = 'NA'
 plotting_df$overall_mean_enrichment[index] = NA
 plotting_df$sd_mean_enrichment[index] = NA
 
+
+plotting_df$combined_subclass = factor(plotting_df$combined_subclass, levels = c('Mouse_Vip|Primate_Pax6','Mouse_Lamp5|Primate_Pax6','Mouse_Sncg|Primate_Pax6'))
+
 p8 = ggplot(plotting_df, aes(x = num_markers, y = overall_mean_enrichment, color = label_color, group = primate_subclass_label)) +
   geom_point(size = 3) + geom_line(show.legend = F) + 
   geom_pointrange(aes(ymax = overall_mean_enrichment + sd_mean_enrichment, ymin = overall_mean_enrichment - sd_mean_enrichment ),
@@ -1251,10 +1258,8 @@ plotting_df$label_color = plotting_df$primate_subclass_label
  plotting_df$overall_mean_enrichment[index] = NA
  plotting_df$sd_mean_enrichment[index] = NA
 
-#plotting_df$label_color[plotting_df$combined_subclass == 'Mouse_Vip|Primate_Sncg' & !plotting_df$primate_subclass_label %in% c('Vip','Sncg')] = 'NA'
-#plotting_df$label_color[plotting_df$combined_subclass == 'Mouse_Lamp5|Primate_Sncg' & !plotting_df$primate_subclass_label %in% c('Lamp5','Sncg')] = 'NA'
-#plotting_df$label_color[plotting_df$combined_subclass == 'Mouse_Sncg|Primate_Sncg' & !plotting_df$primate_subclass_label %in% c('Sncg','Sncg')] = 'NA'
-
+plotting_df$combined_subclass = factor(plotting_df$combined_subclass, levels = c('Mouse_Vip|Primate_Sncg','Mouse_Lamp5|Primate_Sncg','Mouse_Sncg|Primate_Sncg'))
+ 
 p9 = ggplot(plotting_df, aes(x = num_markers, y = overall_mean_enrichment, color = label_color, group = primate_subclass_label)) +
   geom_point(size = 3) + geom_line(show.legend = F) + 
   geom_pointrange(aes(ymax = overall_mean_enrichment + sd_mean_enrichment, ymin = overall_mean_enrichment - sd_mean_enrichment ),
