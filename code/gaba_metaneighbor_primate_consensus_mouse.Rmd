@@ -2689,13 +2689,14 @@ primate_subclass_meta_markers = make_meta_markers(primate_markers, detailed_stat
 primate_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
 
 
+primate_subclass_meta_markers %>% filter(gene == 'CCK')
 
 
 ```
 
 ```{r}
 
-DefaultAssay(object = interneuron.combined) = 'originalexp'
+DefaultAssay(object = interneuron.combined) = 'integrated'
 
 
 #top_primate_pax6_markers = primate_subclass_meta_markers %>% filter(cell_type == 'Pax6' & rank <= 100) %>% pull(gene)
@@ -2721,7 +2722,7 @@ DefaultAssay(object = interneuron.combined) = 'originalexp'
 
 
 
-top_markers = primate_subclass_meta_markers %>% filter(cell_type %in% c('Pax6', 'Lamp5', 'Vip', 'Sncg') & rank <= 50)
+top_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
 
 ct_scores = score_cells(log1p(interneuron.combined@assays$originalexp@data), top_markers)
 ct_enrichment = compute_marker_enrichment(ct_scores)
@@ -2735,24 +2736,126 @@ interneuron.combined$primate_sncg_enrichment = ct_enrichment['all|Sncg', ]
 DimPlot(interneuron.combined, group.by = 'primate_subclass', cols = celltype_color_palette) + 
   ggtitle('Orthologous primate subclass')
 
-
-FeaturePlot(interneuron.combined, features = 'primate_pax6_enrichment') +
+p_pax6_50_enrich = FeaturePlot(interneuron.combined, features = 'primate_pax6_enrichment') +
   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 1 )
+p_pax6_50_enrich
+ggsave(plot = p_pax6_50_enrich, filename = 'pax6_top50_primate_enrich_integrate_inter_umap.pdf', device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 4, width = 6 )
 
-FeaturePlot(interneuron.combined, features = 'primate_sncg_enrichment') +
+p_sncg_50_enrich = FeaturePlot(interneuron.combined, features = 'primate_sncg_enrichment') +
   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 1 )
+p_sncg_50_enrich
+ggsave(plot = p_sncg_50_enrich, filename = 'sncg_top50_primate_enrich_integrate_inter_umap.pdf', device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 4, width = 6 )
 
-FeaturePlot(interneuron.combined, features = 'primate_vip_enrichment') +
+p_vip_50_enrich = FeaturePlot(interneuron.combined, features = 'primate_vip_enrichment') +
   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 1 )
+p_vip_50_enrich
+ggsave(plot = p_vip_50_enrich, filename = 'vip_top50_primate_enrich_integrate_inter_umap.pdf', device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 4, width = 6 )
 
-FeaturePlot(interneuron.combined, features = 'primate_lamp5_enrichment') +
+p_lamp5_50_enrich = FeaturePlot(interneuron.combined, features = 'primate_lamp5_enrichment') +
   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 1 )
+p_lamp5_50_enrich
+ggsave(plot = p_lamp5_50_enrich, filename = 'lamp5_top50_primate_enrich_integrate_inter_umap.pdf', device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 4, width = 6 )
+```
+
+And try aggregate expression and then z-scores
+
+
+
+```{r}
+
+DefaultAssay(object = interneuron.combined) = 'originalexp'
+
+top_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
+
+top_pax_markers = top_markers %>% filter(cell_type == 'Pax6') %>% pull(gene)
+top_vip_markers = top_markers %>% filter(cell_type == 'Vip') %>% pull(gene)
+top_lamp5_markers = top_markers %>% filter(cell_type == 'Lamp5') %>% pull(gene)
+top_sncg_markers = top_markers %>% filter(cell_type == 'Sncg') %>% pull(gene)
+
+marker_exp = rowSums(FetchData(interneuron.combined, vars = top_pax_markers, slot = 'data'))
+interneuron.combined$agg_pax6_exp = marker_exp
+interneuron.combined$scale_agg_pax6_exp = scale(marker_exp)
+
+marker_exp = rowSums(FetchData(interneuron.combined, vars = top_vip_markers, slot = 'data'))
+interneuron.combined$agg_vip_exp = marker_exp
+interneuron.combined$scale_agg_vip_exp = scale(marker_exp)
+
+marker_exp = rowSums(FetchData(interneuron.combined, vars = top_lamp5_markers, slot = 'data'))
+interneuron.combined$agg_lamp5_exp = marker_exp
+interneuron.combined$scale_agg_lamp5_exp = scale(marker_exp)
+
+marker_exp = rowSums(FetchData(interneuron.combined, vars = top_sncg_markers, slot = 'data'))
+interneuron.combined$agg_sncg_exp = marker_exp
+interneuron.combined$scale_agg_sncg_exp = scale(marker_exp)
+
+FeaturePlot(interneuron.combined, features = 'agg_pax6_exp') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(interneuron.combined, features = 'scale_agg_pax6_exp') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(interneuron.combined, features = 'agg_vip_exp') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(interneuron.combined, features = 'scale_agg_vip_exp') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(interneuron.combined, features = 'agg_lamp5_exp') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(interneuron.combined, features = 'scale_agg_lamp5_exp') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(interneuron.combined, features = 'agg_sncg_exp') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(interneuron.combined, features = 'scale_agg_sncg_exp') +
+  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+
 
 ```
 
 
+And get average enrichment of marker expression as we increase the number of markers. But I'm specifically interested in:
+Mouse Lamp5 - Primate Lamp5
+Mouse Lamp5 - Primate Pax6
+Mouse Vip - Primate Sncg
+Mouse Sncg - Primate Pax6
+Mouse Vip - Primate Vip
 
 
+```{r}
+
+mouse_subclass = paste0('Mouse_', interneuron.combined$cell_subclass)
+primate_subclass = paste0('Primate_', interneuron.combined$primate_subclass)
+combined_subclass_label = paste(mouse_subclass, primate_subclass, sep = '|')
+
+table(combined_subclass_label)
+
+interneuron.combined[[]]
+
+
+
+top_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
+
+ct_scores = score_cells(log1p(interneuron.combined@assays$originalexp@data), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+colnames(ct_enrichment) = combined_subclass_label
+
+marker_enrich_df = reshape2::melt(t(ct_enrichment), varnames = c('combined_subclass', 'primate_marker_set'), value.name = 'enrichment')
+
+marker_enrich_df %>% group_by(combined_subclass, primate_marker_set) %>% summarise(mean_enrichment = mean(enrichment)) %>%
+  group_by(combined_subclass) %>% arrange(desc(mean_enrichment), .by_group = T)
+
+```
 
 
 
