@@ -1316,6 +1316,10 @@ load('/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/cro
 #Has the combined mouse metadata
 #interneuron_metadata
 load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/20_3_25_interneuron_mouse_metadata.Rdata')
+
+interneuron_metadata %>% filter(cell_subclass == 'Sncg' & primate_subclass == 'Sncg') %>% group_by(study, cell_cluster) %>%
+  summarise(n = n())
+
 ```
 
 From the combined mouse metadata, grab the clusters of interest
@@ -1477,6 +1481,432 @@ ggsave(plot = p_sncg_sncg, filename = 'full_MNaurocs_mouse_sncg_primate_sncg.pdf
        path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
        height = 3, width = 5)
 
+
+```
+
+
+
+######################################
+
+Now run MetaNeighbor again but on the high orthologous matched cell-types across the mouse and primates
+
+Use Procedure 3 to test which GO terms are contributing to subclass replicability
+Particular interest on the Sncg subclass
+
+#######################################
+
+Only use the orthologous clusters
+Only need the primate_subclass metadata
+```{r}
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
+zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
+zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
+zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
+zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
+zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
+macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
+
+gc()
+
+keep_meta = colData(tasic18)[ , c('study','primate_subclass')]
+colData(tasic18)= keep_meta
+keep_meta = colData(zeng_10x_cells)[ , c('study','primate_subclass')]
+colData(zeng_10x_cells)= keep_meta
+keep_meta = colData(zeng_10x_nuclei)[ , c('study','primate_subclass')]
+colData(zeng_10x_nuclei)= keep_meta
+keep_meta = colData(zeng_smart_nuclei)[ , c('study','primate_subclass')]
+colData(zeng_smart_nuclei)= keep_meta
+keep_meta = colData(zeng_smart_cells)[ , c('study','primate_subclass')]
+colData(zeng_smart_cells)= keep_meta
+keep_meta = colData(zeng_10xv2_wba)[ , c('study','primate_subclass')]
+colData(zeng_10xv2_wba)= keep_meta
+keep_meta = colData(zeng_10xv3_wba)[ , c('study','primate_subclass')]
+colData(zeng_10xv3_wba)= keep_meta
+keep_meta = colData(macosko_wba)[ , c('study','primate_subclass')]
+colData(macosko_wba)= keep_meta
+
+```
+
+load the primate data
+
+```{r}
+
+human_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_10x_gaba.rds')
+human_ss = readRDS( file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_ss_gaba.rds')
+
+chimp_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_10x_gaba.rds')
+chimp_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_ss_gaba.rds')
+
+gorilla_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_10x_gaba.rds')
+gorilla_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_ss_gaba.rds')
+
+macaca_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/macaca_data_10x_gaba.rds')
+
+marmoset_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
+
+```
+
+```{r}
+
+primate_cluster_mappings = data.table::fread('../data/cross_species_mapping_cls86.csv')
+primate_cluster_mappings
+```
+
+Add the consensus cluster label and then filter out cells not in a consensus cluster
+```{r}
+
+index = match(human_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+human_10x = human_10x[ ,!is.na(human_10x$consensus_cluster_label)]
+
+index = match(human_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+human_ss = human_ss[ ,!is.na(human_ss$consensus_cluster_label)]
+
+
+index = match(chimp_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+chimp_10x = chimp_10x[ ,!is.na(chimp_10x$consensus_cluster_label)]
+
+index = match(chimp_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+chimp_ss = chimp_ss[ ,!is.na(chimp_ss$consensus_cluster_label)]
+
+
+index = match(gorilla_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+gorilla_10x = gorilla_10x[ ,!is.na(gorilla_10x$consensus_cluster_label)]
+
+index = match(gorilla_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+gorilla_ss = gorilla_ss[ ,!is.na(gorilla_ss$consensus_cluster_label)]
+
+
+index = match(macaca_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+macaca_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+macaca_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+macaca_10x = macaca_10x[ ,!is.na(macaca_10x$consensus_cluster_label)]
+
+index = match(marmoset_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+marmoset_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+marmoset_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+marmoset_10x = marmoset_10x[ ,!is.na(marmoset_10x$consensus_cluster_label)]
+
+gc()
+
+```
+
+
+```{r}
+
+keep_meta = colData(human_10x)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(human_10x)= keep_meta
+
+keep_meta = colData(human_ss)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(human_ss)= keep_meta
+
+keep_meta = colData(chimp_10x)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(chimp_10x)= keep_meta
+
+keep_meta = colData(chimp_ss)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(chimp_ss)= keep_meta
+
+keep_meta = colData(gorilla_10x)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(gorilla_10x)= keep_meta
+
+keep_meta = colData(gorilla_ss)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(gorilla_ss)= keep_meta
+
+keep_meta = colData(macaca_10x)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(macaca_10x)= keep_meta
+
+keep_meta = colData(marmoset_10x)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(marmoset_10x)= keep_meta
+
+```
+
+```{r}
+
+all_mammal_sce = list(
+  human_10x = human_10x,
+  human_ss = human_ss,
+  chimp_10x = chimp_10x, 
+  chimp_ss = chimp_ss,
+  gorilla_10x = gorilla_10x, 
+  gorilla_ss = gorilla_ss,
+  marmoset_10x = marmoset_10x,
+  macaca_10x = macaca_10x,
+  tasic18 = tasic18,
+  zeng_10x_cells = zeng_10x_cells,
+  zeng_10x_nuclei = zeng_10x_nuclei,
+  zeng_smart_cells = zeng_smart_cells,
+  zeng_smart_nuclei = zeng_smart_nuclei,
+  zeng_10xv2_wba = zeng_10xv2_wba,
+  zeng_10xv3_wba = zeng_10xv3_wba,
+  macosko_wba = macosko_wba
+)
+
+
+```
+
+
+Total primate and mouse cells is 595,300
+
+```{r}
+library(MetaNeighbor)
+
+```
+
+```{r}
+
+merged_mammal_sce = mergeSCE(all_mammal_sce)
+dim(merged_mammal_sce)
+
+colData(merged_mammal_sce)
+
+rm(all_mammal_sce)
+gc()
+```
+
+
+get the mouse GO terms
+
+```{r}
+library(org.Mm.eg.db)
+library(GO.db)
+
+
+make_go_mouse = function() {
+    go_sets = as.list(org.Mm.egGO2ALLEGS)
+    all_genes = unique(unlist(go_sets))
+    entrez_to_symbols = unlist(mget(all_genes, org.Mm.egSYMBOL))
+    go_sets = lapply(go_sets, function(gs) { unique(entrez_to_symbols[gs]) })
+    names(go_sets) = sapply(names(go_sets), full_go_name)
+    saveRDS(go_sets, "/home/werner/projects/mouse_brain_consensus_taxonomy/data/mouse_go/go_mouse.rds")
+}
+
+full_go_name = function(go_id) {
+    go_term = GOTERM[[go_id]]
+    return(paste(go_id, Term(go_term), Ontology(go_term), sep = "|"))
+}
+
+make_go_mouse()
+
+
+mouse_go_sets = readRDS("/home/werner/projects/mouse_brain_consensus_taxonomy/data/mouse_go/go_mouse.rds")
+mouse_go_sets 
+```
+
+convert mouse gene names to ortholog names and filter
+
+```{r}
+final_present_1to1s = readRDS('/home/werner/projects/mouse_brain_consensus_taxonomy/data/final_present_1to1s.rds')
+
+#Convert the present orthologs into mouse gene symbols
+known_orth_genes = rownames(merged_mammal_sce)
+
+index = match(known_orth_genes, final_present_1to1s$`Gene name`)
+known_mouse_genes = final_present_1to1s$`Mouse gene name`[index]
+#Filter the mouse GO terms to the gene that are present
+mouse_go_sets = lapply(mouse_go_sets , function(gene_set) { gene_set[gene_set %in% known_mouse_genes]})
+min_size = 10
+max_size = 100
+go_set_size = sapply(mouse_go_sets , length)
+mouse_go_sets  = mouse_go_sets [go_set_size >= min_size & go_set_size <= max_size]
+length(mouse_go_sets)
+
+#And then convert the mouse GO terms to the shared ortholog gene symbols
+mouse_go_sets = lapply(mouse_go_sets , function(gene_set) { 
+  index = match(gene_set, final_present_1to1s$`Mouse gene name`)
+  gene_set = final_present_1to1s$`Gene name`[index]})
+
+mouse_go_sets[1:5]
+```
+
+```{r}
+
+rm(tasic18, zeng_10x_cells, zeng_10x_nuclei, zeng_10xv2_wba, zeng_10xv3_wba, macosko_wba, zeng_smart_cells, zeng_smart_nuclei, human_10x, human_ss,
+   chimp_10x, chimp_ss, gorilla_ss, gorilla_10x, marmoset_10x, macaca_10x)
+gc()
+```
+
+
+
+Run supervised MetaNeighbor
+
+
+```{r}
+
+orth_go_aurocs = MetaNeighbor(dat = merged_mammal_sce,
+                              experiment_labels = merged_mammal_sce$study_id,
+                              celltype_labels = merged_mammal_sce$primate_subclass,
+                              genesets = mouse_go_sets,
+                              fast_version = T, bplot = F, batch_size = 50)
+
+write.table(orth_go_aurocs, '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/matched_mouse_primate_orth_celltypes_mouseGO_MN.txt')
+
+
+```
+
+
+```{r}
+
+orth_go_aurocs = read.table( '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/matched_mouse_primate_orth_celltypes_mouseGO_MN.txt')
+head(orth_go_aurocs)
+
+dim(orth_go_aurocs)
+
+```
+
+```{r}
+#MetaNeighbor::plotBPlot(head(orth_go_aurocs, 100))
+
+gs_size = sapply(mouse_go_sets, length)
+aurocs_df = data.frame(go_term = rownames(orth_go_aurocs), orth_go_aurocs)
+aurocs_df$average = rowMeans(orth_go_aurocs)
+aurocs_df$n_genes = gs_size[rownames(orth_go_aurocs)]
+
+aurocs_df %>% filter(n_genes <=20) %>% arrange(desc(Sncg))
+
+
+plot_df = aurocs_df %>% dplyr::select(-c(average, n_genes)) %>% mutate(go_term = rownames(aurocs_df)) %>% 
+  tidyr::pivot_longer(!go_term, names_to = 'Subclass', values_to = 'aurocs')
+
+ggplot(plot_df, aes(x = Subclass, y = aurocs)) + geom_boxplot()
+
+```
+
+
+And now just doing the metaneighbor with the mouse data
+Add the top 50 primate markers as annotations
+
+```{r}
+mouse_go_sets$primate_pax6_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Pax6' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_sncg_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Sncg' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_lamp5_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Lamp5' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_lamp5lhx6_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Lamp5 Lhx6' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_vip_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Vip' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_sst_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Sst' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_sstchodl_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Sst Chodl' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_pvalb_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Pvalb' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_chandelier_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Chandelier' & rank <= 50) %>% pull(gene)
+
+
+table(merged_mammal_sce$study_id)
+
+
+cell_index = merged_mammal_sce$study_id %in% c('tasic18','zeng_10x_cells','zeng_10x_nuclei','zeng_smart_cells','zeng_smart_nuclei',
+                                               'zeng_10xv2_wba','zeng_10xv3_wba','macosko_wba')
+
+merged_mouse_sce = merged_mammal_sce[ , cell_index]
+colData(merged_mouse_sce)
+table(merged_mouse_sce$study)
+
+rm(merged_mammal_sce)
+gc()
+```
+
+```{r}
+
+start = Sys.time()
+mouse_go_aurocs = MetaNeighbor(dat = merged_mouse_sce,
+                              experiment_labels = merged_mouse_sce$study_id,
+                              celltype_labels = merged_mouse_sce$primate_subclass,
+                              genesets = mouse_go_sets,
+                              fast_version = T, bplot = F, batch_size = 50)
+
+write.table(mouse_go_aurocs, '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/just_mouse_orth_celltypes_mouseGO_MN.txt')
+
+end = Sys.time() - start
+end
+```
+
+
+```{r}
+
+mouse_go_aurocs = read.table( '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/just_mouse_orth_celltypes_mouseGO_MN.txt')
+head(mouse_go_aurocs)
+
+dim(mouse_go_aurocs)
+
+
+mouse_go_aurocs %>% filter() arrange(desc(Sncg))
+
+```
+
+```{r}
+#MetaNeighbor::plotBPlot(head(orth_go_aurocs, 100))
+
+gs_size = sapply(mouse_go_sets, length)
+aurocs_df = data.frame(go_term = rownames(mouse_go_aurocs), mouse_go_aurocs)
+aurocs_df$average = rowMeans(mouse_go_aurocs)
+aurocs_df$n_genes = gs_size[rownames(mouse_go_aurocs)]
+
+aurocs_df %>% filter(n_genes <=20) %>% group_by() arrange(desc(Sncg))
+
+```
+
+```{r}
+plot_df = aurocs_df %>% dplyr::select(-c(average, n_genes)) %>% mutate(go_term = rownames(aurocs_df)) %>% 
+  tidyr::pivot_longer(!go_term, names_to = 'Subclass', values_to = 'aurocs')
+
+order_vec = plot_df %>% filter(aurocs >= .9) %>% group_by(Subclass) %>% summarise(median = median(aurocs)) %>% arrange(desc(median)) %>% pull(Subclass)
+
+plot_df$Subclass = factor(plot_df$Subclass, levels = order_vec)
+
+ggplot(plot_df, aes(x = Subclass, y = aurocs)) + geom_boxplot() +
+  ylim(.9, 1) + ylab('Mouse GO term MN AUROC') + ggtitle('Mouse orthologous subclasses')
+
+```
+
+
+
+
+```{r}
+
+
+plotDotPlot(dat = merged_mouse_sce,
+            experiment_labels = merged_mouse_sce$study_id,
+            celltype_labels = merged_mouse_sce$primate_subclass,
+            gene_set = mouse_go_sets[['GO:0052866|phosphatidylinositol phosphate phosphatase activity|MF']])
+
+
+```
+Getting top gene sets per subclass and comparing aurocs
+
+```{r}
+top_df = aurocs_df %>% filter(n_genes <= 50) 
+
+top_df = top_df %>% dplyr::select(-c(average, n_genes)) %>% mutate(go_term = rownames(top_df)) %>% 
+  tidyr::pivot_longer(!go_term, names_to = 'Subclass', values_to = 'aurocs')
+
+top_df = top_df %>% group_by(Subclass) %>% arrange(desc(aurocs), .by_group = T) %>% slice_max(aurocs, n = 10)
+
+top_go_terms = unique(top_df$go_term)
+
+
+r_index = rownames(aurocs_df) %in% top_go_terms
+
+top_aurocs_mat = as.matrix(aurocs_df[r_index, c('Chandelier','Lamp5','Lamp5.Lhx6', 'Sncg','Pax6','Vip','Sst','Sst.Chodl','Pvalb')])
+
+col_fun = circlize::colorRamp2(breaks = c(.5, 1), colors = c('grey','red'))
+ComplexHeatmap::Heatmap(top_aurocs_mat, name = 'auroc', show_row_names = F,
+                        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2')
 
 ```
 
