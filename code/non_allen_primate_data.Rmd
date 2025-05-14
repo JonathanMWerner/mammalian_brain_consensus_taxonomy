@@ -1452,6 +1452,171 @@ mouse_subclass_meta_markers = read_meta_markers('markers_to_share/mouse_subclass
 ```
 
 
+
+
+For a specific comparison, plot the primate vip against the primate sncg marker expression for the de novo Vip and Sncg clusters
+Then plot mouse Vip against mouse Sncg for those clusters
+
+
+```{r}
+
+sesten_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_ma_sestan/sestan_integrated_gaba.rds')
+DefaultAssay(sesten_gaba_data) <- "RNA"
+
+sesten_gaba_data = as.SingleCellExperiment(sesten_gaba_data)
+names(assays(sesten_gaba_data)) = c('counts','cpm')
+
+#get the top primate and mouse MetaMarkers
+
+top_primate_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
+top_mouse_markers = mouse_subclass_meta_markers %>% filter(rank <= 50)
+
+#Get the primate enrichments, summarise by the mean enrichment per de novo cluster
+ct_scores_primate = score_cells(log1p(cpm(sesten_gaba_data)), top_primate_markers)
+ct_enrichment_primate = compute_marker_enrichment(ct_scores_primate)
+
+colnames(ct_enrichment_primate) = sesten_gaba_data$seurat_clusters
+ct_enrichment_primate_df = reshape2::melt(t(ct_enrichment_primate), varnames = c('de_novo_cluster','primate_markers'), value.name = c('enrichment'))
+ct_enrichment_primate_df = ct_enrichment_primate_df %>% group_by(de_novo_cluster, primate_markers) %>% summarise(mean_enrichment = mean(enrichment))
+
+#Get the Sncg and Vip clusters
+sestan_primate_vip_sncg_df = ct_enrichment_primate_df %>% 
+  filter(de_novo_cluster %in% c(16, 20, 4, 9, 10, 12, 17, 19) & primate_markers %in% c('all|Vip','all|Sncg')) %>%
+  tidyr::pivot_wider(names_from = primate_markers, values_from = mean_enrichment)
+
+sestan_primate_vip_sncg_df$subclass = rep('Vip', length = nrow(sestan_primate_vip_sncg_df))
+sestan_primate_vip_sncg_df$subclass[sestan_primate_vip_sncg_df$de_novo_cluster %in% c(16, 20)] = 'Sncg'
+
+p_yale_primate = ggplot(sestan_primate_vip_sncg_df, aes(x = `all|Vip`, y = `all|Sncg`, color = subclass, label = de_novo_cluster)) + 
+  geom_point(size = 4, show.legend = F) +
+  geom_label_repel(min.segment.length = 0, show.legend = F, force_pull = .1, box.padding = .5) +
+  geom_abline(intercept = 0, slope = 1, linetype = 'dashed', color = 'black') +
+  scale_color_manual(values = celltype_color_palette) +
+  ylab('Primate Sncg marker enrichment') + xlab('Primate Vip marker enrichment') + ggtitle('Yale cross-primate data') +
+  theme_bw() + theme(aspect.ratio = 1)
+
+
+#Get the mouse enrichments, summarise by the mean enrichment per de novo cluster
+ct_scores_mouse = score_cells(log1p(cpm(sesten_gaba_data)), top_mouse_markers)
+ct_enrichment_mouse = compute_marker_enrichment(ct_scores_mouse)
+
+colnames(ct_enrichment_mouse) = sesten_gaba_data$seurat_clusters
+ct_enrichment_mouse_df = reshape2::melt(t(ct_enrichment_mouse), varnames = c('de_novo_cluster','mouse_markers'), value.name = c('enrichment'))
+ct_enrichment_mouse_df = ct_enrichment_mouse_df %>% group_by(de_novo_cluster, mouse_markers) %>% summarise(mean_enrichment = mean(enrichment))
+
+#Get the Sncg and Vip clusters
+sestan_mouse_vip_sncg_df = ct_enrichment_mouse_df %>% 
+  filter(de_novo_cluster %in% c(16, 20, 4, 9, 10, 12, 17, 19) & mouse_markers %in% c('all|Vip','all|Sncg')) %>%
+  tidyr::pivot_wider(names_from = mouse_markers, values_from = mean_enrichment)
+
+sestan_mouse_vip_sncg_df$subclass = rep('Vip', length = nrow(sestan_mouse_vip_sncg_df))
+sestan_mouse_vip_sncg_df$subclass[sestan_mouse_vip_sncg_df$de_novo_cluster %in% c(16, 20)] = 'Sncg'
+
+p_yale_mouse = ggplot(sestan_mouse_vip_sncg_df, aes(x = `all|Vip`, y = `all|Sncg`, color = subclass, label = de_novo_cluster)) + 
+  geom_point(size = 4, show.legend = F) +
+  geom_label_repel(min.segment.length = 0, show.legend = F, force_pull = .1, box.padding = .5) +
+  geom_abline(intercept = 0, slope = 1, linetype = 'dashed', color = 'black') +
+  scale_color_manual(values = celltype_color_palette) +
+  ylab('Mouse Sncg marker enrichment') + xlab('Mouse Vip marker enrichment') + ggtitle('Yale cross-primate data') +
+  theme_bw() + theme(aspect.ratio = 1)
+
+
+
+p_yale_primate
+p_yale_mouse
+
+ggsave(plot = p_yale_primate, filename = 'sestan_vip_sncg_clust_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 4, width = 4)
+ggsave(plot = p_yale_mouse, filename = 'sestan_vip_sncg_clust_mean_mouse_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 4, width = 4)
+
+
+```
+
+```{r}
+
+caglayan_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_caglayan_konopka/caglayan_gaba_processed.rds')
+DefaultAssay(caglayan_gaba_data ) = 'RNA'
+
+caglayan_gaba_data = as.SingleCellExperiment(caglayan_gaba_data)
+names(assays(caglayan_gaba_data)) = c('counts','cpm')
+
+#get the top primate and mouse MetaMarkers
+top_primate_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
+top_mouse_markers = mouse_subclass_meta_markers %>% filter(rank <= 50)
+
+#Get the primate enrichments, summarise by the mean enrichment per de novo cluster
+ct_scores_primate = score_cells(log1p(cpm(caglayan_gaba_data)), top_primate_markers)
+ct_enrichment_primate = compute_marker_enrichment(ct_scores_primate)
+
+colnames(ct_enrichment_primate) = caglayan_gaba_data$seurat_clusters
+ct_enrichment_primate_df = reshape2::melt(t(ct_enrichment_primate), varnames = c('de_novo_cluster','primate_markers'), value.name = c('enrichment'))
+ct_enrichment_primate_df = ct_enrichment_primate_df %>% group_by(de_novo_cluster, primate_markers) %>% summarise(mean_enrichment = mean(enrichment))
+
+#Get the Sncg and Vip clusters
+caglayan_primate_vip_sncg_df = ct_enrichment_primate_df %>% 
+  filter(de_novo_cluster %in% c(19, 5, 7, 11, 13, 17, 18, 20, 26) & primate_markers %in% c('all|Vip','all|Sncg')) %>%
+  tidyr::pivot_wider(names_from = primate_markers, values_from = mean_enrichment)
+
+caglayan_primate_vip_sncg_df$subclass = rep('Vip', length = nrow(caglayan_primate_vip_sncg_df))
+caglayan_primate_vip_sncg_df$subclass[caglayan_primate_vip_sncg_df$de_novo_cluster %in% c(19)] = 'Sncg'
+
+p_texas_primate = ggplot(caglayan_primate_vip_sncg_df, aes(x = `all|Vip`, y = `all|Sncg`, color = subclass, label = de_novo_cluster)) + 
+  geom_point(size = 4, show.legend = F) +
+  geom_label_repel(min.segment.length = 0, show.legend = F, force_pull = .1, box.padding = .5) +
+  geom_abline(intercept = 0, slope = 1, linetype = 'dashed', color = 'black') +
+  scale_color_manual(values = celltype_color_palette) +
+  ylab('Primate Sncg marker enrichment') + xlab('Primate Vip marker enrichment') + ggtitle('UT Southwestern cross-primate data') +
+  theme_bw() + theme(aspect.ratio = 1)
+
+
+#Get the mouse enrichments, summarise by the mean enrichment per de novo cluster
+ct_scores_mouse = score_cells(log1p(cpm(caglayan_gaba_data)), top_mouse_markers)
+ct_enrichment_mouse = compute_marker_enrichment(ct_scores_mouse)
+
+colnames(ct_enrichment_mouse) = caglayan_gaba_data$seurat_clusters
+ct_enrichment_mouse_df = reshape2::melt(t(ct_enrichment_mouse), varnames = c('de_novo_cluster','mouse_markers'), value.name = c('enrichment'))
+ct_enrichment_mouse_df = ct_enrichment_mouse_df %>% group_by(de_novo_cluster, mouse_markers) %>% summarise(mean_enrichment = mean(enrichment))
+
+#Get the Sncg and Vip clusters
+caglayan_mouse_vip_sncg_df = ct_enrichment_mouse_df %>% 
+  filter(de_novo_cluster %in% c(19, 5, 7, 11, 13, 17, 18, 20, 26) & mouse_markers %in% c('all|Vip','all|Sncg')) %>%
+  tidyr::pivot_wider(names_from = mouse_markers, values_from = mean_enrichment)
+
+caglayan_mouse_vip_sncg_df$subclass = rep('Vip', length = nrow(caglayan_mouse_vip_sncg_df))
+caglayan_mouse_vip_sncg_df$subclass[caglayan_mouse_vip_sncg_df$de_novo_cluster %in% c(19)] = 'Sncg'
+
+p_texas_mouse = ggplot(caglayan_mouse_vip_sncg_df, aes(x = `all|Vip`, y = `all|Sncg`, color = subclass, label = de_novo_cluster)) + 
+  geom_point(size = 4, show.legend = F) +
+  geom_label_repel(min.segment.length = 0, show.legend = F, force_pull = .1, box.padding = .5) +
+  geom_abline(intercept = 0, slope = 1, linetype = 'dashed', color = 'black') +
+  scale_color_manual(values = celltype_color_palette) +
+  ylab('Mouse Sncg marker enrichment') + xlab('Mouse Vip marker enrichment') + ggtitle('UT Southwestern cross-primate data') +
+  theme_bw() + theme(aspect.ratio = 1)
+
+
+
+p_texas_primate
+p_texas_mouse
+
+ggsave(plot = p_texas_primate, filename = 'caglayan_vip_sncg_clust_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 4, width = 4)
+ggsave(plot = p_texas_mouse, filename = 'caglayan_vip_sncg_clust_mean_mouse_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 4, width = 4)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
 ################################################
 Now in the non_allen primate datasets, look at the correlations in DE between the primate clusters and the mouse subclasses
 
@@ -1932,6 +2097,15 @@ ggplot(all_corr_summary_dfs , aes(x = num_markers, y = spearman, color = cluster
 ```
 
 
+
+
+##############
+##############
+##############
+##############
+##############
+
+OLD METANEIGHBOR
 
 
 
