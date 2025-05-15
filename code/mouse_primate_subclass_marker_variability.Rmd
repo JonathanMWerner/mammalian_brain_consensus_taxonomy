@@ -1486,6 +1486,109 @@ ggsave(plot = p_sncg_sncg, filename = 'full_MNaurocs_mouse_sncg_primate_sncg.pdf
 
 
 
+And now get the difference between the top and next best match in the full aurocs, between mouse and primates, 
+show distributions across the mouse orthologous subclasses
+
+
+```{r}
+
+orth_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C',
+                           'low orthology' = 'grey90')
+
+
+MN_aurocs = mouse_clust_primate_sub_aurocs
+
+r_index = grepl('human', rownames(MN_aurocs)) | grepl('chimp', rownames(MN_aurocs)) |
+  grepl('gorilla', rownames(MN_aurocs)) | grepl('macaca', rownames(MN_aurocs)) | 
+  grepl('marmoset', rownames(MN_aurocs)) 
+
+c_index = !r_index
+
+comp_auroc_df = reshape2::melt(MN_aurocs[r_index, c_index], varnames = c('ref_primate_cluster','target_mouse_cluster'), value.name = 'auroc')
+comp_auroc_df$primate_subclass = sapply(strsplit(as.character(comp_auroc_df$ref_primate_cluster), split = '|', fixed = T), '[[', 2)
+comp_auroc_df$primate_subclass[comp_auroc_df$primate_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+comp_auroc_df = comp_auroc_df %>% group_by(target_mouse_cluster, primate_subclass) %>% summarise(primate_auroc = mean(auroc))
+  
+comp_auroc_df$row_id = 1:nrow(comp_auroc_df)
+
+
+#Get the max auroc per cluster
+max_aurocs_df = comp_auroc_df %>% group_by(target_mouse_cluster) %>% mutate(max_auroc = max(primate_auroc)) %>% filter(primate_auroc == max_auroc)
+
+#Filter out the max and get the next best
+second_best_aurocs_df = comp_auroc_df %>% filter(!row_id %in% max_aurocs_df$row_id) %>% group_by(target_mouse_cluster) %>%
+  mutate(second_best_auroc = max(primate_auroc)) %>% filter(primate_auroc == second_best_auroc)
+
+
+table(max_aurocs_df$target_mouse_cluster == second_best_aurocs_df$target_mouse_cluster)
+max_aurocs_df$second_best_auroc = second_best_aurocs_df$second_best_auroc
+
+#This will have all the mouse clusters, including the ones with low orthology
+max_aurocs_df = max_aurocs_df %>% mutate(best_next_best_diff = max_auroc - second_best_auroc)
+
+
+#The interneuron metadata only has data for the high orthologt clusters
+interneuron_metadata$full_cluster = paste(interneuron_metadata$study, interneuron_metadata$cell_cluster, sep = '|')
+primate_subclass_mouse_cluster_mapping = interneuron_metadata %>% group_by(full_cluster, primate_subclass) %>% summarise(n = n())
+
+
+index = match(max_aurocs_df$target_mouse_cluster, primate_subclass_mouse_cluster_mapping$full_cluster )
+primate_subclass_mouse_cluster_mapping[index, ]
+
+max_aurocs_df$orthologous_subclass = primate_subclass_mouse_cluster_mapping$primate_subclass[index]
+max_aurocs_df$orthologous_subclass[is.na(max_aurocs_df$orthologous_subclass)] = 'low orthology'
+
+order_vec = max_aurocs_df %>% group_by(orthologous_subclass) %>% summarise(median = median(best_next_best_diff)) %>% arrange(desc(median)) %>%
+  pull(orthologous_subclass)
+
+max_aurocs_df$orthologous_subclass = factor(max_aurocs_df$orthologous_subclass, levels = order_vec)
+
+wide_discrim_plot = ggplot(max_aurocs_df, aes(x = orthologous_subclass, y = best_next_best_diff, fill = orthologous_subclass)) + geom_boxplot(show.legend = F) +
+  ylab('Mouse cluster discriminability (Best - Next best AUROC)') + xlab('Mouse orthologous subclasses') +
+  scale_fill_manual(values = orth_color_palette) +
+  theme_bw() + theme(aspect.ratio = 1)
+
+long_discrim_plot = ggplot(max_aurocs_df, aes(y = orthologous_subclass, x = best_next_best_diff, fill = orthologous_subclass)) + geom_boxplot(show.legend = F) +
+  xlab('Mouse cluster discriminability (Best - Next best AUROC)') + ylab('Mouse orthologous subclasses') +
+  scale_fill_manual(values = orth_color_palette) + scale_y_discrete(limits=rev) +
+  theme_bw() + theme(aspect.ratio = 1)
+
+wide_discrim_plot 
+long_discrim_plot 
+
+ggsave(plot = wide_discrim_plot , filename = 'wide_mouse_cluster_discriminability_boxplots.pdf', 
+       path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 3, width = 5)
+ggsave(plot = long_discrim_plot , filename = 'long_mouse_cluster_discriminability_boxplots.pdf', 
+       path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 5, width = 3)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ######################################
 
 Now run MetaNeighbor again but on the high orthologous matched cell-types across the mouse and primates
