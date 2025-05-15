@@ -1359,6 +1359,8 @@ tree_shrew_inhibitory_sce
 
 
 
+
+
 And now the primate and mouse MetaNeighbor
 
 ```{r}
@@ -2153,6 +2155,134 @@ Look at primate Vip, ancestral Sncg, and Sncg marker enrichment
 In the tree shrew subclasses
 
 ############################
+
+
+```{r}
+
+tree_shrew_inhibitory_sce = readRDS( file = '/inkwell03/werner/sc_data/tree_shrew_xiong_2025/tree_shrew_sce_GABA_processed.rds')
+tree_shrew_inhibitory_sce
+```
+
+
+```{r}
+
+tree_shrew_clust_subclass_mapping = c('3' = 'Pvalb', '8' = 'Pvalb',
+'9' = 'Chandelier',
+'0' = 'Sst', '6' = 'Sst', '14' = 'Sst',
+'10' = 'Sst Chodl',
+'1' = 'Vip',
+'11' = 'Sncg',
+'2' = 'Pax6', '5' = 'Pax6', '13' = 'Pax6', '15' = 'Pax6',
+'12' = 'Lamp5',
+'4' = 'Lamp5 Lhx6', '7' = 'Lamp5 Lhx6',
+'16' = 'other', '17' = 'other', '18' = 'other')
+
+tree_shrew_inhibitory_sce$orthologous_subclass = tree_shrew_clust_subclass_mapping[as.character(tree_shrew_inhibitory_sce$seurat_clusters)]
+table(tree_shrew_inhibitory_sce$orthologous_subclass)
+
+
+#get the top primate and MetaMarkers
+top_primate_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
+
+#Get the primate enrichments, summarise by the mean enrichment per de novo cluster
+ct_scores_tree_shrew = score_cells(log1p(cpm(tree_shrew_inhibitory_sce)), top_primate_markers)
+ct_enrichment_tree_shrew = compute_marker_enrichment(ct_scores_tree_shrew)
+
+colnames(ct_enrichment_tree_shrew) = tree_shrew_inhibitory_sce$seurat_clusters
+ct_enrichment_tree_shrew_df = reshape2::melt(t(ct_enrichment_tree_shrew), varnames = c('de_novo_cluster','primate_markers'), value.name = c('enrichment'))
+ct_enrichment_tree_shrew_df = ct_enrichment_tree_shrew_df %>% group_by(de_novo_cluster, primate_markers) %>% 
+  summarise(mean_enrichment = mean(enrichment), sd_enrichment = sd(enrichment))
+
+ct_enrichment_tree_shrew_df$mapped_primate_subclass = tree_shrew_clust_subclass_mapping[as.character(ct_enrichment_tree_shrew_df$de_novo_cluster)]
+ct_enrichment_tree_shrew_df$mapped_primate_subclass = factor(ct_enrichment_tree_shrew_df$mapped_primate_subclass, 
+                                                          levels = c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))
+
+
+plotting_df = ct_enrichment_tree_shrew_df %>% filter(primate_markers == 'all|Vip')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(de_novo_cluster)
+
+plotting_df$de_novo_cluster = factor(plotting_df$de_novo_cluster, levels = order_vec)
+
+shrew_vip_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Vip enrichment') + xlab('Tree Shrew de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+shrew_vip_enrich_dot_plot
+
+plotting_df = ct_enrichment_tree_shrew_df %>% filter(primate_markers == 'all|Pax6')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(de_novo_cluster)
+
+plotting_df$de_novo_cluster = factor(plotting_df$de_novo_cluster, levels = order_vec)
+
+shrew_pax6_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Pax6 enrichment') + xlab('Tree Shrew de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+shrew_pax6_enrich_dot_plot
+
+
+plotting_df = ct_enrichment_tree_shrew_df %>% filter(primate_markers == 'all|Sncg')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(de_novo_cluster)
+
+plotting_df$de_novo_cluster = factor(plotting_df$de_novo_cluster, levels = order_vec)
+
+shrew_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Sncg enrichment') + xlab('Tree Shrew de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+shrew_sncg_enrich_dot_plot
+
+
+ggsave(plot = shrew_sncg_enrich_dot_plot, filename = 'dot_tree_shrew_sncg_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 4)
+ggsave(plot = shrew_pax6_enrich_dot_plot, filename = 'dot_tree_shrew_pax6_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 4)
+ggsave(plot = shrew_vip_enrich_dot_plot, filename = 'dot_tree_shrew_vip_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 4)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 

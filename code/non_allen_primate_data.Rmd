@@ -1477,7 +1477,8 @@ ct_enrichment_primate = compute_marker_enrichment(ct_scores_primate)
 
 colnames(ct_enrichment_primate) = sesten_gaba_data$seurat_clusters
 ct_enrichment_primate_df = reshape2::melt(t(ct_enrichment_primate), varnames = c('de_novo_cluster','primate_markers'), value.name = c('enrichment'))
-ct_enrichment_primate_df = ct_enrichment_primate_df %>% group_by(de_novo_cluster, primate_markers) %>% summarise(mean_enrichment = mean(enrichment))
+ct_enrichment_primate_df = ct_enrichment_primate_df %>% group_by(de_novo_cluster, primate_markers) %>% 
+  summarise(mean_enrichment = mean(enrichment), sd_enrichment = sd(enrichment))
 
 #Get the Sncg and Vip clusters
 sestan_primate_vip_sncg_df = ct_enrichment_primate_df %>% 
@@ -1533,6 +1534,108 @@ ggsave(plot = p_yale_mouse, filename = 'sestan_vip_sncg_clust_mean_mouse_enrich.
 
 ```
 
+
+Plot the mean enrichment +- SD per cluster, group clusters by primate subclass, specifically just Vip, Sncg, and maybe Pax6
+```{r}
+
+sestan_clust_to_subclass = rep(NA, length = nrow(ct_enrichment_primate_df))
+sestan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(25)] = 'Sst Chodl'
+sestan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(2, 5, 7, 13, 14, 18, 21)] = 'Sst'
+sestan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(8)] = 'Chandelier'
+sestan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(0,3,6,23)] = 'Pvalb'
+sestan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(15, 1)] = 'Lamp5'
+sestan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(11)] = 'Lamp5 Lhx6'
+sestan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(22, 24)] = 'Pax6'
+sestan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(16, 20)] = 'Sncg'
+sestan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(4, 9, 10, 12, 17, 19)] = 'Vip'
+table(is.na(sestan_clust_to_subclass))
+
+
+ct_enrichment_primate_df$mapped_primate_subclass = sestan_clust_to_subclass
+ct_enrichment_primate_df$mapped_primate_subclass = factor(ct_enrichment_primate_df$mapped_primate_subclass, 
+                                                          levels = c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))
+
+
+plotting_df = ct_enrichment_primate_df %>% filter(primate_markers == 'all|Vip')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(de_novo_cluster)
+
+plotting_df$de_novo_cluster = factor(plotting_df$de_novo_cluster, levels = order_vec)
+
+yale_vip_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Vip enrichment') + xlab('Yale cross-primate de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+
+plotting_df = ct_enrichment_primate_df %>% filter(primate_markers == 'all|Pax6')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(de_novo_cluster)
+
+plotting_df$de_novo_cluster = factor(plotting_df$de_novo_cluster, levels = order_vec)
+
+yale_pax6_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Pax6 enrichment') + xlab('Yale cross-primate de novo clusters') +  ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+
+plotting_df = ct_enrichment_primate_df %>% filter(primate_markers == 'all|Sncg')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(de_novo_cluster)
+
+plotting_df$de_novo_cluster = factor(plotting_df$de_novo_cluster, levels = order_vec)
+
+yale_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Sncg enrichment') + xlab('Yale cross-primate de novo clusters') +  ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+  
+yale_sncg_enrich_dot_plot
+yale_pax6_enrich_dot_plot
+yale_vip_enrich_dot_plot
+
+
+
+ggsave(plot = yale_sncg_enrich_dot_plot, filename = 'dot_sestan_sncg_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 4)
+ggsave(plot = yale_pax6_enrich_dot_plot, filename = 'dot_sestan_pax6_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 4)
+ggsave(plot = yale_vip_enrich_dot_plot, filename = 'dot_sestan_vip_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 4)
+
+
+
+```
+
+
+
+
+
 ```{r}
 
 caglayan_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_caglayan_konopka/caglayan_gaba_processed.rds')
@@ -1551,7 +1654,8 @@ ct_enrichment_primate = compute_marker_enrichment(ct_scores_primate)
 
 colnames(ct_enrichment_primate) = caglayan_gaba_data$seurat_clusters
 ct_enrichment_primate_df = reshape2::melt(t(ct_enrichment_primate), varnames = c('de_novo_cluster','primate_markers'), value.name = c('enrichment'))
-ct_enrichment_primate_df = ct_enrichment_primate_df %>% group_by(de_novo_cluster, primate_markers) %>% summarise(mean_enrichment = mean(enrichment))
+ct_enrichment_primate_df = ct_enrichment_primate_df %>% group_by(de_novo_cluster, primate_markers) %>% 
+  summarise(mean_enrichment = mean(enrichment), sd_enrichment = sd(enrichment))
 
 #Get the Sncg and Vip clusters
 caglayan_primate_vip_sncg_df = ct_enrichment_primate_df %>% 
@@ -1608,7 +1712,101 @@ ggsave(plot = p_texas_mouse, filename = 'caglayan_vip_sncg_clust_mean_mouse_enri
 ```
 
 
+```{r}
 
+caglayan_clust_to_subclass = rep(NA, length = nrow(ct_enrichment_primate_df))
+caglayan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(28)] = 'Sst Chodl'
+caglayan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(1,4,6,8,10,21,22)] = 'Sst'
+caglayan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(12)] = 'Chandelier'
+caglayan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(0,3,15,16,23)] = 'Pvalb'
+caglayan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(2,14,27)] = 'Lamp5'
+caglayan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(9)] = 'Lamp5 Lhx6'
+caglayan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(24,25)] = 'Pax6'
+caglayan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(19)] = 'Sncg'
+caglayan_clust_to_subclass[ct_enrichment_primate_df$de_novo_cluster %in% c(5,7,11,13,17,18,20,26)] = 'Vip'
+table(is.na(caglayan_clust_to_subclass))
+
+
+ct_enrichment_primate_df$mapped_primate_subclass = caglayan_clust_to_subclass
+ct_enrichment_primate_df$mapped_primate_subclass = factor(ct_enrichment_primate_df$mapped_primate_subclass, 
+                                                          levels = c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))
+
+
+plotting_df = ct_enrichment_primate_df %>% filter(primate_markers == 'all|Vip')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(de_novo_cluster)
+
+plotting_df$de_novo_cluster = factor(plotting_df$de_novo_cluster, levels = order_vec)
+
+texas_vip_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Vip enrichment') + xlab('UT Southwestern cross-primate de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+
+plotting_df = ct_enrichment_primate_df %>% filter(primate_markers == 'all|Pax6')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(de_novo_cluster)
+
+plotting_df$de_novo_cluster = factor(plotting_df$de_novo_cluster, levels = order_vec)
+
+texas_pax6_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Pax6 enrichment') + xlab('UT Southwestern cross-primate de novo clusters') +  ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+
+plotting_df = ct_enrichment_primate_df %>% filter(primate_markers == 'all|Sncg')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(de_novo_cluster)
+
+plotting_df$de_novo_cluster = factor(plotting_df$de_novo_cluster, levels = order_vec)
+
+texas_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Sncg enrichment') + xlab('UT Southwester cross-primate de novo clusters') +  ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+  
+texas_sncg_enrich_dot_plot
+texas_pax6_enrich_dot_plot
+texas_vip_enrich_dot_plot
+
+
+
+ggsave(plot = texas_sncg_enrich_dot_plot, filename = 'dot_caglayan_sncg_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 4)
+ggsave(plot = texas_pax6_enrich_dot_plot, filename = 'dot_caglayan_pax6_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 4)
+ggsave(plot = texas_vip_enrich_dot_plot, filename = 'dot_caglayan_vip_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 4)
+
+
+
+```
 
 
 
