@@ -2274,6 +2274,52 @@ ggsave(plot = shrew_vip_enrich_dot_plot, filename = 'dot_tree_shrew_vip_mean_pri
 ```
 
 
+And now using the mouse metamarkers, specifically want the mouse Sncg markers
+```{r}
+
+#get the top primate and MetaMarkers
+top_mouse_markers = mouse_subclass_meta_markers %>% filter(rank <= 50)
+
+#Get the primate enrichments, summarise by the mean enrichment per de novo cluster
+ct_scores_tree_shrew = score_cells(log1p(cpm(tree_shrew_inhibitory_sce)), top_mouse_markers)
+ct_enrichment_tree_shrew = compute_marker_enrichment(ct_scores_tree_shrew)
+
+colnames(ct_enrichment_tree_shrew) = tree_shrew_inhibitory_sce$seurat_clusters
+ct_enrichment_tree_shrew_df = reshape2::melt(t(ct_enrichment_tree_shrew), varnames = c('de_novo_cluster','mouse_markers'), value.name = c('enrichment'))
+ct_enrichment_tree_shrew_df = ct_enrichment_tree_shrew_df %>% group_by(de_novo_cluster, mouse_markers) %>% 
+  summarise(mean_enrichment = mean(enrichment), sd_enrichment = sd(enrichment))
+
+ct_enrichment_tree_shrew_df$mapped_primate_subclass = tree_shrew_clust_subclass_mapping[as.character(ct_enrichment_tree_shrew_df$de_novo_cluster)]
+ct_enrichment_tree_shrew_df$mapped_primate_subclass = factor(ct_enrichment_tree_shrew_df$mapped_primate_subclass, 
+                                                          levels = c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))
+
+
+
+plotting_df = ct_enrichment_tree_shrew_df %>% filter(mouse_markers == 'all|Sncg')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(de_novo_cluster)
+
+plotting_df$de_novo_cluster = factor(plotting_df$de_novo_cluster, levels = order_vec)
+
+shrew_mouse_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Mouse Sncg enrichment') + xlab('Tree Shrew de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+shrew_mouse_sncg_enrich_dot_plot
+ggsave(plot = shrew_mouse_sncg_enrich_dot_plot, filename = 'dot_tree_shrew_sncg_mean_mouse_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 4)
+
+
+```
 
 
 

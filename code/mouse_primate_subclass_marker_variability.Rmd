@@ -312,6 +312,58 @@ Get the average per dataset per subclass
 ##################################
 
 ```{r}
+all_mouse_markers = list(
+    tasic18 = read_markers("metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("metamarkers/ortho_markers_macosko_wba.csv.gz")
+)
+
+
+mouse_subclass_meta_markers = make_meta_markers(all_mouse_markers, detailed_stats = TRUE)
+
+mouse_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+```
+
+```{r}
+all_primate_markers = list(
+    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
+)
+
+
+all_primate_markers$human_10x$cell_type[all_primate_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$human_ss$cell_type[all_primate_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$chimp_10x$cell_type[all_primate_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$chimp_ss$cell_type[all_primate_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$gorilla_10x$cell_type[all_primate_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$gorilla_ss$cell_type[all_primate_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$macaca_10x$cell_type[all_primate_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$marmoset_10x$cell_type[all_primate_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+primate_subclass_meta_markers = make_meta_markers(all_primate_markers, detailed_stats = TRUE)
+
+primate_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+
+```
+
+
+```{r}
 DefaultAssay(interneuron.combined) = 'originalexp'
 
 all_mouse_interneurons = as.SingleCellExperiment(interneuron.combined)
@@ -417,47 +469,55 @@ ggsave(plot = mouse_vip_enrich_dot_plot, filename = 'dot_mouse_vip_mean_primate_
        useDingbats = F, height = 2, width = 6)
 
 
+
+#And the mouse Sncg markers
+top_mouse_markers = mouse_subclass_meta_markers %>% filter(rank <= 50)
+
+#Get the primate enrichments, summarise by the mean enrichment per de novo cluster
+ct_scores_mouse = score_cells(log1p(cpm(all_mouse_interneurons)), top_mouse_markers)
+ct_enrichment_mouse = compute_marker_enrichment(ct_scores_mouse)
+
+#Add a dataset and primate subclass label
+study_primate_subclass = paste(all_mouse_interneurons$study, all_mouse_interneurons$primate_subclass, sep = '|')
+colnames(ct_enrichment_mouse) = study_primate_subclass
+
+ct_enrichment_mouse_df = reshape2::melt(t(ct_enrichment_mouse), varnames = c('study_primate_subclass','mouse_markers'), value.name = c('enrichment'))
+ct_enrichment_mouse_df = ct_enrichment_mouse_df %>% group_by(study_primate_subclass, mouse_markers) %>% 
+  summarise(mean_enrichment = mean(enrichment), sd_enrichment = sd(enrichment))
+
+
+ct_enrichment_mouse_df$mapped_primate_subclass = sapply(strsplit(as.character(ct_enrichment_mouse_df$study_primate_subclass), split = '|', fixed = T), '[[', 2)
+ct_enrichment_mouse_df$mapped_primate_subclass = factor(ct_enrichment_mouse_df$mapped_primate_subclass, 
+                                                          levels = c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))
+
+plotting_df = ct_enrichment_mouse_df %>% filter(mouse_markers == 'all|Sncg')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(study_primate_subclass)
+
+plotting_df$study_primate_subclass = factor(plotting_df$study_primate_subclass, levels = order_vec)
+
+mouse_mouse_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = study_primate_subclass, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Mouse Sncg enrichment') + xlab('Mouse dataset Primate subclasses') + ylim(0,3.7) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank(),axis.text.x=element_blank())
+
+mouse_mouse_sncg_enrich_dot_plot
+ggsave(plot = mouse_mouse_sncg_enrich_dot_plot, filename = 'dot_mouse_sncg_mean_mouse_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 6)
+
+
+plotting_df %>% filter(mapped_primate_subclass == 'Sncg')
+
+
 ```
-
-
-
-```{r}
-all_primate_markers = list(
-    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
-    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
-    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
-    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
-    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
-    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
-    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
-    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
-)
-
-
-all_primate_markers$human_10x$cell_type[all_primate_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
-all_primate_markers$human_ss$cell_type[all_primate_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
-all_primate_markers$chimp_10x$cell_type[all_primate_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
-all_primate_markers$chimp_ss$cell_type[all_primate_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
-all_primate_markers$gorilla_10x$cell_type[all_primate_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
-all_primate_markers$gorilla_ss$cell_type[all_primate_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
-all_primate_markers$macaca_10x$cell_type[all_primate_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
-all_primate_markers$marmoset_10x$cell_type[all_primate_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
-
-
-primate_subclass_meta_markers = make_meta_markers(all_primate_markers, detailed_stats = TRUE)
-
-primate_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
-
-
-
-```
-
-
-
-
-
-
-
 
 
 
