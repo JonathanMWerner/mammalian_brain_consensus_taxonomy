@@ -1,0 +1,273 @@
+
+Checking out the umaps and MetaMarker expression within the Allen cross-primate data
+
+
+```{r}
+library(Seurat)
+library(SingleCellExperiment)
+library(ggplot2)
+library(dplyr)
+
+```
+
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5_Lhx6"='#935F50',
+                           "Pax6"='#71238C',
+                           'none' = 'grey')
+
+```
+
+
+```{r}
+
+human_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_10x_gaba.rds')
+human_ss = readRDS( file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_ss_gaba.rds')
+
+chimp_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_10x_gaba.rds')
+chimp_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_ss_gaba.rds')
+
+gorilla_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_10x_gaba.rds')
+gorilla_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_ss_gaba.rds')
+
+macaca_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/macaca_data_10x_gaba.rds')
+
+marmoset_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
+
+```
+
+
+```{r}
+
+primate_cluster_mappings = data.table::fread('../../data/cross_species_mapping_cls86.csv')
+primate_cluster_mappings
+```
+
+Add the consensus cluster label and then filter out cells not in a consensus cluster
+```{r}
+
+index = match(human_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+human_10x = human_10x[ ,!is.na(human_10x$consensus_cluster_label)]
+
+index = match(human_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+human_ss = human_ss[ ,!is.na(human_ss$consensus_cluster_label)]
+
+
+index = match(chimp_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+chimp_10x = chimp_10x[ ,!is.na(chimp_10x$consensus_cluster_label)]
+
+index = match(chimp_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+chimp_ss = chimp_ss[ ,!is.na(chimp_ss$consensus_cluster_label)]
+
+
+index = match(gorilla_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+gorilla_10x = gorilla_10x[ ,!is.na(gorilla_10x$consensus_cluster_label)]
+
+index = match(gorilla_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+gorilla_ss = gorilla_ss[ ,!is.na(gorilla_ss$consensus_cluster_label)]
+
+
+index = match(macaca_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+macaca_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+macaca_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+macaca_10x = macaca_10x[ ,!is.na(macaca_10x$consensus_cluster_label)]
+
+index = match(marmoset_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+marmoset_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+marmoset_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+marmoset_10x = marmoset_10x[ ,!is.na(marmoset_10x$consensus_cluster_label)]
+
+gc()
+
+```
+
+
+```{r}
+
+human_10x = as.Seurat(human_10x, counts = 'counts', data = 'cpm')
+
+human_10x <- FindVariableFeatures(human_10x, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(human_10x)
+human_10x <- ScaleData(human_10x, features = all.genes)
+human_10x <- RunPCA(human_10x, features = VariableFeatures(object = human_10x))
+human_10x <- RunUMAP(human_10x, dims = 1:20)
+
+p1 = DimPlot(human_10x, reduction = 'umap', group.by = 'subclass_label') +
+  scale_color_manual(values = celltype_color_palette) + ggtitle('Human 10x: primate consensus subclasses')
+p1
+ggsave(plot = p1, filename = 'human_10x_subclass_umap.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/allen_primate/', 
+       device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+
+human_ss = as.Seurat(human_ss, counts = 'counts', data = 'cpm')
+
+human_ss <- FindVariableFeatures(human_ss, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(human_ss)
+human_ss <- ScaleData(human_ss, features = all.genes)
+human_ss <- RunPCA(human_ss, features = VariableFeatures(object = human_ss))
+human_ss <- RunUMAP(human_ss, dims = 1:20)
+
+p2 = DimPlot(human_ss, reduction = 'umap', group.by = 'subclass_label') +
+  scale_color_manual(values = celltype_color_palette) + ggtitle('Human smart-seq: primate consensus subclasses')
+p2
+ggsave(plot = p2, filename = 'human_ss_subclass_umap.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/allen_primate/', 
+       device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+```
+
+
+
+```{r}
+
+chimp_10x = as.Seurat(chimp_10x, counts = 'counts', data = 'cpm')
+
+chimp_10x <- FindVariableFeatures(chimp_10x, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(chimp_10x)
+chimp_10x <- ScaleData(chimp_10x, features = all.genes)
+chimp_10x <- RunPCA(chimp_10x, features = VariableFeatures(object = chimp_10x))
+chimp_10x <- RunUMAP(chimp_10x, dims = 1:20)
+
+p1 = DimPlot(chimp_10x, reduction = 'umap', group.by = 'subclass_label') +
+  scale_color_manual(values = celltype_color_palette) + ggtitle('chimp 10x: primate consensus subclasses')
+p1
+ggsave(plot = p1, filename = 'chimp_10x_subclass_umap.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/allen_primate/', 
+       device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+
+chimp_ss = as.Seurat(chimp_ss, counts = 'counts', data = 'cpm')
+
+chimp_ss <- FindVariableFeatures(chimp_ss, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(chimp_ss)
+chimp_ss <- ScaleData(chimp_ss, features = all.genes)
+chimp_ss <- RunPCA(chimp_ss, features = VariableFeatures(object = chimp_ss))
+chimp_ss <- RunUMAP(chimp_ss, dims = 1:20)
+
+p2 = DimPlot(chimp_ss, reduction = 'umap', group.by = 'subclass_label') +
+  scale_color_manual(values = celltype_color_palette) + ggtitle('chimp smart-seq: primate consensus subclasses')
+p2
+ggsave(plot = p2, filename = 'chimp_ss_subclass_umap.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/allen_primate/', 
+       device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+```
+
+
+
+```{r}
+
+gorilla_10x = as.Seurat(gorilla_10x, counts = 'counts', data = 'cpm')
+
+gorilla_10x <- FindVariableFeatures(gorilla_10x, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(gorilla_10x)
+gorilla_10x <- ScaleData(gorilla_10x, features = all.genes)
+gorilla_10x <- RunPCA(gorilla_10x, features = VariableFeatures(object = gorilla_10x))
+gorilla_10x <- RunUMAP(gorilla_10x, dims = 1:20)
+
+p1 = DimPlot(gorilla_10x, reduction = 'umap', group.by = 'subclass_label') +
+  scale_color_manual(values = celltype_color_palette) + ggtitle('gorilla 10x: primate consensus subclasses')
+p1
+ggsave(plot = p1, filename = 'gorilla_10x_subclass_umap.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/allen_primate/', 
+       device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+
+gorilla_ss = as.Seurat(gorilla_ss, counts = 'counts', data = 'cpm')
+
+gorilla_ss <- FindVariableFeatures(gorilla_ss, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(gorilla_ss)
+gorilla_ss <- ScaleData(gorilla_ss, features = all.genes)
+gorilla_ss <- RunPCA(gorilla_ss, features = VariableFeatures(object = gorilla_ss))
+gorilla_ss <- RunUMAP(gorilla_ss, dims = 1:20)
+
+p2 = DimPlot(gorilla_ss, reduction = 'umap', group.by = 'subclass_label') +
+  scale_color_manual(values = celltype_color_palette) + ggtitle('gorilla smart-seq: primate consensus subclasses')
+p2
+ggsave(plot = p2, filename = 'gorilla_ss_subclass_umap.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/allen_primate/', 
+       device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+```
+
+
+
+```{r}
+
+macaca_10x = as.Seurat(macaca_10x, counts = 'counts', data = 'cpm')
+
+macaca_10x <- FindVariableFeatures(macaca_10x, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(macaca_10x)
+macaca_10x <- ScaleData(macaca_10x, features = all.genes)
+macaca_10x <- RunPCA(macaca_10x, features = VariableFeatures(object = macaca_10x))
+macaca_10x <- RunUMAP(macaca_10x, dims = 1:20)
+
+p1 = DimPlot(macaca_10x, reduction = 'umap', group.by = 'subclass_label') +
+  scale_color_manual(values = celltype_color_palette) + ggtitle('macaca 10x: primate consensus subclasses')
+p1
+ggsave(plot = p1, filename = 'macaca_10x_subclass_umap.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/allen_primate/', 
+       device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+
+marmoset_10x = as.Seurat(marmoset_10x, counts = 'counts', data = 'cpm')
+
+marmoset_10x <- FindVariableFeatures(marmoset_10x, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(marmoset_10x)
+marmoset_10x <- ScaleData(marmoset_10x, features = all.genes)
+marmoset_10x <- RunPCA(marmoset_10x, features = VariableFeatures(object = marmoset_10x))
+marmoset_10x <- RunUMAP(marmoset_10x, dims = 1:20)
+
+p2 = DimPlot(marmoset_10x, reduction = 'umap', group.by = 'subclass_label') +
+  scale_color_manual(values = celltype_color_palette) + ggtitle('marmoset 10x: primate consensus subclasses')
+p2
+ggsave(plot = p2, filename = 'marmoset_10x_subclass_umap.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/allen_primate/', 
+       device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+```
+
+
+
+
+Get plots of top metamarker gene expression 
+Focus on what the top genes are
+
+```{r}
+
+DimPlot(macaca_10x, reduction = 'umap', group.by = 'donor')
+DimPlot(marmoset_10x, reduction = 'umap', group.by = 'donor')
+DimPlot(gorilla_10x, reduction = 'umap', group.by = 'donor')
+DimPlot(chimp_10x, reduction = 'umap', group.by = 'donor')
+DimPlot(human_10x, reduction = 'umap', group.by = 'donor')
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

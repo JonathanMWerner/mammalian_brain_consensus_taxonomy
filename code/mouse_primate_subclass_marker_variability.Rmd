@@ -23,7 +23,7 @@ options(dplyr.summarise.inform = FALSE)
 celltype_color_palette = c("Chandelier"='#F641A8', 
                            "Pvalb"='#D93137', 
                            "Sst"='#FF9900', 
-                           "Sst Chodl"='gold', 
+                           "Sst Chodl"='#FFD700', 
                            "Lamp5"='#DA808C',
                            "Sncg"='#DF70FF',
                            "Vip"='#A45FBF', 
@@ -52,6 +52,9 @@ interneuron_metadata
 
 table(interneuron_metadata$study)
 
+
+interneuron_metadata %>% filter(study == 'tasic18') %>% group_by(cell_cluster, cell_subclass, primate_subclass) %>%
+  summarise(n = n()) %>% arrange(cell_subclass)
 ```
 
 
