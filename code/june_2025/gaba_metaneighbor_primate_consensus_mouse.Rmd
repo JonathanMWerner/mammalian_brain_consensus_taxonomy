@@ -419,6 +419,11 @@ dev.off()
 get a stacked barplot of the metaclusters that have 
 'NDB-SI-MA-STRv', 'PAL-STR', 'RHP-COA', 'STR'
 clusters in them and their whole-brain vs non-whole brain contributions
+
+##############
+Supplemental table with the mouse metacluster assignments. 
+
+
 ```{r}
 library(tidyverse)
 
@@ -477,6 +482,23 @@ ggsave(filename = 'wholebrain_percent_in_region_mouse_MCs_barplot.pdf', path = '
        useDingbats = F, device = 'pdf', height = 4, width = 6)
 
 
+
+
+#Also save the mouse meta-cluster assignments for a supplemental table
+
+all_full_mouse_mclusters$excluded= rep('No', length = nrow(all_full_mouse_mclusters))
+all_full_mouse_mclusters$excluded[all_full_mouse_mclusters$name %in% c(other_mc_1, other_mc_2, other_mc_3, other_mc_4, 'outliers')] = 'Yes'
+
+
+colnames(all_full_mouse_mclusters) = c('MetaNeighbor MetaCluster', 'Dataset cluster', 'Excluded MetaCluster')
+all_full_mouse_mclusters
+
+write.csv(all_full_mouse_mclusters,
+          file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/within_mouse_metaneighbor_metaclusters.csv',
+          row.names = F)
+
+temp = read.csv('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/within_mouse_metaneighbor_metaclusters.csv', header = T)
+temp
 ```
 
 
