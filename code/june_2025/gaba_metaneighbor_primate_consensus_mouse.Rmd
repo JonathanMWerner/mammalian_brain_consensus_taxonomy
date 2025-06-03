@@ -377,10 +377,6 @@ And the whole mouse brain atlases versus non-whole brain atlases
 
 ```{r}
 
-
-mouse_aurocs[1:10, 1:10]
-
-
 test_aurocs = mouse_aurocs
 m = test_aurocs
 m[is.na(m)] <- 0
@@ -395,12 +391,9 @@ whole_brain_index = grepl('zeng_10xv2_wba', colnames(mouse_aurocs)) | grepl('zen
 whole_brain[whole_brain_index] = 'Yes'
 
 
-#primate_subclass = rownames(test_metasubclass_hits)
-#primate_subclass = sapply(strsplit(primate_subclass, '|', fixed = T), '[[', 2)
-#primate_subclass = gsub('_',' ', primate_subclass)
-
 row_ha = rowAnnotation(whole_brain = whole_brain,
-                              col = list(whole_brain = c('No' = 'grey', 'Yes' = 'black')))
+                              col = list(whole_brain = c('No' = 'grey', 'Yes' = 'black')),
+                       simple_anno_size = unit(.25, "in"))
 
 
 auroc_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
@@ -409,13 +402,14 @@ ht_mc = ComplexHeatmap::Heatmap(test_aurocs, name = 'AUROC', col = auroc_cols,
                         row_order = order.dendrogram(row_dendrogram), cluster_rows = row_dendrogram,
                         column_order = order.dendrogram(col_dendrogram), cluster_columns = col_dendrogram,
                         show_row_names = F, show_column_names = F,
+                        show_row_dend = F, show_column_dend = F,
                         right_annotation = row_ha)
 
 ht_mc = draw(ht_mc)
 
 
 pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/all_within_mouse_data_with_wba_annot.pdf', 
-    useDingbats = F, height = 25, width = 25)
+    useDingbats = F, height = 10, width = 10)
 ht_mc
 dev.off()
 
