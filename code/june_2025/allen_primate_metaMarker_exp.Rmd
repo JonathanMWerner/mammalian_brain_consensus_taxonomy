@@ -5,6 +5,7 @@ Checking out the umaps and MetaMarker expression within the Allen cross-primate 
 ```{r}
 library(Seurat)
 library(SingleCellExperiment)
+library(MetaMarkers)
 library(ggplot2)
 library(dplyr)
 
@@ -100,6 +101,105 @@ gc()
 
 ```
 
+
+
+########################
+Visualizing MetaMarker expression across the datasets
+
+########################
+
+
+```{r}
+
+all_primate_markers = list(
+    human_10x = read_markers("../metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("../metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("../metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("../metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("../metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("../metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("../metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("../metamarkers/markers_marmoset_10x.csv.gz")
+)
+
+primate_subclass_meta_markers = make_meta_markers(all_primate_markers, detailed_stats = TRUE)
+
+top_markers = primate_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10) %>% select(cell_type, rank, gene)
+top_markers
+
+
+
+```
+
+```{r}
+
+#For each gene, scale the average CPM over the subclasses
+scale_this <- function(x){
+  (x - mean(x, na.rm=TRUE)) / sd(x, na.rm=TRUE)
+}
+
+get_marker_dot_plot = function(sce_obj, top_markers, dataset_name){
+  
+  #Filter for just the top markers
+  gene_filt = rownames(sce_obj) %in% top_markers$gene
+  sce_obj_markers = sce_obj[gene_filt, ]
+  #Melt for easy averaging
+  colData(sce_obj_markers)
+  colnames(sce_obj_markers) = sce_obj_markers$subclass_label
+  sce_obj_markers = reshape2::melt(as.matrix(assay(sce_obj_markers, 'cpm')), varnames = c('metamarker','subclass'), value.name = 'cpm')
+  #for each subclass, get the average CPM and the percent of cells expressing that marker
+  sce_obj_markers = sce_obj_markers %>% group_by(subclass, metamarker) %>% summarise(mean_cpm = mean(cpm), percent_exp = sum(cpm >0)/n())
+  
+  #Scale per gene
+  sce_obj_markers = sce_obj_markers %>% group_by(metamarker) %>% mutate(scaled_avg_exp = scale_this(mean_cpm))
+  
+  #Order the plot
+  sce_obj_markers$metamarker = factor(sce_obj_markers$metamarker, levels = unique(top_markers$gene))
+  sce_obj_markers$subclass = factor(sce_obj_markers$subclass, levels = unique(top_markers$cell_type))
+  
+
+  p1 = ggplot(sce_obj_markers, aes(x = subclass, y = metamarker, size = percent_exp, color = scaled_avg_exp )) + geom_point() +
+    xlab(sprintf('%s subclasses', dataset_name)) + ylab('Top Primate MetaMarkers') +
+    scale_colour_gradient2( low = scales::muted("blue"),mid = "white",high = scales::muted("red"),midpoint = 0) +
+    theme_bw() + scale_x_discrete(guide = guide_axis(n.dodge=2))
+  
+  ggsave(plot = p1, filename = sprintf('%s_top_metamarker_dotplot.pdf', dataset_name), 
+         path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/allen_primate', device = 'pdf',
+         useDingbats = F, height = 8, width = 6)
+}
+
+
+top_markers = top_markers %>% arrange(match(cell_type, c("Chandelier", "Pvalb", "Sst", 'Sst Chodl', 'Lamp5_Lhx6', 'Lamp5', 'Vip', 'Sncg', 'Pax6')), rank)
+
+get_marker_dot_plot(human_10x, top_markers, 'human_10x')
+get_marker_dot_plot(human_ss, top_markers, 'human_ss')
+
+get_marker_dot_plot(chimp_10x, top_markers, 'chimp_10x')
+get_marker_dot_plot(chimp_ss, top_markers, 'chimp_ss')
+
+get_marker_dot_plot(gorilla_10x, top_markers, 'gorilla_10x')
+get_marker_dot_plot(gorilla_ss, top_markers, 'gorilla_ss')
+
+get_marker_dot_plot(macaca_10x, top_markers, 'macaca_10x')
+get_marker_dot_plot(marmoset_10x, top_markers, 'marmoset_10x')
+
+```
+
+
+
+
+
+
+
+
+
+
+
+#####################
+
+Seurat UMAPS
+
+#####################
 
 ```{r}
 
