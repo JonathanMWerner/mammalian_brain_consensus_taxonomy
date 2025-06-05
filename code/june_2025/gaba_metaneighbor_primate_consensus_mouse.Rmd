@@ -2038,7 +2038,9 @@ interneuron.combined$cell_subclass[interneuron.combined$cell_subclass == 'Serpin
 ```{r}
 
 
-
+study_colors = MetBrewer::met.brewer("Veronese", n=8, type="continuous")
+study_colors = study_colors[1:8] 
+names(study_colors) = c('tasic18','zeng_10x_cells','zeng_10x_nuclei','zeng_smart_cells','zeng_smart_nuclei','zeng_10xv2_wba','zeng_10xv3_wba','macosko_wba')
 
 p1 = DimPlot(interneuron.combined, group.by = 'study')
 p2 = DimPlot(interneuron.combined, group.by = 'cell_subclass', cols = celltype_color_palette) + 
@@ -2052,11 +2054,13 @@ p3
 
 DefaultAssay(object = interneuron.combined) = 'integrated'
 p4 = FeaturePlot(interneuron.combined, features = 'SNCG', slot = 'scale.data') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
 
 p5 = FeaturePlot(interneuron.combined, features = 'PAX6', slot = 'scale.data') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
 
+p4
+p5
 
 ggsave(plot = p1, filename = 'integrated_interneuron_umap_study.pdf', device = 'pdf', 
        path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
@@ -2080,101 +2084,6 @@ ggsave(plot = p5, filename = 'integrated_interneuron_umap_pax6_zscore.pdf', devi
 ```
 
 
-
-
-Co-expression of PAX6 and SNCG
-
-```{r}
-interneuron.combined@assays$integrated
-interneuron.combined@active.assay
-DefaultAssay(object = interneuron.combined) = 'integrated'
-#FeaturePlot(interneuron.combined, features = c("PAX6", "SNCG"), blend = TRUE, slot = 'data')
-#FeaturePlot(interneuron.combined, features = c("PAX6"), slot = 'data')
-
-#c('SNCG','NR2F2','SDK2','THSD7B','PAX6', 'CCK', 'FREM1', 'EPS8', 'PRKD3', 'STAC') %in% rownames(interneuron.combined@assays$integrated@meta.features)
-
-interneuron.combined@reductions$umap@assay.used
-
-temp_exp_df = data.frame(original_subclass = interneuron.combined$cell_subclass ,
-                         orthologous_subclass = interneuron.combined$primate_subclass ,
-                         umap_1 = interneuron.combined@reductions$umap@cell.embeddings[ , 'umap_1'],
-                         umap_2 = interneuron.combined@reductions$umap@cell.embeddings[ , 'umap_2'],
-                         sncg_zscore = interneuron.combined@assays$integrated@scale.data[ 'SNCG', ],
-                         thsd7b_zscore = interneuron.combined@assays$integrated@scale.data[ 'THSD7B', ],
-                         nr2f2_zscore = interneuron.combined@assays$integrated@scale.data[ 'NR2F2', ],
-                         sdk2_zscore = interneuron.combined@assays$integrated@scale.data[ 'SDK2', ],
-                         prkd3_zscore = interneuron.combined@assays$integrated@scale.data[ 'PRKD3', ],
-                         stac_zscore = interneuron.combined@assays$integrated@scale.data[ 'STAC', ],
-                         pax6_zscore = interneuron.combined@assays$integrated@scale.data[ 'PAX6', ],
-                         cck_zscore = interneuron.combined@assays$integrated@scale.data[ 'CCK', ],
-                         frem1_zscore = interneuron.combined@assays$integrated@scale.data[ 'FREM1', ],
-                         eps8_zscore = interneuron.combined@assays$integrated@scale.data[ 'EPS8', ],
-                         pvalb_zscore = interneuron.combined@assays$integrated@scale.data[ 'PVALB', ],
-                         sst_zscore = interneuron.combined@assays$integrated@scale.data[ 'SST', ],
-                         chodl_zscore = interneuron.combined@assays$integrated@scale.data[ 'CHODL', ],
-                         vip_zscore = interneuron.combined@assays$integrated@scale.data[ 'VIP', ],
-                         trps1_zscore = interneuron.combined@assays$integrated@scale.data[ 'TRPS1', ],
-                         lamp5_zscore = interneuron.combined@assays$integrated@scale.data[ 'LAMP5', ],
-                         unc5c_zscore = interneuron.combined@assays$integrated@scale.data[ 'UNC5C', ])
-
-
-# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = original_subclass)) + geom_point(size = .25, alpha = .5) + 
-#   scale_color_manual(values = celltype_color_palette)
-# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = orthologous_subclass)) + geom_point(size = .25, alpha = .5) + 
-#   scale_color_manual(values = celltype_color_palette)
-p_sncg = ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = sncg_zscore)) + 
-  ggrastr::rasterise(geom_point(size = .25, alpha = .5)) + 
-   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 ) +
-  theme_classic()
-# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = thsd7b_zscore)) + geom_point(size = .25, alpha = .5) + 
-#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = nr2f2_zscore)) + geom_point(size = .25, alpha = .5) + 
-#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = sdk2_zscore)) + geom_point(size = .25, alpha = .5) + 
-#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = prkd3_zscore)) + geom_point(size = .25, alpha = .5) + 
-#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = stac_zscore)) + geom_point(size = .25, alpha = .5) + 
-#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-p_pax6 = ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = pax6_zscore)) + 
-  ggrastr::rasterise(geom_point(size = .25, alpha = .5)) + 
-   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 ) +
-  theme_classic()
-# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = cck_zscore)) + geom_point(size = .25, alpha = .5) + 
-#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = frem1_zscore)) + geom_point(size = .25, alpha = .5) + 
-#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-# ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = eps8_zscore)) + geom_point(size = .25, alpha = .5) + 
-#   scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-
-ggsave(plot = p_sncg, filename = 'sncg_zscore_integrate_inter_umap.pdf', device = 'pdf',
-       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
-       useDingbats = F, height = 4, width = 6 )
-
-ggsave(plot = p_pax6, filename = 'pax6_zscore_integrate_inter_umap.pdf', device = 'pdf',
-       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
-       useDingbats = F, height = 4, width = 6 )
-
-
-
-
-
-
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = pvalb_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = sst_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = chodl_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = trps1_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = vip_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = lamp5_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-ggplot(temp_exp_df, aes(x = umap_1, y = umap_2, color = unc5c_zscore)) + geom_point(size = .25, alpha = .5) + 
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-```
 
 
 Dataset and technology contributions to subclasses
@@ -2364,14 +2273,14 @@ Check out the top 10 primate markers for Vip, Pax6, Sncg, and Lamp5 in the integ
 library(MetaMarkers)
 
 primate_markers = list(
-    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
-    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
-    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
-    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
-    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
-    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
-    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
-    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
+    human_10x = read_markers("../metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("../metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("../metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("../metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("../metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("../metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("../metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("../metamarkers/markers_marmoset_10x.csv.gz")
 )
 
 
@@ -2399,29 +2308,6 @@ primate_subclass_meta_markers %>% filter(gene == 'CCK')
 DefaultAssay(object = interneuron.combined) = 'integrated'
 
 
-#top_primate_pax6_markers = primate_subclass_meta_markers %>% filter(cell_type == 'Pax6' & rank <= 100) %>% pull(gene)
-#top_primate_vip_markers = primate_subclass_meta_markers %>% filter(cell_type == 'Vip' & rank <= 100) %>% pull(gene)
-#top_primate_sncg_markers = primate_subclass_meta_markers %>% filter(cell_type == 'Sncg' & rank <= 100) %>% pull(gene)
-#top_primate_lamp5_markers = primate_subclass_meta_markers %>% filter(cell_type == 'Lamp5' & rank <= 100) %>% pull(gene)
-
-
-#integrated_genes = rownames(interneuron.combined@assays$integrated@scale.data)
-#all_genes = rownames(interneuron.combined@assays$originalexp@data)
-
-#gene_index = integrated_genes %in% top_primate_pax6_markers
-#interneuron.combined$avg_top_primate_pax6_zscore = colMeans(interneuron.combined@assays$integrated@scale.data[gene_index, ])
-
-#gene_index = integrated_genes %in% top_primate_lamp5_markers
-#interneuron.combined$avg_top_primate_lamp5_zscore = colMeans(interneuron.combined@assays$integrated@scale.data[gene_index, ])
-
-#gene_index = integrated_genes %in% top_primate_vip_markers
-#interneuron.combined$avg_top_primate_vip_zscore = colMeans(interneuron.combined@assays$integrated@scale.data[gene_index, ])
-
-#gene_index = integrated_genes %in% top_primate_sncg_markers
-#interneuron.combined$avg_top_primate_sncg_zscore = colMeans(interneuron.combined@assays$integrated@scale.data[gene_index, ])
-
-
-
 top_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
 
 ct_scores = score_cells(log1p(interneuron.combined@assays$originalexp@data), top_markers)
@@ -2437,125 +2323,35 @@ DimPlot(interneuron.combined, group.by = 'primate_subclass', cols = celltype_col
   ggtitle('Orthologous primate subclass')
 
 p_pax6_50_enrich = FeaturePlot(interneuron.combined, features = 'primate_pax6_enrichment') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 1 )
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 1 )
 p_pax6_50_enrich
 ggsave(plot = p_pax6_50_enrich, filename = 'pax6_top50_primate_enrich_integrate_inter_umap.pdf', device = 'pdf',
        path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
        useDingbats = F, height = 4, width = 6 )
 
 p_sncg_50_enrich = FeaturePlot(interneuron.combined, features = 'primate_sncg_enrichment') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 1 )
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 1 )
 p_sncg_50_enrich
 ggsave(plot = p_sncg_50_enrich, filename = 'sncg_top50_primate_enrich_integrate_inter_umap.pdf', device = 'pdf',
        path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
        useDingbats = F, height = 4, width = 6 )
 
 p_vip_50_enrich = FeaturePlot(interneuron.combined, features = 'primate_vip_enrichment') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 1 )
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 1 )
 p_vip_50_enrich
 ggsave(plot = p_vip_50_enrich, filename = 'vip_top50_primate_enrich_integrate_inter_umap.pdf', device = 'pdf',
        path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
        useDingbats = F, height = 4, width = 6 )
 
 p_lamp5_50_enrich = FeaturePlot(interneuron.combined, features = 'primate_lamp5_enrichment') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 1 )
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 1 )
 p_lamp5_50_enrich
 ggsave(plot = p_lamp5_50_enrich, filename = 'lamp5_top50_primate_enrich_integrate_inter_umap.pdf', device = 'pdf',
        path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
        useDingbats = F, height = 4, width = 6 )
 ```
 
-And try aggregate expression and then z-scores
 
-
-
-```{r}
-
-DefaultAssay(object = interneuron.combined) = 'originalexp'
-
-top_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
-
-top_pax_markers = top_markers %>% filter(cell_type == 'Pax6') %>% pull(gene)
-top_vip_markers = top_markers %>% filter(cell_type == 'Vip') %>% pull(gene)
-top_lamp5_markers = top_markers %>% filter(cell_type == 'Lamp5') %>% pull(gene)
-top_sncg_markers = top_markers %>% filter(cell_type == 'Sncg') %>% pull(gene)
-
-marker_exp = rowSums(FetchData(interneuron.combined, vars = top_pax_markers, slot = 'data'))
-interneuron.combined$agg_pax6_exp = marker_exp
-interneuron.combined$scale_agg_pax6_exp = scale(marker_exp)
-
-marker_exp = rowSums(FetchData(interneuron.combined, vars = top_vip_markers, slot = 'data'))
-interneuron.combined$agg_vip_exp = marker_exp
-interneuron.combined$scale_agg_vip_exp = scale(marker_exp)
-
-marker_exp = rowSums(FetchData(interneuron.combined, vars = top_lamp5_markers, slot = 'data'))
-interneuron.combined$agg_lamp5_exp = marker_exp
-interneuron.combined$scale_agg_lamp5_exp = scale(marker_exp)
-
-marker_exp = rowSums(FetchData(interneuron.combined, vars = top_sncg_markers, slot = 'data'))
-interneuron.combined$agg_sncg_exp = marker_exp
-interneuron.combined$scale_agg_sncg_exp = scale(marker_exp)
-
-FeaturePlot(interneuron.combined, features = 'agg_pax6_exp') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-
-FeaturePlot(interneuron.combined, features = 'scale_agg_pax6_exp') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-
-FeaturePlot(interneuron.combined, features = 'agg_vip_exp') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-
-FeaturePlot(interneuron.combined, features = 'scale_agg_vip_exp') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-
-FeaturePlot(interneuron.combined, features = 'agg_lamp5_exp') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-
-FeaturePlot(interneuron.combined, features = 'scale_agg_lamp5_exp') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-
-FeaturePlot(interneuron.combined, features = 'agg_sncg_exp') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-
-FeaturePlot(interneuron.combined, features = 'scale_agg_sncg_exp') +
-  scale_color_gradient2(low = '#313695', mid ='grey', high = '#A50026', midpoint = 0 )
-
-
-```
-
-
-And get average enrichment of marker expression as we increase the number of markers. But I'm specifically interested in:
-Mouse Lamp5 - Primate Lamp5
-Mouse Lamp5 - Primate Pax6
-Mouse Vip - Primate Sncg
-Mouse Sncg - Primate Pax6
-Mouse Vip - Primate Vip
-
-
-```{r}
-
-mouse_subclass = paste0('Mouse_', interneuron.combined$cell_subclass)
-primate_subclass = paste0('Primate_', interneuron.combined$primate_subclass)
-combined_subclass_label = paste(mouse_subclass, primate_subclass, sep = '|')
-
-table(combined_subclass_label)
-
-interneuron.combined[[]]
-
-
-
-top_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
-
-ct_scores = score_cells(log1p(interneuron.combined@assays$originalexp@data), top_markers)
-ct_enrichment = compute_marker_enrichment(ct_scores)
-colnames(ct_enrichment) = combined_subclass_label
-
-marker_enrich_df = reshape2::melt(t(ct_enrichment), varnames = c('combined_subclass', 'primate_marker_set'), value.name = 'enrichment')
-
-marker_enrich_df %>% group_by(combined_subclass, primate_marker_set) %>% summarise(mean_enrichment = mean(enrichment)) %>%
-  group_by(combined_subclass) %>% arrange(desc(mean_enrichment), .by_group = T)
-
-```
 
 
 
