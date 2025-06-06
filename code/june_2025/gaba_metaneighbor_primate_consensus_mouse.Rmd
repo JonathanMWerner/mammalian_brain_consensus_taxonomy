@@ -1907,7 +1907,95 @@ table(zeng_smart_cells$orthology == 'high_orthology')
 table(zeng_smart_nuclei$orthology == 'high_orthology')
 ```
 
+Save tables of the original mouse cluster annotations to the orthologous primate cluster annotations
+for each mouse dataset
 
+```{r}
+
+mouse_metadata = colData(tasic18)[ , c('cell_cluster','cell_subclass','primate_subclass', 'orthology')]
+colnames(mouse_metadata) = c('original_cell_cluster','original_subclass','orthologous_primate_subclass', 'orthology')
+mouse_metadata = as.data.frame(mouse_metadata) %>% filter(!duplicated(original_cell_cluster)) %>% 
+  arrange(orthology, original_subclass)
+rownames(mouse_metadata) = NULL
+mouse_metadata
+write.csv(mouse_metadata, 
+          file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/metadata/tasic18_cluster_meta.csv', 
+          row.names = F)
+
+mouse_metadata = colData(zeng_10x_cells)[ , c('cell_cluster','cell_subclass','primate_subclass', 'orthology')]
+colnames(mouse_metadata) = c('original_cell_cluster','original_subclass','orthologous_primate_subclass', 'orthology')
+mouse_metadata = as.data.frame(mouse_metadata) %>% filter(!duplicated(original_cell_cluster)) %>% 
+  arrange(orthology, original_subclass)
+rownames(mouse_metadata) = NULL
+mouse_metadata
+write.csv(mouse_metadata, 
+          file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/metadata/zeng_10x_cells_cluster_meta.csv',
+          row.names = F)
+
+mouse_metadata = colData(zeng_10x_nuclei)[ , c('cell_cluster','cell_subclass','primate_subclass', 'orthology')]
+colnames(mouse_metadata) = c('original_cell_cluster','original_subclass','orthologous_primate_subclass', 'orthology')
+mouse_metadata = as.data.frame(mouse_metadata) %>% filter(!duplicated(original_cell_cluster)) %>% 
+  arrange(orthology, original_subclass)
+rownames(mouse_metadata) = NULL
+mouse_metadata
+write.csv(mouse_metadata, 
+          file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/metadata/zeng_10x_nuclei_cluster_meta.csv',
+          row.names = F)
+
+mouse_metadata = colData(zeng_smart_nuclei)[ , c('cell_cluster','cell_subclass','primate_subclass', 'orthology')]
+colnames(mouse_metadata) = c('original_cell_cluster','original_subclass','orthologous_primate_subclass', 'orthology')
+mouse_metadata = as.data.frame(mouse_metadata) %>% filter(!duplicated(original_cell_cluster)) %>% 
+  arrange(orthology, original_subclass)
+rownames(mouse_metadata) = NULL
+mouse_metadata
+write.csv(mouse_metadata, 
+          file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/metadata/zeng_smart_nuclei_cluster_meta.csv',
+          row.names = F)
+
+mouse_metadata = colData(zeng_smart_cells)[ , c('cell_cluster','cell_subclass','primate_subclass', 'orthology')]
+colnames(mouse_metadata) = c('original_cell_cluster','original_subclass','orthologous_primate_subclass', 'orthology')
+mouse_metadata = as.data.frame(mouse_metadata) %>% filter(!duplicated(original_cell_cluster)) %>% 
+  arrange(orthology, original_subclass)
+rownames(mouse_metadata) = NULL
+mouse_metadata
+write.csv(mouse_metadata, 
+          file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/metadata/zeng_smart_cells_cluster_meta.csv',
+          row.names = F)
+
+
+mouse_metadata = colData(zeng_10xv2_wba)[ , c('cell_cluster','cell_subclass','primate_subclass', 'orthology')]
+colnames(mouse_metadata) = c('original_cell_cluster','original_subclass','orthologous_primate_subclass', 'orthology')
+mouse_metadata = as.data.frame(mouse_metadata) %>% filter(!duplicated(original_cell_cluster)) %>% 
+  arrange(orthology, original_subclass)
+rownames(mouse_metadata) = NULL
+mouse_metadata
+write.csv(mouse_metadata, 
+          file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/metadata/zeng_10xv2_wba_cluster_meta.csv',
+          row.names = F)
+
+mouse_metadata = colData(zeng_10xv3_wba)[ , c('cell_cluster','cell_subclass','primate_subclass', 'orthology')]
+colnames(mouse_metadata) = c('original_cell_cluster','original_subclass','orthologous_primate_subclass', 'orthology')
+mouse_metadata = as.data.frame(mouse_metadata) %>% filter(!duplicated(original_cell_cluster)) %>% 
+  arrange(orthology, original_subclass)
+rownames(mouse_metadata) = NULL
+mouse_metadata
+write.csv(mouse_metadata, 
+          file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/metadata/zeng_10xv3_wba_cluster_meta.csv',
+          row.names = F)
+
+
+mouse_metadata = colData(macosko_wba)[ , c('cell_cluster','cell_subclass','primate_subclass', 'orthology')]
+colnames(mouse_metadata) = c('original_cell_cluster','original_subclass','orthologous_primate_subclass', 'orthology')
+mouse_metadata = as.data.frame(mouse_metadata) %>% filter(!duplicated(original_cell_cluster)) %>% 
+  arrange(orthology, original_subclass)
+rownames(mouse_metadata) = NULL
+mouse_metadata
+write.csv(mouse_metadata, 
+          file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/metadata/macosko_wba_cluster_meta.csv',
+          row.names = F)
+
+
+```
 
 
 
