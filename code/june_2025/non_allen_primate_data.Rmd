@@ -1289,6 +1289,8 @@ saveRDS(sesten_gaba_data, file = '/inkwell03/werner/sc_data/primate_ma_sestan/se
 ```{r}
 
 sesten_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_ma_sestan/sestan_integrated_gaba.rds')
+length(rownames(sesten_gaba_data))
+table(rownames(sesten_gaba_data) %in% final_present_1to1s$`Gene name`)
 
 DefaultAssay(sesten_gaba_data) <- "RNA"
 

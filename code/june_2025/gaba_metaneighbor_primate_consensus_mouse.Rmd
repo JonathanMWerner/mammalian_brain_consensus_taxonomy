@@ -543,8 +543,8 @@ This contains the mappings between the cross_species_clusters, cluster_labels, s
 Filter the data down to just the consensus clusters for the mouse metaneighbor comparison and use the consensus cluster annotations
 ```{r}
 
-primate_cluster_mappings = data.table::fread('../data/cross_species_mapping_cls86.csv')
-primate_cluster_mappings
+primate_cluster_mappings = data.table::fread('../../data/cross_species_mapping_cls86.csv')
+table(primate_cluster_mappings$consensus_cluster_label)
 ```
 
 Add the consensus cluster label and then filter out cells not in a consensus cluster
