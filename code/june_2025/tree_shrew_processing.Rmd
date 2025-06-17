@@ -193,18 +193,48 @@ ct_pred = assign_cells(ct_scores)
 ct_pred[1:10, ]
 
 
-tree_shrew_sce$glutamatergic_enrichment = ct_enrichment['all|ExN', ]
-tree_shrew_sce$GABAergic_enrichment = ct_enrichment['all|InN', ]
-tree_shrew_sce$non_neuronal_enrichment = ct_enrichment['all|NonN', ]
+tree_shrew_sce$glutamatergic_enrichment = ct_enrichment['all|ExN', ] / max(ct_enrichment['all|ExN', ])
+tree_shrew_sce$GABAergic_enrichment = ct_enrichment['all|InN', ] / max(ct_enrichment['all|InN', ])
+tree_shrew_sce$non_neuronal_enrichment = ct_enrichment['all|NonN', ] / max(ct_enrichment['all|NonN', ])
 
 tree_shrew_sce$predicted_primate_MM_class = ct_pred$predicted
 
 
 scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'Age') 
+
+scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'predicted_primate_MM_class') 
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/treeshrew_class_MM_annots_umap.pdf', 
+    useDingbats = F, height = 4, width = 6)
+scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'predicted_primate_MM_class') 
+dev.off()
+
+scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'glutamatergic_enrichment') 
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/treeshrew_class_MM_glut_enrich_umap.pdf', 
+    useDingbats = F, height =4, width = 6)
+scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'glutamatergic_enrichment') 
+dev.off()
+
+scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'GABAergic_enrichment') 
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/treeshrew_class_MM_gaba_enrich_umap.pdf', 
+    useDingbats = F, height =4, width = 6)
+scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'GABAergic_enrichment') 
+dev.off()
+
+scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'non_neuronal_enrichment') 
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/treeshrew_class_MM_nonN_enrich_umap.pdf', 
+    useDingbats = F, height =4, width = 6)
+scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'non_neuronal_enrichment') 
+dev.off()
+
+
 scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'predicted_primate_MM_class') 
 scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'glutamatergic_enrichment') 
 scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'GABAergic_enrichment') 
 scater::plotReducedDim(tree_shrew_sce, dimred = 'UMAP', color_by = 'non_neuronal_enrichment') 
+
+
+
+
 
 
 ```
@@ -1195,7 +1225,7 @@ Filter those out and re do the integration and clustering with just the remainin
 ```{r}
 
 #cell_filt = !as.character(interneuron.combined$seurat_clusters) %in% c(0,5,13,18,19,20, 21)
-cell_filt = !as.character(interneuron.combined$seurat_clusters) %in% c(0,8,15,17,19,19,20)
+cell_filt = !as.character(interneuron.combined$seurat_clusters) %in% c(0,8,15,17,18,19,20)
 interneuron.combined.subset =interneuron.combined[ , cell_filt]
 
 
@@ -2060,44 +2090,7 @@ Using the mouse and primate MetaNeighbor results to tree shrew and looking at th
 
 #########################
 
-OLD ASSIGNMENTS
-0 - Some enrichment for mouse and primate Sst and Sst Chodl, but MNs with mouse Sst and is intermediate with Primate Sst and Sst Chodl. Is closest to Sst generally.
-1 - Vip all around
-2 - Enrichment for mouse and primate Pax6, some enrichment for primate Sncg. Mouse MN is Pax6, intermediate Pax6 and Sncg for primate MN, But closest tree shrew transcriptomic match is 13, which is a clear Pax6 all around, except with weak mouse Pax6 marker enrichment
-3 - Pvalb all around
-4 - Lamp5Lhx6 all around
-5 - Pax6 all around
-6 - Sst all around
-7 - Lamp5Lhx6 all around
-8 - Pvalb all around
-9 - Chandelier all around
-10 - Sst outlier with Sst Chodl enrichment for both Primate and Mouse, but is Sst in Mouse and Sst Chodl in Primates. Likely Sst Chodl
-11 - Sncg all around
-12 - Lamp5 all around
-13 - Pax6, but with weak Mouse Pax6 marker enrichment
-14 - Seems intermediate with Sst and Sst Chodl, closest match is tree shrew 0 which is mostly Sst
-15 - Pax6 all around
-16 - No clear enrichment for anything, is Chandelier in primate MN, but between Lamp5Lhx6 and Pvalb in Mouse MN. Likely exclude
-17 - No clear enrichment for anything, is Vip and Sncg intermediate in primate MN, but Lamp5 in Mouse MN. Likely exclude
-18 - No clear enrichment for anything, is Chandelier in primate MN, but off on its own in the Mouse MN. Likely exclude
-
-16 and 18 are transcriptomically similar and with the other tree shrew Pvalb clusters
-17 is transcriptomically similar to tree shrew Lamp5, but more so to 16 and 18.
-
-Final assignment
-c('3' = 'Pvalb', '8' = 'Pvalb',
-'9' = 'Chandelier',
-'0' = 'Sst', '6' = 'Sst', '14' = 'Sst',
-'10' = 'Sst Chodl',
-'1' = 'Vip',
-'11' = 'Sncg',
-'2' = 'Pax6', '5' = 'Pax6', '13' = 'Pax6', '15' = 'Pax6',
-'12' = 'Lamp5',
-'4' = 'Lamp5Lhx6', '7' = 'Lamp5Lhx6',
-'16' = 'other', '17' = 'other', '18' = 'other')
-
-
-Current assignments
+Old assignments
 
 0 - Vip all around
 1 - Lamp5 Lhx6 all around
@@ -2131,22 +2124,51 @@ c('4' = 'Pvalb', '10' = 'Pvalb',
 
 
 
+Current assignments
+
+0 - Vip all around
+1 - Lamp5Lhx6 all around
+2 - Sst all around
+3 - Sst, slight Sst Chodl in primates
+4 - Pvalb all around
+5 - Sst all around
+6 - Pax6 all around
+7 - Pax6 all around
+8 - Pax6 all around
+9 - Lamp5 all around
+10 - Chandelier all around
+11 - Pvalb all around
+12 - Sncg all around
+13 - Pax6 all around
+14 - Sst Chodl, consistent marker enrichment for mouse and primates, though MN is only primate Sst Chodl
+
+Final assignment
+c('4' = 'Pvalb', '11' = 'Pvalb',
+'10' = 'Chandelier',
+'2' = 'Sst', '3' = 'Sst', '5' = 'Sst',
+'14' = 'Sst Chodl',
+'0' = 'Vip',
+'12' = 'Sncg',
+'6' = 'Pax6', '7' = 'Pax6', '8' = 'Pax6', '13' = 'Pax6',
+'9' = 'Lamp5',
+'1' = 'Lamp5Lhx6')
+
+
 
 
 ```{r}
 
 tree_shrew_inhibitory_sce$primate_subclass
 
-tree_shrew_clust_subclass_mapping = c('4' = 'Pvalb', '10' = 'Pvalb',
-'9' = 'Chandelier',
-'2' = 'Sst', '5' = 'Sst',
-'3' = 'Sst Chodl', '14' = 'Sst Chodl',
+tree_shrew_clust_subclass_mapping = c('4' = 'Pvalb', '11' = 'Pvalb',
+'10' = 'Chandelier',
+'2' = 'Sst', '3' = 'Sst', '5' = 'Sst',
+'14' = 'Sst Chodl',
 '0' = 'Vip',
-'11' = 'Sncg',
-'6' = 'Pax6', '7' = 'Pax6', '12' = 'Pax6', '13' = 'Pax6', '15' = 'Pax6',
-'8' = 'Lamp5',
-'1' = 'Lamp5 Lhx6', 
-'16' = 'other')
+'12' = 'Sncg',
+'6' = 'Pax6', '7' = 'Pax6', '8' = 'Pax6', '13' = 'Pax6',
+'9' = 'Lamp5',
+'1' = 'Lamp5Lhx6')
 
 
 
@@ -2181,9 +2203,9 @@ MetaMarkers::export_markers(tree_shrew_ortho_subclass_markers,
 Also get markers for the de novo clusters
 
 ```{r}
+table(colData(tree_shrew_inhibitory_sce)$cell_cluster)
 
-
-tree_shrew_de_novo_markers = compute_markers(cpm(tree_shrew_inhibitory_sce), tree_shrew_inhibitory_sce$seurat_clusters)
+tree_shrew_de_novo_markers = compute_markers(cpm(tree_shrew_inhibitory_sce), tree_shrew_inhibitory_sce$cell_cluster)
 gc()
 
 
@@ -2218,16 +2240,15 @@ tree_shrew_inhibitory_sce
 
 ```{r}
 
-tree_shrew_clust_subclass_mapping = c('4' = 'Pvalb', '10' = 'Pvalb',
-'9' = 'Chandelier',
-'2' = 'Sst', '5' = 'Sst',
-'3' = 'Sst Chodl', '14' = 'Sst Chodl',
+tree_shrew_clust_subclass_mapping = c('4' = 'Pvalb', '11' = 'Pvalb',
+'10' = 'Chandelier',
+'2' = 'Sst', '3' = 'Sst', '5' = 'Sst',
+'14' = 'Sst Chodl',
 '0' = 'Vip',
-'11' = 'Sncg',
-'6' = 'Pax6', '7' = 'Pax6', '12' = 'Pax6', '13' = 'Pax6', '15' = 'Pax6',
-'8' = 'Lamp5',
-'1' = 'Lamp5 Lhx6', 
-'16' = 'other')
+'12' = 'Sncg',
+'6' = 'Pax6', '7' = 'Pax6', '8' = 'Pax6', '13' = 'Pax6',
+'9' = 'Lamp5',
+'1' = 'Lamp5 Lhx6')
 
 tree_shrew_inhibitory_sce$orthologous_subclass = tree_shrew_clust_subclass_mapping[as.character(tree_shrew_inhibitory_sce$seurat_clusters)]
 table(tree_shrew_inhibitory_sce$orthologous_subclass)
