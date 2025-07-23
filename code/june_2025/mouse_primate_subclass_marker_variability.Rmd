@@ -1,0 +1,2581 @@
+
+
+
+Exploring marker gene variability across the allen+macosko mouse data and the allen primate data
+
+Using the original mouse subclass annotations
+
+
+```{r}
+library(Seurat)
+library(SingleCellExperiment)
+library(ggplot2)
+library(dplyr)
+library(MetaMarkers)
+
+options(dplyr.summarise.inform = FALSE)
+
+
+```
+
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='#FFD700', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C',
+                           'NA' = 'grey90')
+
+
+```
+
+
+```{r}
+
+load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/mouse_primate_MN_integrated.Rdata')
+interneuron.combined$cell_subclass[interneuron.combined$cell_subclass == 'Serpinf1'] = 'Vip'
+
+interneuron.combined
+```
+
+Get the whole brain atlas clusters for Leon
+
+```{r}
+
+load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/20_3_25_interneuron_mouse_metadata.Rdata')
+interneuron_metadata
+
+table(interneuron_metadata$study)
+
+
+interneuron_metadata %>% filter(study == 'tasic18') %>% group_by(cell_cluster, cell_subclass, primate_subclass) %>%
+  summarise(n = n()) %>% arrange(cell_subclass)
+```
+
+
+
+```{r}
+
+
+wba_cluster_df = interneuron_metadata %>% filter(study %in% c('macosko_wba','zeng_10xv3_wba','zeng_10xv2_wba')) %>% group_by(study, cell_cluster) %>%
+  summarise(n = n())
+
+
+macosko_df = wba_cluster_df %>% filter(study == 'macosko_wba') %>% select(study, cell_cluster)
+
+write.csv2(macosko_df, file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/macosko_mouse_wba_kept_clusters.csv', row.names = F)
+
+
+zeng_df = wba_cluster_df %>% filter(study != 'macosko_wba') %>% select(study, cell_cluster)
+
+write.csv2(zeng_df, file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/zeng_mouse_wba_kept_clusters.csv', row.names = F)
+
+
+```
+
+
+```{r}
+
+zeng_wba_region_mapping = data.table::fread('/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/results/Zeng_mouse_wba_kept_clusters.region_counts.csv')
+
+table(zeng_wba_region_mapping$region_remap)
+
+
+
+macosko_wba_region_mapping = data.table::fread('/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/results/Macosko_mouse_wba_kept_clusters.region_counts.csv')
+
+table(macosko_wba_region_mapping$region_remap)
+
+```
+
+
+
+For the other datasets, Tasic18 is Primary Visual cortex (VISP) and Anterior Lateral Motor cortex (ALM)
+the zeng different technologies datasets are all primate motor cortex (MOp)
+
+```{r}
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+#zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba_primate_MN.rds')
+#zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba_primate_MN.rds')
+#zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba_primate_MN.rds')
+#zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba_primate_MN.rds')
+
+
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+```
+
+And the unprocessed tasic18, since this has the region metadata
+
+```{r}
+
+tasic18_full = readRDS(file = '/vault/werner/rotation/jonathan/data/tasic18.rds')
+table(as.character(tasic18_full$source.name), tasic18_full$characteristics..cell_subclass)
+
+#Just grab the GABAergic cells
+inhib_filt = colData(tasic18_full)$cell_class == 'GABAergic'
+tasic18_full = tasic18_full[ ,inhib_filt]
+
+table(colData(tasic18_full)$cell_cluster)
+ncol(tasic18_full)
+
+
+colData(tasic18_full)
+colData(tasic18)
+
+index = match(rownames(colData(tasic18)), tasic18_full$title)
+tasic18$region = as.character(tasic18_full$source.name[index])
+
+tasic18_region_mapping = as.data.frame(colData(tasic18)) %>% group_by(cell_cluster, region, primate_subclass) %>% summarise(n = n()) %>%
+  select(cell_cluster, primate_subclass, n, region)
+
+
+
+tasic18_region_mapping$region[tasic18_region_mapping$region == 'Anterior Lateral Motor Cortex (ALM)'] = 'ALM'
+tasic18_region_mapping$region[tasic18_region_mapping$region == 'Primary Visual Cortex (VISp)'] = 'VISP'
+
+table(tasic18_region_mapping$region)
+```
+
+
+```{r}
+
+macosko_clust_subclass_mapping = interneuron_metadata %>% filter(study == 'macosko_wba') %>% group_by(cell_cluster, primate_subclass) %>%
+  summarise(n = n())
+
+#Add primate subclass labels to the clusters
+index = match(macosko_wba_region_mapping$cell_cluster, macosko_clust_subclass_mapping$cell_cluster )
+macosko_wba_region_mapping$primate_subclass = macosko_clust_subclass_mapping$primate_subclass[index]
+
+macosko_wba_region_mapping = macosko_wba_region_mapping %>% filter(cell_count_Macosko != 0) %>%
+  select(cell_cluster, primate_subclass, cell_count_Macosko, region_remap)
+colnames(macosko_wba_region_mapping) = c('cell_cluster','primate_subclass','n','region')
+
+
+
+zeng_clust_subclass_mapping = interneuron_metadata %>% filter(study %in% c('zeng_10xv2_wba', 'zeng_10xv3_wba')) %>%
+  group_by(cell_cluster, primate_subclass) %>%
+  summarise(n = n())
+
+
+#Add primate subclass labels to the clusters
+index = match(zeng_wba_region_mapping$cell_cluster, zeng_clust_subclass_mapping$cell_cluster )
+zeng_wba_region_mapping$primate_subclass = zeng_clust_subclass_mapping$primate_subclass[index]
+
+zeng_wba_region_mapping = zeng_wba_region_mapping %>% filter(cell_count_Zeng != 0) %>%
+  select(cell_cluster, primate_subclass, cell_count_Zeng, region_remap)
+colnames(zeng_wba_region_mapping) = c('cell_cluster','primate_subclass','n','region')
+
+
+
+
+zeng_motor_cortex_df = interneuron_metadata %>% 
+  filter(study %in% c('zeng_10x_cells', 'zeng_10x_nuclei', 'zeng_smart_cells', 'zeng_smart_nuclei')) %>%
+  group_by(cell_cluster, primate_subclass) %>%
+  summarise(n = n()) %>% mutate(region = 'MOp')
+
+```
+
+
+```{r}
+
+all_region_mapping = do.call('rbind', 
+                             list(zeng_wba_region_mapping, macosko_wba_region_mapping, zeng_motor_cortex_df, tasic18_region_mapping))
+
+
+all_region_mapping
+
+
+all_region_mapping$primate_subclass = factor(all_region_mapping$primate_subclass,
+                                              levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+                                                         'Vip','Sncg','Pax6','Lamp5','Lamp5 Lhx6'))
+
+all_regions = unique(all_region_mapping$region)
+
+region_colors = MetBrewer::met.brewer("Moreau", n=20, type="continuous")
+region_colors = region_colors[1:20] 
+names(region_colors) =c(all_regions)
+
+
+# Stacked + percent
+ggplot(all_region_mapping, aes(fill=region, y=n, x=primate_subclass)) + 
+    geom_bar(position="fill", stat="identity") + ylab('% cell-type') + 
+  scale_fill_manual(values = region_colors) +
+  ggtitle('Regional contribution to orthologous subclasses') +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+ggsave(filename = 'region_stacked_orth_subclass_mouse.pdf',device = 'pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/',
+       useDingbats = F, height = 6, width = 8)
+```
+
+```{r}
+
+
+all_regions = unique(all_region_mapping$region)
+
+pvalb_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Pvalb') %>% pull(region))
+print('Regions with no Pvalb cells...')
+all_regions[!all_regions %in% pvalb_regions]
+
+chandelier_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Chandelier') %>% pull(region))
+print('Regions with no Chandelier cells...')
+all_regions[!all_regions %in% chandelier_regions]
+
+sst_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Sst') %>% pull(region))
+print('Regions with no sst cells...')
+all_regions[!all_regions %in% sst_regions]
+
+sst_chodl_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Sst Chodl') %>% pull(region))
+print('Regions with no sst_chodl cells...')
+all_regions[!all_regions %in% sst_chodl_regions]
+
+vip_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Vip') %>% pull(region))
+print('Regions with no vip cells...')
+all_regions[!all_regions %in% vip_regions]
+
+pax6_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Pax6') %>% pull(region))
+print('Regions with no pax6 cells...')
+all_regions[!all_regions %in% pax6_regions]
+
+
+sncg_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Sncg') %>% pull(region))
+print('Regions with no sncg cells...')
+all_regions[!all_regions %in% sncg_regions]
+
+lamp5_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Lamp5') %>% pull(region))
+print('Regions with no lamp5 cells...')
+all_regions[!all_regions %in% lamp5_regions]
+
+lamp5_lhx6_regions = unique(all_region_mapping %>% filter(primate_subclass == 'Lamp5 Lhx6') %>% pull(region))
+print('Regions with no lamp5_lhx6 cells...')
+all_regions[!all_regions %in% lamp5_lhx6_regions]
+
+```
+
+Do a heatmap instead
+
+```{r}
+
+all_regions = unique(all_region_mapping$region)
+
+all_region_subclasses = paste(rep(all_regions, 9), c(rep('Pvalb',length(all_regions)), rep('Chandelier',length(all_regions)),rep('Sst',length(all_regions)),
+  rep('Sst Chodl',length(all_regions)),rep('Vip',length(all_regions)),rep('Sncg',length(all_regions)),
+  rep('Pax6',length(all_regions)),rep('Lamp5',length(all_regions)),rep('Lamp5 Lhx6',length(all_regions))), sep = '_')
+
+all_region_mapping$primate_subclass = as.character(all_region_mapping$primate_subclass)
+all_region_mapping$region_subclass = paste(all_region_mapping$region, all_region_mapping$primate_subclass, sep = '_')
+
+#Missing region and subclass intersections, get 0 counts
+missing_region_subclasses = all_region_subclasses[!all_region_subclasses %in% all_region_mapping$region_subclass ]
+
+missing_regions = sapply(strsplit(missing_region_subclasses, split = '_', fixed = T), '[[',1)
+missing_subclasses = sapply(strsplit(missing_region_subclasses, split = '_', fixed = T), '[[',2)
+
+missing_df = data.frame(cell_cluster = NA, primate_subclass = missing_subclasses, n = 0, 
+                        region = missing_regions , region_subclass = missing_region_subclasses )
+
+all_region_mapping = rbind(all_region_mapping, missing_df)
+
+
+subclass_region_mat = all_region_mapping %>% select(primate_subclass, n, region) %>% group_by(region, primate_subclass) %>%
+  summarise(total = sum(n)) %>% tidyr::pivot_wider(names_from = region, values_from = total) %>%
+  tibble::column_to_rownames(var = 'primate_subclass')
+
+subclass_region_mat = as.matrix(subclass_region_mat)
+
+
+col_fun = circlize::colorRamp2(breaks = c(0,log10(2), max(log10(subclass_region_mat+1))), colors = c('grey','white','red'))
+ComplexHeatmap::Heatmap(log10(subclass_region_mat+1), col = col_fun, name = 'log10( cell count + 1 )',
+                        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+                        show_row_dend = F, show_column_dend = F)
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/region_orth_mouse_subclass_heatmap.pdf',
+    useDingbats = F, height = 4, width = 6)
+ComplexHeatmap::Heatmap(log10(subclass_region_mat+1), col = col_fun, name = 'log10( cell count + 1 )',
+                        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+                        show_row_dend = F, show_column_dend = F)
+
+dev.off()
+
+```
+
+
+###################################
+
+Get the dot plot enrichments of the primate Vip Pax6 and Sncg markers across the mouse data
+Get the average per dataset per subclass
+
+
+##################################
+
+```{r}
+all_mouse_markers = list(
+    tasic18 = read_markers("metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("metamarkers/ortho_markers_macosko_wba.csv.gz")
+)
+
+
+mouse_subclass_meta_markers = make_meta_markers(all_mouse_markers, detailed_stats = TRUE)
+
+mouse_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+```
+
+```{r}
+all_primate_markers = list(
+    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
+)
+
+
+all_primate_markers$human_10x$cell_type[all_primate_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$human_ss$cell_type[all_primate_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$chimp_10x$cell_type[all_primate_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$chimp_ss$cell_type[all_primate_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$gorilla_10x$cell_type[all_primate_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$gorilla_ss$cell_type[all_primate_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$macaca_10x$cell_type[all_primate_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$marmoset_10x$cell_type[all_primate_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+primate_subclass_meta_markers = make_meta_markers(all_primate_markers, detailed_stats = TRUE)
+
+primate_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+
+```
+
+
+```{r}
+DefaultAssay(interneuron.combined) = 'originalexp'
+
+all_mouse_interneurons = as.SingleCellExperiment(interneuron.combined)
+names(assays(all_mouse_interneurons )) = c('counts','cpm')
+
+#get the top primate and mouse MetaMarkers
+top_primate_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
+
+
+#Get the primate enrichments, summarise by the mean enrichment per de novo cluster
+ct_scores_mouse = score_cells(log1p(cpm(all_mouse_interneurons)), top_primate_markers)
+ct_enrichment_mouse = compute_marker_enrichment(ct_scores_mouse)
+
+
+#Add a dataset and primate subclass label
+study_primate_subclass = paste(all_mouse_interneurons$study, all_mouse_interneurons$primate_subclass, sep = '|')
+colnames(ct_enrichment_mouse) = study_primate_subclass
+
+ct_enrichment_mouse_df = reshape2::melt(t(ct_enrichment_mouse), varnames = c('study_primate_subclass','primate_markers'), value.name = c('enrichment'))
+ct_enrichment_mouse_df = ct_enrichment_mouse_df %>% group_by(study_primate_subclass, primate_markers) %>% 
+  summarise(mean_enrichment = mean(enrichment), sd_enrichment = sd(enrichment))
+
+
+
+
+ct_enrichment_mouse_df$mapped_primate_subclass = sapply(strsplit(as.character(ct_enrichment_mouse_df$study_primate_subclass), split = '|', fixed = T), '[[', 2)
+ct_enrichment_mouse_df$mapped_primate_subclass = factor(ct_enrichment_mouse_df$mapped_primate_subclass, 
+                                                          levels = c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))
+
+
+plotting_df = ct_enrichment_mouse_df %>% filter(primate_markers == 'all|Vip')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(study_primate_subclass)
+
+plotting_df$study_primate_subclass = factor(plotting_df$study_primate_subclass, levels = order_vec)
+
+mouse_vip_enrich_dot_plot = ggplot(plotting_df, aes(x = study_primate_subclass, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Vip enrichment') + xlab('Mouse dataset Primate subclasses') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank(),axis.text.x=element_blank())
+
+mouse_vip_enrich_dot_plot
+
+
+plotting_df = ct_enrichment_mouse_df %>% filter(primate_markers == 'all|Pax6')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(study_primate_subclass)
+
+plotting_df$study_primate_subclass = factor(plotting_df$study_primate_subclass, levels = order_vec)
+
+mouse_pax6_enrich_dot_plot = ggplot(plotting_df, aes(x = study_primate_subclass, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Pax6 enrichment') + xlab('Mouse dataset Primate subclasses') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank(),axis.text.x=element_blank())
+
+mouse_pax6_enrich_dot_plot
+
+plotting_df = ct_enrichment_mouse_df %>% filter(primate_markers == 'all|Sncg')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(study_primate_subclass)
+
+plotting_df$study_primate_subclass = factor(plotting_df$study_primate_subclass, levels = order_vec)
+
+mouse_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = study_primate_subclass, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Sncg enrichment') + xlab('Mouse dataset Primate subclasses') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank(),axis.text.x=element_blank())
+
+mouse_sncg_enrich_dot_plot
+mouse_pax6_enrich_dot_plot
+mouse_vip_enrich_dot_plot
+
+
+ggsave(plot = mouse_sncg_enrich_dot_plot, filename = 'dot_mouse_sncg_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 6)
+ggsave(plot = mouse_pax6_enrich_dot_plot, filename = 'dot_mouse_pax6_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 6)
+ggsave(plot = mouse_vip_enrich_dot_plot, filename = 'dot_mouse_vip_mean_primate_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 6)
+
+
+
+#And the mouse Sncg markers
+top_mouse_markers = mouse_subclass_meta_markers %>% filter(rank <= 50)
+
+#Get the primate enrichments, summarise by the mean enrichment per de novo cluster
+ct_scores_mouse = score_cells(log1p(cpm(all_mouse_interneurons)), top_mouse_markers)
+ct_enrichment_mouse = compute_marker_enrichment(ct_scores_mouse)
+
+#Add a dataset and primate subclass label
+study_primate_subclass = paste(all_mouse_interneurons$study, all_mouse_interneurons$primate_subclass, sep = '|')
+colnames(ct_enrichment_mouse) = study_primate_subclass
+
+ct_enrichment_mouse_df = reshape2::melt(t(ct_enrichment_mouse), varnames = c('study_primate_subclass','mouse_markers'), value.name = c('enrichment'))
+ct_enrichment_mouse_df = ct_enrichment_mouse_df %>% group_by(study_primate_subclass, mouse_markers) %>% 
+  summarise(mean_enrichment = mean(enrichment), sd_enrichment = sd(enrichment))
+
+
+ct_enrichment_mouse_df$mapped_primate_subclass = sapply(strsplit(as.character(ct_enrichment_mouse_df$study_primate_subclass), split = '|', fixed = T), '[[', 2)
+ct_enrichment_mouse_df$mapped_primate_subclass = factor(ct_enrichment_mouse_df$mapped_primate_subclass, 
+                                                          levels = c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))
+
+plotting_df = ct_enrichment_mouse_df %>% filter(mouse_markers == 'all|Sncg')
+
+order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
+  pull(study_primate_subclass)
+
+plotting_df$study_primate_subclass = factor(plotting_df$study_primate_subclass, levels = order_vec)
+
+mouse_mouse_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = study_primate_subclass, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Mouse Sncg enrichment') + xlab('Mouse dataset Primate subclasses') + ylim(0,3.7) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank(),axis.text.x=element_blank())
+
+mouse_mouse_sncg_enrich_dot_plot
+ggsave(plot = mouse_mouse_sncg_enrich_dot_plot, filename = 'dot_mouse_sncg_mean_mouse_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
+       useDingbats = F, height = 2, width = 6)
+
+
+plotting_df %>% filter(mapped_primate_subclass == 'Sncg')
+
+
+```
+
+
+
+
+
+################################
+
+Comparing markers across the original mouse subclasses and the primate subclasses
+
+Just start with the mouse original metamarkers and the primate metamarkers
+
+Aiming to show what does and what does not overlap between the subclass labels
+
+##################################
+
+
+Need to compute mouse subclass markers using the non-orthologous filtered data, since we are comparing marker transferability before the mapping to the primate subclasses.
+
+No filtering for the high-orthology clusters
+
+```{r}
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba_primate_MN.rds')
+zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba_primate_MN.rds')
+zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba_primate_MN.rds')
+zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba_primate_MN.rds')
+zeng_10xv2_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba_primate_MN.rds')
+zeng_10xv3_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv3_gaba_primate_MN.rds')
+macosko_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba_primate_MN.rds')
+```
+
+
+
+Rename the old Allen institute subclasses
+
+```{r}
+
+zeng_10x_cells$cell_subclass = as.character(zeng_10x_cells$cell_subclass)
+zeng_10x_cells$cell_cluster = as.character(zeng_10x_cells$cell_cluster)
+
+zeng_smart_cells$cell_subclass = as.character(zeng_smart_cells$cell_subclass)
+zeng_smart_cells$cell_cluster = as.character(zeng_smart_cells$cell_cluster)
+
+zeng_smart_nuclei$cell_subclass = as.character(zeng_smart_nuclei$cell_subclass)
+zeng_smart_nuclei$cell_cluster = as.character(zeng_smart_nuclei$cell_cluster)
+
+zeng_10x_nuclei$cell_subclass = as.character(zeng_10x_nuclei$cell_subclass)
+zeng_10x_nuclei$cell_cluster = as.character(zeng_10x_nuclei$cell_cluster)
+
+zeng_10xv2_wba$cell_cluster = as.character(zeng_10xv2_wba$cell_cluster)
+zeng_10xv3_wba$cell_cluster = as.character(zeng_10xv3_wba$cell_cluster)
+
+tasic18$cell_subclass[tasic18$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+tasic18$cell_subclass[tasic18$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+tasic18$cell_subclass[tasic18$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+tasic18$cell_subclass[tasic18$cell_subclass == 'Serpinf1'] = 'Vip'
+
+zeng_10x_cells$cell_subclass[zeng_10x_cells$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_10x_cells$cell_subclass[zeng_10x_cells$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_10x_cells$cell_subclass[zeng_10x_cells$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+zeng_10x_nuclei$cell_subclass[zeng_10x_nuclei$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_10x_nuclei$cell_subclass[zeng_10x_nuclei$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_10x_nuclei$cell_subclass[zeng_10x_nuclei$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+zeng_smart_nuclei$cell_subclass[zeng_smart_nuclei$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_smart_nuclei$cell_subclass[zeng_smart_nuclei$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_smart_nuclei$cell_subclass[zeng_smart_nuclei$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+zeng_smart_cells$cell_subclass[zeng_smart_cells$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_smart_cells$cell_subclass[zeng_smart_cells$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_smart_cells$cell_subclass[zeng_smart_cells$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+
+zeng_10xv2_wba$cell_subclass[zeng_10xv2_wba$cell_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+zeng_10xv3_wba$cell_subclass[zeng_10xv3_wba$cell_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+```
+
+
+Compute the mouse subclass metamarkers
+
+
+```{r}
+
+markers_tasic18 = compute_markers(assay(tasic18, "cpm"), tasic18$cell_subclass)
+markers_zeng_10x_cells = compute_markers(assay(zeng_10x_cells, "cpm"), zeng_10x_cells$cell_subclass)
+markers_zeng_10x_nuclei = compute_markers(assay(zeng_10x_nuclei, "cpm"), zeng_10x_nuclei$cell_subclass)
+markers_zeng_smart_nuclei = compute_markers(assay(zeng_smart_nuclei, "cpm"), zeng_smart_nuclei$cell_subclass)
+markers_zeng_smart_cells = compute_markers(assay(zeng_smart_cells, "cpm"), zeng_smart_cells$cell_subclass)
+markers_zeng_10xv2_wba = compute_markers(assay(zeng_10xv2_wba, "cpm"), zeng_10xv2_wba$cell_subclass)
+markers_zeng_10xv3_wba = compute_markers(assay(zeng_10xv3_wba, "cpm"), zeng_10xv3_wba$cell_subclass)
+markers_macosko_wba = compute_markers(assay(macosko_wba, "cpm"), macosko_wba$cell_subclass)
+
+
+original_mouse_markers = list(
+    tasic18 = markers_tasic18,
+    zeng_10x_cells = markers_zeng_10x_cells,
+    zeng_10x_nuclei = markers_zeng_10x_nuclei ,
+    zeng_smart_nuclei = markers_zeng_smart_nuclei,
+    zeng_smart_cells = markers_zeng_smart_cells ,
+    zeng_10xv2_wba = markers_zeng_10xv2_wba,
+    zeng_10xv3_wba = markers_zeng_10xv3_wba,
+    macosko_wba = markers_macosko_wba
+)
+
+
+original_mouse_subclass_meta_markers = make_meta_markers(original_mouse_markers, detailed_stats = TRUE)
+original_mouse_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+original_mouse_subclass_meta_markers %>% filter(gene == 'SNCG')
+```
+
+
+
+And the primate markers
+
+```{r}
+all_primate_markers = list(
+    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
+)
+
+
+all_primate_markers$human_10x$cell_type[all_primate_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$human_ss$cell_type[all_primate_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$chimp_10x$cell_type[all_primate_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$chimp_ss$cell_type[all_primate_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$gorilla_10x$cell_type[all_primate_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$gorilla_ss$cell_type[all_primate_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$macaca_10x$cell_type[all_primate_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$marmoset_10x$cell_type[all_primate_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+primate_subclass_meta_markers = make_meta_markers(all_primate_markers, detailed_stats = TRUE)
+
+primate_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+
+```
+
+
+
+take the top 10 primate markers for a subclass and just see where they are in the mouse DE across all subclasses
+
+
+```{r}
+
+top_primate_markers = primate_subclass_meta_markers %>% filter(cell_type == 'Pax6' & rank <= 10) %>% pull(gene) 
+
+
+test_df = original_mouse_subclass_meta_markers %>% filter(gene %in% top_primate_markers) #%>% group_by(cell_type) %>%
+  #summarise(mean_auroc = mean(auroc), mean_fc = mean(fold_change)) %>% arrange(desc(mean_auroc))
+
+
+p1 = ggplot(test_df , aes(x = log2(fold_change), y = auroc, color = cell_type)) + geom_point() +
+  scale_color_manual(values = celltype_color_palette) 
+  
+
+
+ggExtra::ggMarginal(p1, groupColour = TRUE, groupFill = TRUE)
+
+
+#VIPR2 or NKX2-1
+primate_subclass_meta_markers %>% filter(gene == 'VIPR2')
+
+original_mouse_subclass_meta_markers %>% filter(gene == 'VIPR2')
+```
+
+
+
+Try the name sake genes, comparing the primate and the mouse aurocs
+
+```{r}
+
+#Get the primate name sake gene DE
+primate_name_sake_genes = primate_subclass_meta_markers %>% 
+  filter(gene %in% c('PVALB','SST','CHODL','NKX2-1','LHX6','LAMP5','VIP','SNCG','PAX6') & cell_type != 'Pax6') %>%
+  mutate(primate_auroc = auroc) %>% select(cell_type, gene, primate_auroc)
+
+primate_name_sake_genes$full_label = paste(primate_name_sake_genes$cell_type, primate_name_sake_genes$gene, sep = '_' )
+
+#Get the mouse name sake gene DE
+mouse_name_sake_genes = original_mouse_subclass_meta_markers %>% filter(gene %in% c('PVALB','SST','CHODL','NKX2-1','LHX6','LAMP5','VIP','SNCG','PAX6')) %>%
+  mutate(mouse_auroc = auroc) %>% select(cell_type, gene, mouse_auroc)
+
+mouse_name_sake_genes$full_label = paste(mouse_name_sake_genes$cell_type, mouse_name_sake_genes$gene, sep = '_' )
+
+#Align and add
+index = match(mouse_name_sake_genes$full_label, primate_name_sake_genes$full_label)
+primate_name_sake_genes = primate_name_sake_genes[index, ]
+
+mouse_name_sake_genes$primate_auroc = primate_name_sake_genes$primate_auroc
+
+#Set the order for plotting
+mouse_name_sake_genes$gene = factor(mouse_name_sake_genes$gene, levels = c('SST','CHODL','PVALB','NKX2-1','LHX6','LAMP5','VIP','SNCG', 'PAX6'))
+#Add a mouse subclass label
+mouse_name_sake_genes$plot_label = mouse_name_sake_genes$full_label
+mouse_name_sake_genes$plot_label[!mouse_name_sake_genes$plot_label %in% c('Chandelier_NKX2-1','Pvalb_PVALB','Sst_SST', 'Sst Chodl_CHODL',
+                                                                          'Lamp5_LAMP5','Lamp5 Lhx6_LHX6','Sncg_SNCG','Vip_VIP','Sncg_PAX6')] = NA
+
+mouse_name_sake_genes$plot_label = sapply(strsplit(mouse_name_sake_genes$plot_label, split = '_', fixed = T), '[[', 1)
+
+
+primate_pax6_PAX6_auroc = primate_subclass_meta_markers %>% filter(cell_type == 'Pax6' & gene == 'PAX6') %>% pull(auroc)
+
+
+library(ggrepel)
+
+p1 = ggplot(mouse_name_sake_genes, aes(x = primate_auroc, y = mouse_auroc, color = cell_type, label = plot_label)) +
+  geom_point(size = 3, alpha = .75) + ylim(0,1) + xlim(0,1) +
+  geom_label_repel(min.segment.length = 0, max.overlaps = Inf, hjust = 1, direction = 'y', nudge_x = -.4,box.padding = .1, show.legend = F) +
+  geom_vline(xintercept = .5, color = 'black', linetype = 'dashed', alpha = .5) +
+  geom_hline(yintercept = .5, color = 'black', linetype = 'dashed', alpha = .5) +
+  scale_color_manual(values = celltype_color_palette, name = 'Subclass', 
+                     breaks = c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Sncg')) +
+  ylab('Mouse AUROC') + xlab('Primate AUROC') +
+  theme_bw()+ ggtitle('Subclass namesake gene DE') +
+  theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()) +
+  facet_wrap(~gene, nrow = 3) +
+  geom_vline(data = subset(mouse_name_sake_genes, gene == "PAX6"), aes(xintercept = primate_pax6_PAX6_auroc), 
+             color = 'red', linetype = 'longdash')
+
+p1
+ggsave(plot = p1, filename = 'namesake_gene_de.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 6, width = 8)
+
+
+```
+
+
+######################################
+
+And now try aggregating increasing primate markers in the mouse data
+
+Given a marker set, compute the subclass specificity of those markers expression within the mouse subclasses
+Do for the 9 primate markers sets, increasing number of markers
+
+
+Could also just do the MetaMarker enrichment score as well, probably start with that
+
+####################################
+
+
+
+
+Using the original subclass labels for the mouse data, cell_subclass, get the marker enrichments of the primate metamarkers
+
+
+```{r}
+
+get_avg_marker_enrichment = function(sce_obj, meta_markers, num_markers){
+
+  top_markers = meta_markers %>% filter(rank <= num_markers)
+  
+  #Compute enrichments
+  ct_scores = score_cells(log1p(cpm(sce_obj)), top_markers)
+  ct_enrichment = compute_marker_enrichment(ct_scores)
+  #Add the mouse original subclass label to the cells
+  dataset_cell_marker_enrichs_df = as.data.frame(t(ct_enrichment))
+  dataset_cell_marker_enrichs_df$mouse_subclass = sce_obj$cell_subclass
+  #Get the mean enrichment for all the marker sets across the mouse subclass labels
+  summary_marker_enrich_df = dataset_cell_marker_enrichs_df %>% group_by(mouse_subclass) %>% 
+    summarise(`Primate Sst` = mean(`all|Sst`), `Primate Sst Chodl` = mean(`all|Sst Chodl`),
+              `Primate Pvalb` = mean(`all|Pvalb`), `Primate Chandelier` = mean(`all|Chandelier`),
+              `Primate Lamp5` = mean(`all|Lamp5`), `Primate Lamp5 Lhx6` = mean(`all|Lamp5 Lhx6`),
+              `Primate Vip` = mean(`all|Vip`), `Primate Sncg` = mean(`all|Sncg`),
+              `Primate Pax6` = mean(`all|Pax6`)) %>% tibble::column_to_rownames(var = "mouse_subclass")
+  summary_marker_enrich_df = as.matrix(summary_marker_enrich_df)
+    #tidyr::pivot_longer(!mouse_subclass, names_to = 'primate_markers', values_to = 'mean_mouse_enrich') %>%
+    #mutate(num_markers = current_markers)
+  
+  #all_summary_dfs[[i]] = summary_marker_enrich_df
+  
+  return(summary_marker_enrich_df)
+
+}
+
+
+num_total_markers = c(1, 10, 25, 50, 100)
+
+all_enrich_dfs = list()
+
+for(i in 1:length(num_total_markers)){
+  
+
+  current_markers = num_total_markers[i]
+  
+  all_enrich_mats = vector(mode = 'list', length = 8)
+  
+  all_enrich_mats[[1]] = get_avg_marker_enrichment(tasic18, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[2]] = get_avg_marker_enrichment(zeng_10x_cells, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[3]] = get_avg_marker_enrichment(zeng_10x_nuclei, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[4]] = get_avg_marker_enrichment(zeng_smart_cells, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[5]] = get_avg_marker_enrichment(zeng_smart_nuclei, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[6]] = get_avg_marker_enrichment(zeng_10xv2_wba, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[7]] = get_avg_marker_enrichment(zeng_10xv3_wba, primate_subclass_meta_markers, num_markers = current_markers)
+  all_enrich_mats[[8]] = get_avg_marker_enrichment(macosko_wba, primate_subclass_meta_markers, num_markers = current_markers)
+  
+  dataset_avg_enrich_mat = Reduce('+', all_enrich_mats ) / 8
+  
+  
+  avg_enrich_df = reshape2::melt(dataset_avg_enrich_mat, varnames = c('Mouse Subclass','Primate Subclass markers'), value.name = 'avg_enrichment')
+  avg_enrich_df$num_markers = current_markers
+  
+  all_enrich_dfs[[i]] = avg_enrich_df
+
+
+}
+
+temp_enrich_dfs = do.call('rbind', all_enrich_dfs)
+
+
+ggplot(temp_enrich_dfs, aes(x = num_markers, y = avg_enrichment, color = `Mouse Subclass`, group = `Mouse Subclass`)) + 
+  geom_point() +
+  geom_line() +
+  scale_x_continuous(breaks = num_total_markers) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  theme_bw() + ylab('Average expression enrichment') + xlab('Number of Primate subclass markers') +
+  facet_wrap(~`Primate Subclass markers`, scales = 'free_y') + ggtitle('Primate marker enrichment in Mouse subclasses')
+
+
+```
+
+
+Trying some type of signal to noise ratio
+
+given a gene set, number of cells with detectable expression / total cells.
+then that ratio divided by the same ratio computed from all background cells
+
+
+```{r}
+
+compute_avg_dectection = function(sce_obj, meta_markers, num_markers){
+
+  #Grab the top markers
+  top_markers = meta_markers %>% filter(rank <= num_markers)
+  #Set up the marker gene annotation matrix
+  gene_annotations = as.matrix(table(top_markers$cell_type, top_markers$gene))
+  #And the mouse subclass annotation matrix
+  #Make sure the annotations line up with the actual expression data order, doing table() sorts the data
+  celltype_annotations = as.matrix(table(colnames(sce_obj), sce_obj$cell_subclass))
+  index = match(colnames(sce_obj), rownames(celltype_annotations))
+  celltype_annotations = celltype_annotations[index, ]
+  
+  #Just need the expression of the primate markers
+  gene_index = rownames(sce_obj) %in% top_markers$gene
+  marker_exp = cpm(sce_obj)[gene_index, ]
+  #Detected or not
+  marker_exp = as.matrix(marker_exp > 0) *1
+  
+  #This computes the detection rate of each gene in each subclass  
+  cell_totals = colSums(celltype_annotations)
+  detect_ratios = t(t(marker_exp %*% celltype_annotations) / cell_totals)
+  
+  #And this computes the average detection rate for each gene set across all the mouse subclasses
+  index = match(colnames(gene_annotations), rownames(detect_ratios))
+  detect_ratios = detect_ratios[index, ]
+  
+  avg_detection_rates = (gene_annotations %*% detect_ratios) / num_markers
+  return(avg_detection_rates)
+}
+
+
+
+```
+
+
+
+
+```{r}
+
+num_total_markers = c(1, 10, 25, 50, 100)
+
+all_avg_detect_dfs = list()
+
+for(i in 1:length(num_total_markers)){
+  
+current_markers = num_total_markers[i]
+
+all_avg_detect_mats = vector(mode = 'list', length = 8)
+
+all_avg_detect_mats[[1]] = compute_avg_dectection(tasic18, primate_subclass_meta_markers, num_markers = current_markers)
+all_avg_detect_mats[[2]] = compute_avg_dectection(zeng_10x_cells, primate_subclass_meta_markers, num_markers = current_markers)
+all_avg_detect_mats[[3]] = compute_avg_dectection(zeng_10x_nuclei, primate_subclass_meta_markers, num_markers = current_markers)
+all_avg_detect_mats[[4]] = compute_avg_dectection(zeng_smart_cells, primate_subclass_meta_markers, num_markers = current_markers)
+all_avg_detect_mats[[5]] = compute_avg_dectection(zeng_smart_nuclei, primate_subclass_meta_markers, num_markers = current_markers)
+all_avg_detect_mats[[6]] = compute_avg_dectection(zeng_10xv2_wba, primate_subclass_meta_markers, num_markers = current_markers)
+all_avg_detect_mats[[7]] = compute_avg_dectection(zeng_10xv3_wba, primate_subclass_meta_markers, num_markers = current_markers)
+all_avg_detect_mats[[8]] = compute_avg_dectection(macosko_wba, primate_subclass_meta_markers, num_markers = current_markers)
+
+dataset_avg_detection_mat = Reduce('+', all_avg_detect_mats ) / 8
+
+
+avg_detection_df = reshape2::melt(dataset_avg_detection_mat, varnames = c('Primate Subclass Markers','Mouse Subclass'), value.name = 'avg_detection_rate')
+avg_detection_df$num_markers = current_markers
+
+all_avg_detect_dfs[[i]] = avg_detection_df
+
+
+}
+
+temp_detect_dfs = do.call('rbind', all_avg_detect_dfs )
+
+
+temp_detect_dfs$full_label = paste(temp_detect_dfs$`Primate Subclass Markers`, temp_detect_dfs$`Mouse Subclass`, sep = '_')
+table(temp_detect_dfs$full_label)
+keep_index = temp_detect_dfs$full_label %in% c('Chandelier_Chandelier','Chandelier_Pvalb',
+                                               'Pvalb_Pvalb','Pvalb_Chandelier',
+                                               'Sst_Sst','Sst_Sst Chodl',
+                                               'Sst Chodl_Sst Chodl','Sst Chodl_Sst',
+                                               'Vip_Vip','Vip_Sncg',
+                                               'Sncg_Sncg','Sncg_Vip',
+                                               'Lamp5_Lamp5','Lamp5_Lamp5 Lhx6',
+                                               'Lamp5 Lhx6_Lamp5 Lhx6','Lamp5 Lhx6_Lamp5',
+                                               'Pax6_Sncg','Pax6_Vip')
+temp_detect_dfs$color_label = 'NA'
+temp_detect_dfs$color_label[keep_index] = as.character(temp_detect_dfs$`Mouse Subclass`)[keep_index]
+temp_detect_dfs
+```
+
+
+```{r}
+
+temp_detect_dfs$`Primate Subclass Markers` = factor(temp_detect_dfs$`Primate Subclass Markers`, levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+                                                                                                           'Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))
+
+temp_detect_dfs$color_label = factor(temp_detect_dfs$color_label, levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+                                                                                                           'Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg', 'NA'))
+
+p2 = ggplot(temp_detect_dfs, aes(x = num_markers, y = avg_detection_rate, color = color_label, group = `Mouse Subclass`)) + 
+  geom_point() +
+  geom_line() +
+  scale_x_continuous(breaks = num_total_markers) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  theme_bw() + ylab('Average gene detection rate') + xlab('Number of Primate subclass markers') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free_y') + ggtitle('Detection of Primate marker expression in Mouse subclasses')
+
+p2
+ggsave(plot = p2, filename = 'avg_detection_rate_primate_in_mouse.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 6, width = 8)
+
+
+```
+
+
+And try with aggregated expression.
+ratio of avg(agg_in_celltype) / avg(agg_in_all_other_cells)
+
+
+```{r}
+
+
+compute_signal_to_noise = function(sce_obj, meta_markers, num_markers){
+
+  top_markers = meta_markers %>% filter(rank <= num_markers)
+  
+  gene_annotations = as.matrix(table(top_markers$cell_type, top_markers$gene))
+  
+  #Just need the expression of the primate markers
+  gene_index = rownames(sce_obj) %in% top_markers$gene
+  marker_exp = as.matrix(log1p(cpm(sce_obj))[gene_index, ])
+  
+  index = match(rownames(marker_exp), colnames(gene_annotations))
+  gene_annotations = gene_annotations[ , index]
+  
+  #Computes the aggregate expression for each marker set in each cell
+  agg_marker_exp_mat = t(marker_exp) %*% t(gene_annotations)
+  
+  
+  #Make sure the annotations line up with the actual expression data order, doing table() sorts the data
+  celltype_annotations = as.matrix(table(colnames(sce_obj), sce_obj$cell_subclass))
+  index = match(rownames(agg_marker_exp_mat), rownames(celltype_annotations))
+  celltype_annotations = celltype_annotations[index, ]
+  
+  cell_totals = colSums(celltype_annotations)
+  cell_totals_background = colSums(!celltype_annotations)
+  
+  
+  #This computes the average aggregate expression per cell-type
+  sum_aggs = t(agg_marker_exp_mat ) %*% celltype_annotations
+  avg_agg_exp = t(t(sum_aggs) / cell_totals)
+  
+  #This computes the average aggregate expression in the background cells
+  sum_aggs_background = t(agg_marker_exp_mat ) %*% !celltype_annotations
+  avg_agg_exp_background = t(t(sum_aggs_background) / cell_totals_background)
+  
+  #Divide to get a signal-to-noise ratio
+  signal_to_noise_mat = avg_agg_exp / avg_agg_exp_background
+
+  
+  return(list('agg_exp' = avg_agg_exp , 'signal_noise' = signal_to_noise_mat))
+}
+
+
+```
+
+
+```{r}
+
+num_total_markers = c(1, 10, 25, 50, 100)
+
+all_signal_noise_dfs = list()
+all_exp_dfs = list()
+
+for(i in 1:length(num_total_markers)){
+
+  current_markers = num_total_markers[i]
+
+  all_signal_noise_mats = vector(mode = 'list', length = 8)
+  all_exp_mats = vector(mode = 'list', length = 8)
+  
+  temp_results = compute_signal_to_noise(tasic18, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[1]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[1]] = temp_results[['signal_noise']]
+  
+  temp_results = compute_signal_to_noise(zeng_10x_cells, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[2]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[2]] = temp_results[['signal_noise']]  
+
+  temp_results = compute_signal_to_noise(zeng_10x_nuclei, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[3]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[3]] = temp_results[['signal_noise']] 
+  
+  temp_results = compute_signal_to_noise(zeng_smart_cells, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[4]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[4]] = temp_results[['signal_noise']]  
+  
+  temp_results = compute_signal_to_noise(zeng_smart_nuclei, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[5]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[5]] = temp_results[['signal_noise']]  
+  
+  temp_results = compute_signal_to_noise(zeng_10xv2_wba, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[6]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[6]] = temp_results[['signal_noise']]  
+  
+  temp_results = compute_signal_to_noise(zeng_10xv3_wba, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[7]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[7]] = temp_results[['signal_noise']]  
+  
+  temp_results = compute_signal_to_noise(macosko_wba, primate_subclass_meta_markers, num_markers = current_markers)
+  all_exp_mats[[8]] = temp_results[['agg_exp']]
+  all_signal_noise_mats[[8]] = temp_results[['signal_noise']]
+  
+  dataset_avg_signal_noise_mat = Reduce('+', all_signal_noise_mats ) / 8
+  dataset_avg_exp_mat = Reduce('+', all_exp_mats ) / 8
+  
+  avg_signal_noise_df = reshape2::melt(dataset_avg_signal_noise_mat, varnames = c('Primate Subclass Markers','Mouse Subclass'), value.name = 'avg_signal_noise')
+  avg_signal_noise_df$num_markers = current_markers
+  
+  all_signal_noise_dfs[[i]] = avg_signal_noise_df
+  
+  avg_exp_df = reshape2::melt(dataset_avg_exp_mat, varnames = c('Primate Subclass Markers','Mouse Subclass'), value.name = 'avg_agg_exp')
+  avg_exp_df$num_markers = current_markers
+  
+  all_exp_dfs[[i]] = avg_exp_df
+
+
+}
+
+temp_signal_noise_dfs = do.call('rbind', all_signal_noise_dfs )
+temp_exp_dfs = do.call('rbind', all_exp_dfs )
+
+temp_signal_noise_dfs$full_label = paste(temp_signal_noise_dfs$`Primate Subclass Markers`, temp_signal_noise_dfs$`Mouse Subclass`, sep = '_')
+table(temp_signal_noise_dfs$full_label)
+keep_index = temp_signal_noise_dfs$full_label %in% c('Chandelier_Chandelier','Chandelier_Pvalb',
+                                               'Pvalb_Pvalb','Pvalb_Chandelier',
+                                               'Sst_Sst','Sst_Sst Chodl',
+                                               'Sst Chodl_Sst Chodl','Sst Chodl_Sst',
+                                               'Vip_Vip','Vip_Sncg',
+                                               'Sncg_Sncg','Sncg_Vip',
+                                               'Lamp5_Lamp5','Lamp5_Lamp5 Lhx6',
+                                               'Lamp5 Lhx6_Lamp5 Lhx6','Lamp5 Lhx6_Lamp5',
+                                               'Pax6_Sncg', 'Pax6_Vip')
+temp_signal_noise_dfs$color_label = 'NA'
+temp_signal_noise_dfs$color_label[keep_index] = as.character(temp_signal_noise_dfs$`Mouse Subclass`)[keep_index]
+temp_signal_noise_dfs
+```
+
+
+
+
+```{r}
+
+temp_signal_noise_dfs$`Primate Subclass Markers` = paste0('Primate ', temp_signal_noise_dfs$`Primate Subclass Markers` )
+
+temp_signal_noise_dfs$`Primate Subclass Markers` = factor(temp_signal_noise_dfs$`Primate Subclass Markers`, 
+                                                          levels = c('Primate Sst','Primate Sst Chodl','Primate Pvalb','Primate Chandelier',
+                                                                     'Primate Lamp5 Lhx6','Primate Lamp5','Primate Vip','Primate Sncg','Primate Pax6'))
+
+temp_exp_dfs$`Primate Subclass Markers` = paste0('Primate ', temp_exp_dfs$`Primate Subclass Markers` )
+
+temp_exp_dfs$`Primate Subclass Markers` = factor(temp_exp_dfs$`Primate Subclass Markers`, 
+                                                          levels = c('Primate Sst','Primate Sst Chodl','Primate Pvalb','Primate Chandelier',
+                                                                     'Primate Lamp5 Lhx6','Primate Lamp5','Primate Vip','Primate Sncg','Primate Pax6'))
+
+
+temp_signal_noise_dfs$color_label = factor(temp_signal_noise_dfs$color_label, levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+                                                                                                           'Lamp5 Lhx6','Lamp5','Vip','Sncg','Pax6', 'NA'))
+
+#temp_exp_dfs$`Primate Subclass Markers` = factor(temp_exp_dfs$`Primate Subclass Markers`, levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+#                                                                                                           'Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))
+
+#temp_exp_dfs$color_label = factor(temp_exp_dfs$color_label, levels = c('Sst','Sst Chodl','Pvalb','Chandelier',
+#                                                                                                           'Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg', 'NA'))
+
+
+
+
+
+p3 = ggplot(temp_signal_noise_dfs, aes(x = num_markers, y = avg_signal_noise, color =`Mouse Subclass`, group = `Mouse Subclass`)) + 
+  geom_point() +
+  geom_line() +
+  scale_x_continuous(breaks = num_total_markers) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  theme_bw() + ylab('Average signal-to-noise ratio') + xlab('Number of Primate subclass markers') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free_y') + ggtitle('Signal-to-Noise of Primate marker expression in Mouse subclasses')
+
+p3
+ggsave(plot = p3, filename = 'avg_signal_noise_primate_in_mouse.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 6, width = 8)
+
+
+temp_exp_dfs = temp_exp_dfs %>% group_by(`Primate Subclass Markers`, num_markers) %>% mutate(zscore_exp = scale(avg_agg_exp))
+
+
+
+p4 = ggplot(temp_exp_dfs, aes(x = num_markers, y = zscore_exp, color =`Mouse Subclass`, group = `Mouse Subclass`)) + 
+  geom_point() +
+  geom_line() +
+  scale_x_continuous(breaks = num_total_markers) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  theme_bw() + ylab('Average aggregate expression') + xlab('Number of Primate subclass markers') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free_y') + ggtitle('Aggregate expression of Primate markers in Mouse subclasses')
+
+p4
+ggsave(plot = p4, filename = 'avg_exp_primate_in_mouse.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 6, width = 8)
+
+
+```
+
+
+
+Re order the enrichment df to match the other stat dfs
+And add a scaling of the enrichment values
+
+```{r}
+
+temp_enrich_dfs = temp_enrich_dfs %>% group_by(num_markers, `Mouse Subclass`) %>% arrange( as.character(`Primate Subclass markers`), .by_group = T)
+
+table(temp_signal_noise_dfs$`Mouse Subclass` == temp_enrich_dfs$`Mouse Subclass`)
+table(temp_signal_noise_dfs$`Primate Subclass Markers` == temp_enrich_dfs$`Primate Subclass markers`)
+
+table(temp_exp_dfs$`Mouse Subclass` == temp_enrich_dfs$`Mouse Subclass`)
+table(temp_exp_dfs$`Primate Subclass Markers` == temp_enrich_dfs$`Primate Subclass markers`)
+
+
+
+temp_enrich_dfs = temp_enrich_dfs %>% group_by(`Primate Subclass markers`, num_markers) %>% mutate(zscore_enrich = scale(avg_enrichment))
+
+
+```
+
+
+
+
+```{r}
+
+all_stats_df = temp_signal_noise_dfs
+all_stats_df$avg_agg_exp = temp_exp_dfs$avg_agg_exp
+all_stats_df$zscore_exp = temp_exp_dfs$zscore_exp
+all_stats_df$avg_enrich_exp = temp_enrich_dfs$avg_enrichment
+all_stats_df$zscore_enrich = temp_enrich_dfs$zscore_enrich
+
+marker_colors = c('white','grey70','grey50','grey30','black')
+names(marker_colors) = as.character(num_total_markers)
+
+all_stats_df$num_markers = as.character(all_stats_df$num_markers)
+all_stats_df$num_markers = factor(all_stats_df$num_markers, levels = c(as.character(num_total_markers)))
+
+
+p5 = ggplot(all_stats_df, aes( y = avg_signal_noise, x = avg_agg_exp , color =color_label, group = `Mouse Subclass`)) + 
+  geom_point(shape = 21,size = 2, aes(fill = num_markers)) +
+  geom_line() +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  scale_fill_manual(values = marker_colors, name = '# markers') +
+  theme_bw() + ylab('Average signal-to-noise ratio') + xlab('Average aggregate expression') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free_y') + ggtitle('Primate marker expression in Mouse subclasses')
+
+p5
+
+ggsave(plot = p5, filename = 'exp_vs_signal_noise_primate_in_mouse.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 6, width = 8)
+
+
+p6 = ggplot(all_stats_df, aes( x = avg_agg_exp, y =avg_enrich_exp , color =color_label, group = `Mouse Subclass`)) + 
+  geom_point(shape = 21,size = 2, aes(fill = num_markers)) +
+  geom_line() + 
+  #coord_cartesian(ylim=c(0, 3.5)) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  scale_fill_manual(values = marker_colors, name = '# markers') +
+  theme_bw() + ylab('Expression enrichment') + xlab('Aggregate expression') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free') + ggtitle('Primate marker expression in Mouse subclasses')
+
+p6
+
+ggsave(plot = p6, filename = 'enrichment_vs_agg_exp_primate_in_mouse.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 6, width = 8)
+
+```
+
+```{r}
+
+
+all_stats_df %>% group_by(`Primate Subclass Markers`, `Mouse Subclass`) %>% summarise(mean_enrichment = mean(avg_enrich_exp)) %>%
+  group_by(`Primate Subclass Markers`) %>% arrange(desc(mean_enrichment), .by_group = T)
+
+```
+
+And plot the Primate Sncg and Primate Pax6 enrichment against each other for the Mouse Sncg subclass
+
+```{r}
+
+snapshot_df = all_stats_df %>% filter(`Primate Subclass Markers` %in% c('Primate Sncg','Primate Pax6') & `Mouse Subclass` == 'Sncg') %>%
+  select(`Primate Subclass Markers`, `Mouse Subclass`, avg_enrich_exp, num_markers) %>% 
+  tidyr::pivot_wider(names_from = `Primate Subclass Markers`, values_from = avg_enrich_exp)
+
+
+p7 = ggplot(snapshot_df , aes(x = `Primate Sncg`, y = `Primate Pax6`, color = `Mouse Subclass`)) +
+  geom_point(shape = 21,size = 5, aes(fill = num_markers)) +
+  geom_abline(slope = 1, intercept = 0, color = 'red') +
+  ylim(0, 2.8) + xlim(0, 2) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  scale_fill_manual(values = marker_colors, name = '# markers') +
+  ggtitle('Mouse Sncg Subclass') + ylab('Primate Pax6 marker enrichment') + xlab('Primate Sncg marker enrichment') +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
+p7
+
+ggsave(plot = p7, filename = 'mouse_snch_primate_sncg_pax6_enrichment.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 2.5, width = 4)
+
+
+```
+
+
+```{r}
+
+saveRDS(all_stats_df, file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/mouse_primate_marker_comp/all_stats_df.rds')
+
+```
+
+
+```{r}
+
+all_stats_df = readRDS('/home/werner/projects/mouse_brain_consensus_taxonomy/data/mouse_primate_marker_comp/all_stats_df.rds')
+
+
+all_stats_df %>% filter(`Mouse Subclass` == 'Pvalb' & num_markers == 50) %>% arrange(desc(avg_enrich_exp))
+
+```
+
+```{r}
+num_total_markers = c(1, 10, 25, 50, 100)
+marker_colors = c('white','grey70','grey50','grey30','black')
+names(marker_colors) = as.character(num_total_markers)
+
+
+
+ggplot(all_stats_df, aes( y = avg_signal_noise, x= avg_enrich_exp, color =color_label, group = `Mouse Subclass`)) + 
+  geom_point(shape = 21,size = 2, aes(fill = num_markers)) +
+  geom_line() + 
+  #coord_cartesian(ylim=c(0, 3.5)) +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  scale_fill_manual(values = marker_colors, name = '# markers') +
+  theme_bw() + ylab('Expression enrichment') + xlab('Aggregate expression') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free') + ggtitle('Primate marker expression in Mouse subclasses')
+
+
+```
+
+
+```{r}
+
+p6 = ggplot(all_stats_df, aes( x = avg_agg_exp, y =avg_enrich_exp , color =color_label, group = `Mouse Subclass`)) + 
+  geom_point(shape = 21,size = 3, aes(fill = num_markers)) +
+  geom_line(linewidth = 1) + geom_hline(yintercept = 1, color = 'black', linetype = 'dashed') +
+  scale_color_manual(values = celltype_color_palette, name = 'Mouse Subclass') +
+  scale_fill_manual(values = marker_colors, name = '# markers') +
+  theme_bw() + ylab('Mouse expression enrichment') + xlab('Aggregate mouse expression') +
+  facet_wrap(~`Primate Subclass Markers`, scales = 'free') + ggtitle('Primate marker expression in Mouse subclasses')
+
+p6
+
+ggsave(plot = p6, filename = 'enrichment_vs_agg_exp_primate_in_mouse.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 6, width = 8)
+
+
+```
+
+
+And now look at the primate marker gene enrichment in the orthologous mapped mouse subclasses.
+Specifically interested in these
+
+Mouse Lamp5 - Primate Lamp5
+Mouse Lamp5 - Primate Pax6
+Mouse Vip - Primate Sncg
+Mouse Sncg - Primate Pax6
+Mouse Vip - Primate Vip
+
+
+```{r}
+
+
+get_avg_marker_enrichment_2 = function(sce_obj, study_label, meta_markers, num_markers){
+
+  #Get an annotation for the previous mouse and now orthologous primate subclass labels
+  mouse_subclass = paste0('Mouse_', sce_obj$cell_subclass)
+  primate_subclass = paste0('Primate_', sce_obj$primate_subclass)
+  sce_obj$combined_subclass_label = paste(mouse_subclass, primate_subclass, sep = '|')
+
+  orth_filt = sce_obj$orthology == 'high_orthology'
+  sce_obj = sce_obj[ ,orth_filt ]
+  
+  top_markers = meta_markers %>% filter(rank <= num_markers)
+  
+  #Compute enrichments
+  ct_scores = score_cells(log1p(cpm(sce_obj)), top_markers)
+  ct_enrichment = compute_marker_enrichment(ct_scores)
+  
+  #Get the average enrichment of the marker sets by that combined subclass label
+  colnames(ct_enrichment) = sce_obj$combined_subclass_label
+  marker_enrich_df = reshape2::melt(t(ct_enrichment), varnames = c('combined_subclass', 'primate_marker_set'), value.name = 'enrichment')
+
+  marker_enrich_df = marker_enrich_df %>% group_by(combined_subclass, primate_marker_set) %>% summarise(mean_enrichment = mean(enrichment))
+  marker_enrich_df$study = study_label
+  
+  return(marker_enrich_df)
+
+}
+
+num_total_markers = c(1, 10, 25, 50, 100)
+total_enrich_dfs_list = vector(mode = 'list', length = length(num_total_markers))
+
+for(i in 1:length(num_total_markers)){
+
+  current_num_markers = num_total_markers[i]
+  
+  temp_df_1 = get_avg_marker_enrichment_2(tasic18, 'tasic18', primate_subclass_meta_markers, current_num_markers)
+  temp_df_2 = get_avg_marker_enrichment_2(zeng_10x_cells, 'zeng_10x_cells', primate_subclass_meta_markers, current_num_markers)
+  temp_df_3 = get_avg_marker_enrichment_2(zeng_10x_nuclei, 'zeng_10x_nuclei', primate_subclass_meta_markers, current_num_markers)
+  temp_df_4 = get_avg_marker_enrichment_2(zeng_smart_cells, 'zeng_smart_cells', primate_subclass_meta_markers, current_num_markers)
+  temp_df_5 = get_avg_marker_enrichment_2(zeng_smart_nuclei, 'zeng_smart_nuclei', primate_subclass_meta_markers, current_num_markers)
+  temp_df_6 = get_avg_marker_enrichment_2(zeng_10xv2_wba, 'zeng_10xv2_wba', primate_subclass_meta_markers, current_num_markers)
+  temp_df_7 = get_avg_marker_enrichment_2(zeng_10xv3_wba, 'zeng_10xv3_wba', primate_subclass_meta_markers, current_num_markers)
+  temp_df_8 = get_avg_marker_enrichment_2(macosko_wba, 'macosko_wba', primate_subclass_meta_markers, current_num_markers)
+  
+  
+  all_enrich_df_list = list(temp_df_1, temp_df_2, temp_df_3, temp_df_4, temp_df_5, temp_df_6, temp_df_7, temp_df_8)
+  
+  all_enrich_dfs = do.call('rbind', all_enrich_df_list)
+  
+  all_enrich_dfs = all_enrich_dfs %>% group_by(combined_subclass, primate_marker_set) %>% 
+    summarise(overall_mean_enrichment = mean(mean_enrichment), sd_mean_enrichment = sd(mean_enrichment)) %>%
+    mutate(num_markers = current_num_markers)
+  
+  total_enrich_dfs_list[[i]] = all_enrich_dfs
+
+}
+
+mouse_primate_label_enrich_df = do.call('rbind', total_enrich_dfs_list)
+
+
+mouse_primate_label_enrich_df
+
+
+```
+
+
+
+
+
+```{r}
+
+mouse_primate_label_enrich_df$primate_subclass_label = sapply(strsplit(as.character(mouse_primate_label_enrich_df$primate_marker_set), 
+                                                                       split = '|', fixed = T), '[[', 2)
+mouse_primate_label_enrich_df$num_markers = as.character(mouse_primate_label_enrich_df$num_markers)
+mouse_primate_label_enrich_df$num_markers = factor(mouse_primate_label_enrich_df$num_markers , levels = c('1','10','25','50','100'))
+```
+
+
+```{r}
+
+plotting_df = mouse_primate_label_enrich_df %>% filter(combined_subclass %in% 
+                                                         c('Mouse_Sncg|Primate_Pax6', 'Mouse_Vip|Primate_Pax6', 'Mouse_Lamp5|Primate_Pax6'))
+
+plotting_df$label_color = plotting_df$primate_subclass_label
+
+index = plotting_df$combined_subclass == 'Mouse_Lamp5|Primate_Pax6' & !plotting_df$primate_subclass_label %in% c('Lamp5','Pax6')
+plotting_df$label_color[index] = 'NA'
+plotting_df$overall_mean_enrichment[index] = NA
+plotting_df$sd_mean_enrichment[index] = NA
+index = plotting_df$combined_subclass == 'Mouse_Vip|Primate_Pax6' & !plotting_df$primate_subclass_label %in% c('Vip','Pax6')
+plotting_df$label_color[index] = 'NA'
+plotting_df$overall_mean_enrichment[index] = NA
+plotting_df$sd_mean_enrichment[index] = NA
+index = plotting_df$combined_subclass == 'Mouse_Sncg|Primate_Pax6' & !plotting_df$primate_subclass_label %in% c('Sncg','Pax6')
+plotting_df$label_color[index] = 'NA'
+plotting_df$overall_mean_enrichment[index] = NA
+plotting_df$sd_mean_enrichment[index] = NA
+
+
+plotting_df$combined_subclass = factor(plotting_df$combined_subclass, levels = c('Mouse_Vip|Primate_Pax6','Mouse_Lamp5|Primate_Pax6','Mouse_Sncg|Primate_Pax6'))
+
+p8 = ggplot(plotting_df, aes(x = num_markers, y = overall_mean_enrichment, color = label_color, group = primate_subclass_label)) +
+  geom_point(size = 3) + geom_line(show.legend = F) + 
+  geom_pointrange(aes(ymax = overall_mean_enrichment + sd_mean_enrichment, ymin = overall_mean_enrichment - sd_mean_enrichment ),
+                position=position_dodge(0.05), show.legend = F) +
+  ggtitle('Previous Mouse Sncg/Vip/Lamp5 -> Orthologous Pax6') +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  xlab('Number of Primate Markers') + ylab('Mouse Expression enrichment') +
+  scale_color_manual(values = celltype_color_palette, name = 'Primate markers') +
+  facet_wrap(~combined_subclass)+
+  theme_bw()
+p8
+ggsave(plot = p8, filename = 'mouse_vip_lamp5_sncg_primate_pax6_marker_exp.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 4, width = 7)
+
+
+
+plotting_df = mouse_primate_label_enrich_df %>% filter(combined_subclass %in% 
+                                                         c('Mouse_Vip|Primate_Sncg', 'Mouse_Sncg|Primate_Sncg', 'Mouse_Lamp5|Primate_Sncg'))
+
+plotting_df$label_color = plotting_df$primate_subclass_label
+
+ index = plotting_df$combined_subclass == 'Mouse_Vip|Primate_Sncg' & !plotting_df$primate_subclass_label %in% c('Vip','Sncg')
+ plotting_df$label_color[index] = 'NA'
+ plotting_df$overall_mean_enrichment[index] = NA
+ plotting_df$sd_mean_enrichment[index] = NA
+ index = plotting_df$combined_subclass == 'Mouse_Lamp5|Primate_Sncg' & !plotting_df$primate_subclass_label %in% c('Lamp5','Sncg')
+ plotting_df$label_color[index] = 'NA'
+ plotting_df$overall_mean_enrichment[index] = NA
+ plotting_df$sd_mean_enrichment[index] = NA
+ index = plotting_df$combined_subclass == 'Mouse_Sncg|Primate_Sncg' & !plotting_df$primate_subclass_label %in% c('Pax6','Sncg')
+ plotting_df$label_color[index] = 'NA'
+ plotting_df$overall_mean_enrichment[index] = NA
+ plotting_df$sd_mean_enrichment[index] = NA
+
+plotting_df$combined_subclass = factor(plotting_df$combined_subclass, levels = c('Mouse_Vip|Primate_Sncg','Mouse_Lamp5|Primate_Sncg','Mouse_Sncg|Primate_Sncg'))
+ 
+p9 = ggplot(plotting_df, aes(x = num_markers, y = overall_mean_enrichment, color = label_color, group = primate_subclass_label)) +
+  geom_point(size = 3) + geom_line(show.legend = F) + 
+  geom_pointrange(aes(ymax = overall_mean_enrichment + sd_mean_enrichment, ymin = overall_mean_enrichment - sd_mean_enrichment ),
+                position=position_dodge(0.05), show.legend = F) +
+  ggtitle('Previous Mouse Sncg/Vip/Lamp5 -> Orthologous Sncg') +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  xlab('Number of Primate Markers') + ylab('Mouse Expression enrichment') +
+  scale_color_manual(values = celltype_color_palette, name = 'Primate markers') +
+  facet_wrap(~combined_subclass)+
+  theme_bw()
+p9
+ggsave(plot = p9, filename = 'mouse_vip_lamp5_sncg_primate_sncg_marker_exp.pdf', path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 4, width = 7)
+
+
+
+```
+
+```{r}
+
+plotting_df = mouse_primate_label_enrich_df %>% filter(combined_subclass == 'Mouse_Vip|Primate_Sncg')
+
+ggplot(plotting_df, aes(x = num_markers, y = overall_mean_enrichment, color = primate_subclass_label, group = primate_subclass_label)) +
+  geom_point(size = 3) + geom_line(show.legend = F) + ggtitle('Previous Mouse Vip -> Orthologous Sncg') +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  xlab('Number of Primate Markers') + ylab('Mouse Expression enrichment') +
+  scale_color_manual(values = celltype_color_palette, name = 'Primate markers') +
+  theme_bw()
+
+
+```
+
+
+
+
+###################################
+
+For those same comparisons, plot the full metaNeighbor AUROCs.
+Highlighting that while metaneighbor is identifying the best matches, at least for the orthologous Sncg subclass, it is just barely the best match
+
+
+####################################
+
+mouse vs primate subclass full aurocs
+
+
+
+```{r}
+
+#contains mouse_clust_primate_sub_aurocs, mouse_clust_primate_sub_best_hits, mouseMC_primate_sub_best_hits, mouseMC_primate_clust_best_hits
+#looking for the mouse_clust_primate_sub_aurocs
+load('/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/cross_mammal_MN_results.Rdata')
+
+#Has the combined mouse metadata
+#interneuron_metadata
+load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/20_3_25_interneuron_mouse_metadata.Rdata')
+
+interneuron_metadata %>% filter(cell_subclass == 'Sncg' & primate_subclass == 'Sncg') %>% group_by(study, cell_cluster) %>%
+  summarise(n = n())
+
+```
+
+From the combined mouse metadata, grab the clusters of interest
+
+first comparison is
+
+Mouse Vip/Lamp5/Sncg -> Primate Pax6
+```{r}
+
+get_MN_mouse_primate_comp = function(target_mouse_subclass, ref_primate_subclass, mouse_metadata, MN_aurocs){
+
+  comp_df = mouse_metadata %>% filter(cell_subclass == target_mouse_subclass & primate_subclass == ref_primate_subclass) %>% 
+    group_by(study, cell_cluster) %>%
+    summarise(n = n())
+  comp_df$full_cluster = paste(comp_df$study, comp_df$cell_cluster, sep = '|')
+  
+  c_index = colnames(MN_aurocs) %in% comp_df$full_cluster
+  r_index = grepl('human', rownames(MN_aurocs)) | grepl('chimp', rownames(MN_aurocs)) |
+    grepl('gorilla', rownames(MN_aurocs)) | grepl('macaca', rownames(MN_aurocs)) | 
+    grepl('marmoset', rownames(MN_aurocs)) 
+  
+  
+  comp_auroc_df = reshape2::melt(MN_aurocs[r_index, c_index], varnames = c('ref_primate_cluster','target_mouse_cluster'), value.name = 'auroc')
+  comp_auroc_df$primate_subclass = sapply(strsplit(as.character(comp_auroc_df$ref_primate_cluster), split = '|', fixed = T), '[[', 2)
+  comp_auroc_df$primate_subclass[comp_auroc_df$primate_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+  comp_auroc_df = comp_auroc_df %>% group_by(target_mouse_cluster, primate_subclass) %>% summarise(primate_auroc = mean(auroc))
+  order_vec = comp_auroc_df %>% group_by(primate_subclass) %>% summarise(median = median(primate_auroc)) %>% arrange(median) %>% pull(primate_subclass)
+  
+  comp_auroc_df$primate_subclass = factor(comp_auroc_df$primate_subclass, levels = order_vec)
+  
+  auroc_plot = ggplot(comp_auroc_df, aes(x = primate_subclass, y = primate_auroc, fill = primate_subclass)) + geom_boxplot() +
+    geom_hline(yintercept = .5, linetype = 'dashed', color = 'black') +
+    xlab('Primate Subclass') + ylab('Mean Primate MetaNeighbor AUROC') + 
+    scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+    ggtitle(sprintf('Previous Mouse %s -> Orthologous %s',target_mouse_subclass ,ref_primate_subclass )) +
+    scale_fill_manual(values = celltype_color_palette, name = 'Primate Subclass') + ylim(0,1) + theme_bw()
+  
+  return(auroc_plot)
+
+}
+
+
+p_vip_pax6 = get_MN_mouse_primate_comp('Vip','Pax6', interneuron_metadata, mouse_clust_primate_sub_aurocs)
+p_vip_pax6
+
+p_lamp5_pax6 = get_MN_mouse_primate_comp('Lamp5','Pax6', interneuron_metadata, mouse_clust_primate_sub_aurocs)
+p_lamp5_pax6
+
+p_sncg_pax6 = get_MN_mouse_primate_comp('Sncg','Pax6', interneuron_metadata, mouse_clust_primate_sub_aurocs)
+p_sncg_pax6
+
+
+p_vip_sncg = get_MN_mouse_primate_comp('Vip','Sncg', interneuron_metadata, mouse_clust_primate_sub_aurocs)
+p_vip_sncg
+
+
+```
+
+
+```{r}
+
+mouse_metadata = interneuron_metadata
+target_mouse_subclass = 'Sncg'
+ref_primate_subclass = 'Sncg'
+MN_aurocs = mouse_clust_primate_sub_aurocs
+
+comp_df = mouse_metadata %>% filter(cell_subclass == target_mouse_subclass & primate_subclass == ref_primate_subclass) %>% 
+  group_by(study, cell_cluster) %>%
+  summarise(n = n())
+comp_df$full_cluster = paste(comp_df$study, comp_df$cell_cluster, sep = '|')
+
+c_index = colnames(MN_aurocs) %in% comp_df$full_cluster
+r_index = grepl('human', rownames(MN_aurocs)) | grepl('chimp', rownames(MN_aurocs)) |
+  grepl('gorilla', rownames(MN_aurocs)) | grepl('macaca', rownames(MN_aurocs)) | 
+  grepl('marmoset', rownames(MN_aurocs)) 
+
+comp_auroc_df = data.frame(auroc = MN_aurocs[r_index, c_index], 
+                           ref_primate_cluster = names(MN_aurocs[r_index, c_index]),
+                           target_mouse_cluster = comp_df$full_cluster[1])
+
+#comp_auroc_df = reshape2::melt(MN_aurocs[r_index, c_index], varnames = c('ref_primate_cluster','target_mouse_cluster'), value.name = 'auroc')
+comp_auroc_df$primate_subclass = sapply(strsplit(as.character(comp_auroc_df$ref_primate_cluster), split = '|', fixed = T), '[[', 2)
+comp_auroc_df$primate_subclass[comp_auroc_df$primate_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+comp_auroc_df = comp_auroc_df %>% group_by(target_mouse_cluster, primate_subclass) %>% summarise(primate_auroc = mean(auroc))
+order_vec = comp_auroc_df %>% arrange(primate_auroc) %>% pull(primate_subclass)
+
+comp_auroc_df$primate_subclass = factor(comp_auroc_df$primate_subclass, levels = order_vec)
+
+p_sncg_sncg = ggplot(comp_auroc_df, aes(x = primate_subclass, y = primate_auroc, color = primate_subclass)) + geom_point(size = 5) +
+  geom_hline(yintercept = .5, linetype = 'dashed', color = 'black') +
+  xlab('Primate Subclass') + ylab('Mean Primate MetaNeighbor AUROC') + 
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  ggtitle(sprintf('Previous Mouse %s -> Orthologous %s',target_mouse_subclass ,ref_primate_subclass )) +
+  scale_color_manual(values = celltype_color_palette, name = 'Primate Subclass') + ylim(0,1) + theme_bw()
+p_sncg_sncg
+
+
+
+
+target_mouse_subclass = 'Lamp5'
+ref_primate_subclass = 'Sncg'
+
+comp_df = mouse_metadata %>% filter(cell_subclass == target_mouse_subclass & primate_subclass == ref_primate_subclass) %>% 
+  group_by(study, cell_cluster) %>%
+  summarise(n = n())
+comp_df$full_cluster = paste(comp_df$study, comp_df$cell_cluster, sep = '|')
+
+c_index = colnames(MN_aurocs) %in% comp_df$full_cluster
+r_index = grepl('human', rownames(MN_aurocs)) | grepl('chimp', rownames(MN_aurocs)) |
+  grepl('gorilla', rownames(MN_aurocs)) | grepl('macaca', rownames(MN_aurocs)) | 
+  grepl('marmoset', rownames(MN_aurocs)) 
+
+comp_auroc_df = data.frame(auroc = MN_aurocs[r_index, c_index], 
+                           ref_primate_cluster = names(MN_aurocs[r_index, c_index]),
+                           target_mouse_cluster = comp_df$full_cluster[1])
+
+#comp_auroc_df = reshape2::melt(MN_aurocs[r_index, c_index], varnames = c('ref_primate_cluster','target_mouse_cluster'), value.name = 'auroc')
+comp_auroc_df$primate_subclass = sapply(strsplit(as.character(comp_auroc_df$ref_primate_cluster), split = '|', fixed = T), '[[', 2)
+comp_auroc_df$primate_subclass[comp_auroc_df$primate_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+comp_auroc_df = comp_auroc_df %>% group_by(target_mouse_cluster, primate_subclass) %>% summarise(primate_auroc = mean(auroc))
+order_vec = comp_auroc_df %>% arrange(primate_auroc) %>% pull(primate_subclass)
+
+comp_auroc_df$primate_subclass = factor(comp_auroc_df$primate_subclass, levels = order_vec)
+
+p_lamp5_sncg = ggplot(comp_auroc_df, aes(x = primate_subclass, y = primate_auroc, color = primate_subclass)) + geom_point(size = 5) +
+  geom_hline(yintercept = .5, linetype = 'dashed', color = 'black') +
+  xlab('Primate Subclass') + ylab('Mean Primate MetaNeighbor AUROC') + 
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  ggtitle(sprintf('Previous Mouse %s -> Orthologous %s',target_mouse_subclass ,ref_primate_subclass )) +
+  scale_color_manual(values = celltype_color_palette, name = 'Primate Subclass') + ylim(0,1) + theme_bw()
+p_lamp5_sncg
+
+
+```
+
+```{r}
+
+ggsave(plot = p_vip_pax6, filename = 'full_MNaurocs_mouse_vip_primate_pax6.pdf', 
+       path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 3, width = 5)
+
+ggsave(plot = p_lamp5_pax6, filename = 'full_MNaurocs_mouse_lamp5_primate_pax6.pdf', 
+       path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 3, width = 5)
+
+ggsave(plot = p_sncg_pax6, filename = 'full_MNaurocs_mouse_sncg_primate_pax6.pdf', 
+       path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 3, width = 5)
+
+ggsave(plot = p_vip_sncg, filename = 'full_MNaurocs_mouse_vip_primate_sncg.pdf', 
+       path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 3, width = 5)
+
+ggsave(plot = p_lamp5_sncg, filename = 'full_MNaurocs_mouse_lamp5_primate_sncg.pdf', 
+       path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 3, width = 5)
+
+ggsave(plot = p_sncg_sncg, filename = 'full_MNaurocs_mouse_sncg_primate_sncg.pdf', 
+       path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 3, width = 5)
+
+
+```
+
+
+
+And now get the difference between the top and next best match in the full aurocs, between mouse and primates, 
+show distributions across the mouse orthologous subclasses
+
+
+```{r}
+
+orth_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C',
+                           'low orthology' = 'grey90')
+
+
+MN_aurocs = mouse_clust_primate_sub_aurocs
+
+r_index = grepl('human', rownames(MN_aurocs)) | grepl('chimp', rownames(MN_aurocs)) |
+  grepl('gorilla', rownames(MN_aurocs)) | grepl('macaca', rownames(MN_aurocs)) | 
+  grepl('marmoset', rownames(MN_aurocs)) 
+
+c_index = !r_index
+
+comp_auroc_df = reshape2::melt(MN_aurocs[r_index, c_index], varnames = c('ref_primate_cluster','target_mouse_cluster'), value.name = 'auroc')
+comp_auroc_df$primate_subclass = sapply(strsplit(as.character(comp_auroc_df$ref_primate_cluster), split = '|', fixed = T), '[[', 2)
+comp_auroc_df$primate_subclass[comp_auroc_df$primate_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+comp_auroc_df = comp_auroc_df %>% group_by(target_mouse_cluster, primate_subclass) %>% summarise(primate_auroc = mean(auroc))
+  
+comp_auroc_df$row_id = 1:nrow(comp_auroc_df)
+
+
+#Get the max auroc per cluster
+max_aurocs_df = comp_auroc_df %>% group_by(target_mouse_cluster) %>% mutate(max_auroc = max(primate_auroc)) %>% filter(primate_auroc == max_auroc)
+
+#Filter out the max and get the next best
+second_best_aurocs_df = comp_auroc_df %>% filter(!row_id %in% max_aurocs_df$row_id) %>% group_by(target_mouse_cluster) %>%
+  mutate(second_best_auroc = max(primate_auroc)) %>% filter(primate_auroc == second_best_auroc)
+
+
+table(max_aurocs_df$target_mouse_cluster == second_best_aurocs_df$target_mouse_cluster)
+max_aurocs_df$second_best_auroc = second_best_aurocs_df$second_best_auroc
+
+#This will have all the mouse clusters, including the ones with low orthology
+max_aurocs_df = max_aurocs_df %>% mutate(best_next_best_diff = max_auroc - second_best_auroc)
+
+
+#The interneuron metadata only has data for the high orthologt clusters
+interneuron_metadata$full_cluster = paste(interneuron_metadata$study, interneuron_metadata$cell_cluster, sep = '|')
+primate_subclass_mouse_cluster_mapping = interneuron_metadata %>% group_by(full_cluster, primate_subclass) %>% summarise(n = n())
+
+
+index = match(max_aurocs_df$target_mouse_cluster, primate_subclass_mouse_cluster_mapping$full_cluster )
+primate_subclass_mouse_cluster_mapping[index, ]
+
+max_aurocs_df$orthologous_subclass = primate_subclass_mouse_cluster_mapping$primate_subclass[index]
+max_aurocs_df$orthologous_subclass[is.na(max_aurocs_df$orthologous_subclass)] = 'low orthology'
+
+order_vec = max_aurocs_df %>% group_by(orthologous_subclass) %>% summarise(median = median(best_next_best_diff)) %>% arrange(desc(median)) %>%
+  pull(orthologous_subclass)
+
+max_aurocs_df$orthologous_subclass = factor(max_aurocs_df$orthologous_subclass, levels = order_vec)
+
+wide_discrim_plot = ggplot(max_aurocs_df, aes(x = orthologous_subclass, y = best_next_best_diff, fill = orthologous_subclass)) + geom_boxplot(show.legend = F) +
+  ylab('Mouse cluster discriminability (Best - Next best AUROC)') + xlab('Mouse orthologous subclasses') +
+  scale_fill_manual(values = orth_color_palette) +
+  theme_bw() + theme(aspect.ratio = 1)
+
+long_discrim_plot = ggplot(max_aurocs_df, aes(y = orthologous_subclass, x = best_next_best_diff, fill = orthologous_subclass)) + geom_boxplot(show.legend = F) +
+  xlab('Mouse cluster discriminability (Best - Next best AUROC)') + ylab('Mouse orthologous subclasses') +
+  scale_fill_manual(values = orth_color_palette) + scale_y_discrete(limits=rev) +
+  theme_bw() + theme(aspect.ratio = 1)
+
+wide_discrim_plot 
+long_discrim_plot 
+
+ggsave(plot = wide_discrim_plot , filename = 'wide_mouse_cluster_discriminability_boxplots.pdf', 
+       path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 3, width = 5)
+ggsave(plot = long_discrim_plot , filename = 'long_mouse_cluster_discriminability_boxplots.pdf', 
+       path = '../graphs/mouse_primate_marker_comp/', device = 'pdf', useDingbats = F,
+       height = 5, width = 3)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+######################################
+
+Now run MetaNeighbor again but on the high orthologous matched cell-types across the mouse and primates
+
+Use Procedure 3 to test which GO terms are contributing to subclass replicability
+Particular interest on the Sncg subclass
+
+#######################################
+
+Only use the orthologous clusters
+Only need the primate_subclass metadata
+```{r}
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
+zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
+zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
+zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
+zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
+zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
+macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
+
+gc()
+
+keep_meta = colData(tasic18)[ , c('study','primate_subclass')]
+colData(tasic18)= keep_meta
+keep_meta = colData(zeng_10x_cells)[ , c('study','primate_subclass')]
+colData(zeng_10x_cells)= keep_meta
+keep_meta = colData(zeng_10x_nuclei)[ , c('study','primate_subclass')]
+colData(zeng_10x_nuclei)= keep_meta
+keep_meta = colData(zeng_smart_nuclei)[ , c('study','primate_subclass')]
+colData(zeng_smart_nuclei)= keep_meta
+keep_meta = colData(zeng_smart_cells)[ , c('study','primate_subclass')]
+colData(zeng_smart_cells)= keep_meta
+keep_meta = colData(zeng_10xv2_wba)[ , c('study','primate_subclass')]
+colData(zeng_10xv2_wba)= keep_meta
+keep_meta = colData(zeng_10xv3_wba)[ , c('study','primate_subclass')]
+colData(zeng_10xv3_wba)= keep_meta
+keep_meta = colData(macosko_wba)[ , c('study','primate_subclass')]
+colData(macosko_wba)= keep_meta
+
+```
+
+load the primate data
+
+```{r}
+
+human_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_10x_gaba.rds')
+human_ss = readRDS( file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_ss_gaba.rds')
+
+chimp_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_10x_gaba.rds')
+chimp_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_ss_gaba.rds')
+
+gorilla_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_10x_gaba.rds')
+gorilla_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_ss_gaba.rds')
+
+macaca_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/macaca_data_10x_gaba.rds')
+
+marmoset_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
+
+```
+
+```{r}
+
+primate_cluster_mappings = data.table::fread('../data/cross_species_mapping_cls86.csv')
+primate_cluster_mappings
+```
+
+Add the consensus cluster label and then filter out cells not in a consensus cluster
+```{r}
+
+index = match(human_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+human_10x = human_10x[ ,!is.na(human_10x$consensus_cluster_label)]
+
+index = match(human_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+human_ss = human_ss[ ,!is.na(human_ss$consensus_cluster_label)]
+
+
+index = match(chimp_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+chimp_10x = chimp_10x[ ,!is.na(chimp_10x$consensus_cluster_label)]
+
+index = match(chimp_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+chimp_ss = chimp_ss[ ,!is.na(chimp_ss$consensus_cluster_label)]
+
+
+index = match(gorilla_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+gorilla_10x = gorilla_10x[ ,!is.na(gorilla_10x$consensus_cluster_label)]
+
+index = match(gorilla_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+gorilla_ss = gorilla_ss[ ,!is.na(gorilla_ss$consensus_cluster_label)]
+
+
+index = match(macaca_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+macaca_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+macaca_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+macaca_10x = macaca_10x[ ,!is.na(macaca_10x$consensus_cluster_label)]
+
+index = match(marmoset_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+marmoset_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+marmoset_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+marmoset_10x = marmoset_10x[ ,!is.na(marmoset_10x$consensus_cluster_label)]
+
+gc()
+
+```
+
+
+```{r}
+
+keep_meta = colData(human_10x)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(human_10x)= keep_meta
+
+keep_meta = colData(human_ss)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(human_ss)= keep_meta
+
+keep_meta = colData(chimp_10x)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(chimp_10x)= keep_meta
+
+keep_meta = colData(chimp_ss)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(chimp_ss)= keep_meta
+
+keep_meta = colData(gorilla_10x)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(gorilla_10x)= keep_meta
+
+keep_meta = colData(gorilla_ss)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(gorilla_ss)= keep_meta
+
+keep_meta = colData(macaca_10x)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(macaca_10x)= keep_meta
+
+keep_meta = colData(marmoset_10x)[ , c('species_tech','subclass_label')]
+colnames(keep_meta) = c('study','primate_subclass')
+colData(marmoset_10x)= keep_meta
+
+```
+
+```{r}
+
+all_mammal_sce = list(
+  human_10x = human_10x,
+  human_ss = human_ss,
+  chimp_10x = chimp_10x, 
+  chimp_ss = chimp_ss,
+  gorilla_10x = gorilla_10x, 
+  gorilla_ss = gorilla_ss,
+  marmoset_10x = marmoset_10x,
+  macaca_10x = macaca_10x,
+  tasic18 = tasic18,
+  zeng_10x_cells = zeng_10x_cells,
+  zeng_10x_nuclei = zeng_10x_nuclei,
+  zeng_smart_cells = zeng_smart_cells,
+  zeng_smart_nuclei = zeng_smart_nuclei,
+  zeng_10xv2_wba = zeng_10xv2_wba,
+  zeng_10xv3_wba = zeng_10xv3_wba,
+  macosko_wba = macosko_wba
+)
+
+
+```
+
+
+Total primate and mouse cells is 595,300
+
+```{r}
+library(MetaNeighbor)
+
+```
+
+```{r}
+
+merged_mammal_sce = mergeSCE(all_mammal_sce)
+dim(merged_mammal_sce)
+
+colData(merged_mammal_sce)
+
+rm(all_mammal_sce)
+gc()
+```
+
+
+get the mouse GO terms
+
+```{r}
+library(org.Mm.eg.db)
+library(GO.db)
+
+
+make_go_mouse = function() {
+    go_sets = as.list(org.Mm.egGO2ALLEGS)
+    all_genes = unique(unlist(go_sets))
+    entrez_to_symbols = unlist(mget(all_genes, org.Mm.egSYMBOL))
+    go_sets = lapply(go_sets, function(gs) { unique(entrez_to_symbols[gs]) })
+    names(go_sets) = sapply(names(go_sets), full_go_name)
+    saveRDS(go_sets, "/home/werner/projects/mouse_brain_consensus_taxonomy/data/mouse_go/go_mouse.rds")
+}
+
+full_go_name = function(go_id) {
+    go_term = GOTERM[[go_id]]
+    return(paste(go_id, Term(go_term), Ontology(go_term), sep = "|"))
+}
+
+make_go_mouse()
+
+
+mouse_go_sets = readRDS("/home/werner/projects/mouse_brain_consensus_taxonomy/data/mouse_go/go_mouse.rds")
+mouse_go_sets 
+```
+
+convert mouse gene names to ortholog names and filter
+
+```{r}
+final_present_1to1s = readRDS('/home/werner/projects/mouse_brain_consensus_taxonomy/data/final_present_1to1s.rds')
+
+#Convert the present orthologs into mouse gene symbols
+known_orth_genes = rownames(merged_mammal_sce)
+
+index = match(known_orth_genes, final_present_1to1s$`Gene name`)
+known_mouse_genes = final_present_1to1s$`Mouse gene name`[index]
+#Filter the mouse GO terms to the gene that are present
+mouse_go_sets = lapply(mouse_go_sets , function(gene_set) { gene_set[gene_set %in% known_mouse_genes]})
+min_size = 10
+max_size = 100
+go_set_size = sapply(mouse_go_sets , length)
+mouse_go_sets  = mouse_go_sets [go_set_size >= min_size & go_set_size <= max_size]
+length(mouse_go_sets)
+
+#And then convert the mouse GO terms to the shared ortholog gene symbols
+mouse_go_sets = lapply(mouse_go_sets , function(gene_set) { 
+  index = match(gene_set, final_present_1to1s$`Mouse gene name`)
+  gene_set = final_present_1to1s$`Gene name`[index]})
+
+mouse_go_sets[1:5]
+```
+
+```{r}
+
+rm(tasic18, zeng_10x_cells, zeng_10x_nuclei, zeng_10xv2_wba, zeng_10xv3_wba, macosko_wba, zeng_smart_cells, zeng_smart_nuclei, human_10x, human_ss,
+   chimp_10x, chimp_ss, gorilla_ss, gorilla_10x, marmoset_10x, macaca_10x)
+gc()
+```
+
+
+
+Run supervised MetaNeighbor
+
+
+```{r}
+
+orth_go_aurocs = MetaNeighbor(dat = merged_mammal_sce,
+                              experiment_labels = merged_mammal_sce$study_id,
+                              celltype_labels = merged_mammal_sce$primate_subclass,
+                              genesets = mouse_go_sets,
+                              fast_version = T, bplot = F, batch_size = 50)
+
+write.table(orth_go_aurocs, '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/matched_mouse_primate_orth_celltypes_mouseGO_MN.txt')
+
+
+```
+
+
+```{r}
+
+orth_go_aurocs = read.table( '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/matched_mouse_primate_orth_celltypes_mouseGO_MN.txt')
+head(orth_go_aurocs)
+
+dim(orth_go_aurocs)
+
+```
+
+```{r}
+#MetaNeighbor::plotBPlot(head(orth_go_aurocs, 100))
+
+gs_size = sapply(mouse_go_sets, length)
+aurocs_df = data.frame(go_term = rownames(orth_go_aurocs), orth_go_aurocs)
+aurocs_df$average = rowMeans(orth_go_aurocs)
+aurocs_df$n_genes = gs_size[rownames(orth_go_aurocs)]
+
+aurocs_df %>% filter(n_genes <=20) %>% arrange(desc(Sncg))
+
+
+plot_df = aurocs_df %>% dplyr::select(-c(average, n_genes)) %>% mutate(go_term = rownames(aurocs_df)) %>% 
+  tidyr::pivot_longer(!go_term, names_to = 'Subclass', values_to = 'aurocs')
+
+ggplot(plot_df, aes(x = Subclass, y = aurocs)) + geom_boxplot()
+
+```
+
+
+And now just doing the metaneighbor with the mouse data
+Add the top 50 primate markers as annotations
+
+```{r}
+mouse_go_sets$primate_pax6_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Pax6' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_sncg_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Sncg' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_lamp5_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Lamp5' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_lamp5lhx6_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Lamp5 Lhx6' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_vip_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Vip' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_sst_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Sst' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_sstchodl_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Sst Chodl' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_pvalb_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Pvalb' & rank <= 50) %>% pull(gene)
+mouse_go_sets$primate_chandelier_50 = primate_subclass_meta_markers %>% filter(cell_type == 'Chandelier' & rank <= 50) %>% pull(gene)
+
+
+table(merged_mammal_sce$study_id)
+
+
+cell_index = merged_mammal_sce$study_id %in% c('tasic18','zeng_10x_cells','zeng_10x_nuclei','zeng_smart_cells','zeng_smart_nuclei',
+                                               'zeng_10xv2_wba','zeng_10xv3_wba','macosko_wba')
+
+merged_mouse_sce = merged_mammal_sce[ , cell_index]
+colData(merged_mouse_sce)
+table(merged_mouse_sce$study)
+
+rm(merged_mammal_sce)
+gc()
+```
+
+```{r}
+
+start = Sys.time()
+mouse_go_aurocs = MetaNeighbor(dat = merged_mouse_sce,
+                              experiment_labels = merged_mouse_sce$study_id,
+                              celltype_labels = merged_mouse_sce$primate_subclass,
+                              genesets = mouse_go_sets,
+                              fast_version = T, bplot = F, batch_size = 50)
+
+write.table(mouse_go_aurocs, '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/just_mouse_orth_celltypes_mouseGO_MN.txt')
+
+end = Sys.time() - start
+end
+```
+
+
+```{r}
+
+mouse_go_aurocs = read.table( '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/just_mouse_orth_celltypes_mouseGO_MN.txt')
+head(mouse_go_aurocs)
+
+dim(mouse_go_aurocs)
+
+
+mouse_go_aurocs %>% filter() arrange(desc(Sncg))
+
+```
+
+```{r}
+#MetaNeighbor::plotBPlot(head(orth_go_aurocs, 100))
+
+gs_size = sapply(mouse_go_sets, length)
+aurocs_df = data.frame(go_term = rownames(mouse_go_aurocs), mouse_go_aurocs)
+aurocs_df$average = rowMeans(mouse_go_aurocs)
+aurocs_df$n_genes = gs_size[rownames(mouse_go_aurocs)]
+
+aurocs_df %>% filter(n_genes <=20) %>% group_by() arrange(desc(Sncg))
+
+```
+
+```{r}
+plot_df = aurocs_df %>% dplyr::select(-c(average, n_genes)) %>% mutate(go_term = rownames(aurocs_df)) %>% 
+  tidyr::pivot_longer(!go_term, names_to = 'Subclass', values_to = 'aurocs')
+
+order_vec = plot_df %>% filter(aurocs >= .9) %>% group_by(Subclass) %>% summarise(median = median(aurocs)) %>% arrange(desc(median)) %>% pull(Subclass)
+
+plot_df$Subclass = factor(plot_df$Subclass, levels = order_vec)
+
+ggplot(plot_df, aes(x = Subclass, y = aurocs)) + geom_boxplot() +
+  ylim(.9, 1) + ylab('Mouse GO term MN AUROC') + ggtitle('Mouse orthologous subclasses')
+
+```
+
+
+
+
+```{r}
+
+
+plotDotPlot(dat = merged_mouse_sce,
+            experiment_labels = merged_mouse_sce$study_id,
+            celltype_labels = merged_mouse_sce$primate_subclass,
+            gene_set = mouse_go_sets[['GO:0052866|phosphatidylinositol phosphate phosphatase activity|MF']])
+
+
+```
+Getting top gene sets per subclass and comparing aurocs
+
+```{r}
+top_df = aurocs_df %>% filter(n_genes <= 50) 
+
+top_df = top_df %>% dplyr::select(-c(average, n_genes)) %>% mutate(go_term = rownames(top_df)) %>% 
+  tidyr::pivot_longer(!go_term, names_to = 'Subclass', values_to = 'aurocs')
+
+top_df = top_df %>% group_by(Subclass) %>% arrange(desc(aurocs), .by_group = T) %>% slice_max(aurocs, n = 10)
+
+top_go_terms = unique(top_df$go_term)
+
+
+r_index = rownames(aurocs_df) %in% top_go_terms
+
+top_aurocs_mat = as.matrix(aurocs_df[r_index, c('Chandelier','Lamp5','Lamp5.Lhx6', 'Sncg','Pax6','Vip','Sst','Sst.Chodl','Pvalb')])
+
+col_fun = circlize::colorRamp2(breaks = c(.5, 1), colors = c('grey','red'))
+ComplexHeatmap::Heatmap(top_aurocs_mat, name = 'auroc', show_row_names = F,
+                        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2')
+
+```
+
+
+
+
+
+
+
+#########################################
+
+Now check out marker enrichment of the mouse Vip and Sncg markers in the Primate Vip, Ancestral Sncg, and Sncg subclasses
+
+For both the Sestan and Caglayan datasets,
+
+Then the tree shrew as well, looking at Mouse Vip and Sncg, then Primate Vip, Ancestral Sncg, and Sncg marker enrichment
+
+So just need the mouse orthologous MetaMarkers and then the Sestan, Caglayan, and tree shrew datasets
+######################################
+
+
+```{r}
+
+mouse_subclass_meta_markers = read_meta_markers('markers_to_share/mouse_subclass_metaMarkers.csv.gz')
+mouse_subclass_meta_markers %>% filter(rank <= 5)
+
+
+```
+
+```{r}
+
+sesten_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_ma_sestan/sestan_integrated_gaba.rds')
+
+DefaultAssay(sesten_gaba_data) <- "RNA"
+
+sesten_gaba_data = as.SingleCellExperiment(sesten_gaba_data)
+names(assays(sesten_gaba_data)) = c('counts','cpm')
+
+colnames(colData(sesten_gaba_data))
+
+
+```
+
+Map the de novo clusters to their subclasses, denoting that cluster 17 in Sestan is putative proto-Sncg
+```{r}
+
+sestan_clust_to_subclass = rep(NA, length = ncol(sesten_gaba_data))
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(25)] = 'Sst Chodl'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(2, 5, 7, 13, 14, 18, 21)] = 'Sst'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(8)] = 'Chandelier'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(0,3,6,23)] = 'Pvalb'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(15, 1)] = 'Lamp5'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(11)] = 'Lamp5 Lhx6'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(22, 24)] = 'Pax6'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(16, 20)] = 'Sncg'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(17)] = 'Ancestral Sncg'
+sestan_clust_to_subclass[sesten_gaba_data$seurat_clusters %in% c(4, 9, 10, 12, 19)] = 'Vip'
+
+table(sestan_clust_to_subclass)
+table(is.na(sestan_clust_to_subclass))
+
+sesten_gaba_data$clust_to_subclass = sestan_clust_to_subclass
+
+
+table(sesten_gaba_data$species,sesten_gaba_data$clust_to_subclass )
+
+```
+
+
+And now compute Mouse Vip and Mouse Sncg marker enrichment as we increase the number of markers
+
+```{r}
+
+
+get_mouse_in_primate_marker_enrichment = function(sce_obj, meta_markers, num_markers){
+
+  top_markers = meta_markers  %>% filter(rank <= num_markers)
+  
+  #Compute enrichments
+  ct_scores = score_cells(log1p(cpm(sce_obj)), top_markers)
+  ct_enrichment = compute_marker_enrichment(ct_scores)
+  #Add the subclass labels
+  dataset_cell_marker_enrichs_df = as.data.frame(t(ct_enrichment))
+  dataset_cell_marker_enrichs_df$subclass_labels = sce_obj$clust_to_subclass
+  #Get the mean enrichment for all the marker sets across the mouse subclass labels
+  summary_marker_enrich_df = dataset_cell_marker_enrichs_df %>% group_by(subclass_labels) %>% 
+    summarise(`mouse Sst` = mean(`all|Sst`), `mouse Sst Chodl` = mean(`all|Sst Chodl`),
+              `mouse Pvalb` = mean(`all|Pvalb`), `mouse Chandelier` = mean(`all|Chandelier`),
+              `mouse Lamp5` = mean(`all|Lamp5`), `mouse Lamp5 Lhx6` = mean(`all|Lamp5 Lhx6`),
+              `mouse Vip` = mean(`all|Vip`), `mouse Sncg` = mean(`all|Sncg`),
+              `mouse Pax6` = mean(`all|Pax6`)) %>% tibble::column_to_rownames(var = "subclass_labels")
+  
+  summary_marker_enrich_df = as.matrix(summary_marker_enrich_df)
+  summary_marker_enrich_df = reshape2::melt(summary_marker_enrich_df, 
+                                            varnames = c('Primate subclass','Mouse subclass'), value.name = 'Mouse Marker enrichment')
+  
+  summary_marker_enrich_df = summary_marker_enrich_df %>% mutate(num_markers = num_markers)
+
+  return(summary_marker_enrich_df)
+
+}
+
+
+all_num_markers = 1:50
+
+all_mouse_in_sestan_list = vector(mode = 'list', length = length(all_num_markers))
+
+for(i in 1:length(all_num_markers)){
+  current_markers = all_num_markers[i]
+  all_mouse_in_sestan_list[[i]] = get_mouse_in_primate_marker_enrichment(sesten_gaba_data, mouse_subclass_meta_markers, num_markers = current_markers)
+}
+
+
+sestan_mouse_marker_enrichments = do.call('rbind', all_mouse_in_sestan_list)
+
+plotting_df = sestan_mouse_marker_enrichments %>% 
+  filter(`Primate subclass` %in% c('Ancestral Sncg','Sncg','Vip') & `Mouse subclass` %in% c('mouse Vip','mouse Sncg'))
+
+df_vip = plotting_df %>% filter(`Mouse subclass` == 'mouse Vip') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+df_sncg = plotting_df %>% filter(`Mouse subclass` == 'mouse Sncg') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+
+colnames(df_vip) = c('Primate subclass','Mouse Vip enrichment','num_markers')
+colnames(df_sncg) = c('Primate subclass','Mouse Sncg enrichment','num_markers')
+
+df_vip$`Mouse Sncg enrichment` = df_sncg$`Mouse Sncg enrichment`
+
+
+
+ggplot(df_vip, aes(x = num_markers, y = `Mouse Vip enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line() + ggtitle('Mouse Vip markers in Sestan Primate subclasses') + xlab('Number of Mouse MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+#Top 3 Mouse Sncg markers are NR2F2, SDK2, and NRG3
+
+ggplot(df_vip, aes(x = num_markers, y = `Mouse Sncg enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line()  + ggtitle('Mouse Sncg markers in Sestan Primate subclasses') + xlab('Number of Mouse MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+
+
+```
+
+And same thing with the Caglayan dataset
+
+```{r}
+caglayan_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_caglayan_konopka/caglayan_gaba_processed.rds')
+
+DefaultAssay(caglayan_gaba_data) = 'RNA'
+
+caglayan_gaba_data = as.SingleCellExperiment(caglayan_gaba_data)
+names(assays(caglayan_gaba_data)) = c('counts','cpm')
+
+
+caglayan_clust_to_subclass = rep(NA, length = ncol(caglayan_gaba_data))
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(28)] = 'Sst Chodl'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(1, 4, 6, 8, 10, 21, 22)] = 'Sst'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(12)] = 'Chandelier'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(0,3,15, 16, 23)] = 'Pvalb'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(2,14,27)] = 'Lamp5'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(9)] = 'Lamp5 Lhx6'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(24, 25)] = 'Pax6'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(19)] = 'Sncg'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(20)] = 'Ancestral Sncg'
+caglayan_clust_to_subclass[caglayan_gaba_data$seurat_clusters %in% c(5, 7, 11, 13, 17, 18, 26)] = 'Vip'
+
+table(caglayan_clust_to_subclass)
+table(is.na(caglayan_clust_to_subclass))
+
+caglayan_gaba_data$clust_to_subclass = caglayan_clust_to_subclass
+
+```
+
+
+```{r}
+
+
+all_num_markers = 1:50
+
+all_mouse_in_caglayan_list = vector(mode = 'list', length = length(all_num_markers))
+
+for(i in 1:length(all_num_markers)){
+  current_markers = all_num_markers[i]
+  all_mouse_in_caglayan_list[[i]] = get_mouse_in_primate_marker_enrichment(caglayan_gaba_data, mouse_subclass_meta_markers, num_markers = current_markers)
+}
+
+
+caglayan_mouse_marker_enrichments = do.call('rbind', all_mouse_in_caglayan_list)
+
+plotting_df = caglayan_mouse_marker_enrichments %>% 
+  filter(`Primate subclass` %in% c('Ancestral Sncg','Sncg','Vip') & `Mouse subclass` %in% c('mouse Vip','mouse Sncg'))
+
+df_vip = plotting_df %>% filter(`Mouse subclass` == 'mouse Vip') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+df_sncg = plotting_df %>% filter(`Mouse subclass` == 'mouse Sncg') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+
+colnames(df_vip) = c('Primate subclass','Mouse Vip enrichment','num_markers')
+colnames(df_sncg) = c('Primate subclass','Mouse Sncg enrichment','num_markers')
+
+df_vip$`Mouse Sncg enrichment` = df_sncg$`Mouse Sncg enrichment`
+
+
+
+ggplot(df_vip, aes(x = num_markers, y = `Mouse Vip enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line() + ggtitle('Mouse Vip markers in Caglayan Primate subclasses') + xlab('Number of Mouse MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+#Top 3 Mouse Sncg markers are NR2F2, SDK2, and NRG3
+
+ggplot(df_vip, aes(x = num_markers, y = `Mouse Sncg enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line()  + ggtitle('Mouse Sncg markers in Caglayan Primate subclasses') + xlab('Number of Mouse MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+
+
+```
+
+
+And the primate metamarkers
+
+```{r}
+all_primate_markers = list(
+    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
+)
+
+
+all_primate_markers$human_10x$cell_type[all_primate_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$human_ss$cell_type[all_primate_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$chimp_10x$cell_type[all_primate_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$chimp_ss$cell_type[all_primate_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$gorilla_10x$cell_type[all_primate_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$gorilla_ss$cell_type[all_primate_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$macaca_10x$cell_type[all_primate_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_primate_markers$marmoset_10x$cell_type[all_primate_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+primate_subclass_meta_markers = make_meta_markers(all_primate_markers, detailed_stats = TRUE)
+
+primate_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+
+```
+
+
+```{r}
+
+all_num_markers = 1:50
+
+all_primate_in_sestan_list = vector(mode = 'list', length = length(all_num_markers))
+
+for(i in 1:length(all_num_markers)){
+  current_markers = all_num_markers[i]
+  all_primate_in_sestan_list[[i]] = get_mouse_in_primate_marker_enrichment(sesten_gaba_data, primate_subclass_meta_markers, num_markers = current_markers)
+}
+
+
+sestan_primate_marker_enrichments = do.call('rbind', all_primate_in_sestan_list)
+
+plotting_df = sestan_primate_marker_enrichments %>% 
+  filter(`Primate subclass` %in% c('Ancestral Sncg','Sncg','Vip') & `Mouse subclass` %in% c('mouse Vip','mouse Sncg'))
+
+df_vip = plotting_df %>% filter(`Mouse subclass` == 'mouse Vip') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+df_sncg = plotting_df %>% filter(`Mouse subclass` == 'mouse Sncg') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+
+colnames(df_vip) = c('Primate subclass','Primate Vip enrichment','num_markers')
+colnames(df_sncg) = c('Primate subclass','Primate Sncg enrichment','num_markers')
+
+df_vip$`Primate Sncg enrichment` = df_sncg$`Primate Sncg enrichment`
+
+
+
+ggplot(df_vip, aes(x = num_markers, y = `Primate Vip enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line() + ggtitle('primate Vip markers in Sestan Primate subclasses') + xlab('Number of primate MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+#Top 3 primate Sncg markers are NR2F2, SDK2, and NRG3
+
+ggplot(df_vip, aes(x = num_markers, y = `Primate Sncg enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line()  + ggtitle('primate Sncg markers in Sestan Primate subclasses') + xlab('Number of primate MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+
+
+```
+
+
+```{r}
+
+all_num_markers = 1:50
+
+all_primate_in_caglayan_list = vector(mode = 'list', length = length(all_num_markers))
+
+for(i in 1:length(all_num_markers)){
+  current_markers = all_num_markers[i]
+  all_primate_in_caglayan_list[[i]] = get_mouse_in_primate_marker_enrichment(caglayan_gaba_data, primate_subclass_meta_markers, num_markers = current_markers)
+}
+
+
+caglayan_primate_marker_enrichments = do.call('rbind', all_primate_in_caglayan_list)
+
+plotting_df = caglayan_primate_marker_enrichments %>% 
+  filter(`Primate subclass` %in% c('Ancestral Sncg','Sncg','Vip') & `Mouse subclass` %in% c('mouse Vip','mouse Sncg'))
+
+df_vip = plotting_df %>% filter(`Mouse subclass` == 'mouse Vip') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+df_sncg = plotting_df %>% filter(`Mouse subclass` == 'mouse Sncg') %>% select(`Primate subclass`, `Mouse Marker enrichment`, num_markers)
+
+colnames(df_vip) = c('Primate subclass','Primate Vip enrichment','num_markers')
+colnames(df_sncg) = c('Primate subclass','Primate Sncg enrichment','num_markers')
+
+df_vip$`Primate Sncg enrichment` = df_sncg$`Primate Sncg enrichment`
+
+
+
+ggplot(df_vip, aes(x = num_markers, y = `Primate Vip enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line() + ggtitle('primate Vip markers in Caglayan Primate subclasses') + xlab('Number of primate MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+#Top 3 primate Sncg markers are NR2F2, SDK2, and NRG3
+
+ggplot(df_vip, aes(x = num_markers, y = `Primate Sncg enrichment`, group = `Primate subclass`, color = `Primate subclass`)) +
+  geom_point() + geom_line()  + ggtitle('primate Sncg markers in Caglayan Primate subclasses') + xlab('Number of primate MetaMarkers') +
+  scale_color_manual(values = c('Vip' = '#A45FBF', 'Sncg' = '#DF70FF', 'Ancestral Sncg' = 'cadetblue2'))
+
+
+
+```
+
+
+save all the enrichments, play around with different visualizations
+
+```{r}
+save(caglayan_primate_marker_enrichments, caglayan_mouse_marker_enrichments, sestan_primate_marker_enrichments, sestan_mouse_marker_enrichments,
+     file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/non_allen_data/mouse_and_primate_marker_enrichments_dfs.Rdata')
+
+```
+
+
+
+
+
+
