@@ -1,0 +1,419 @@
+
+
+Processing rat brain data for the consensus interneuron subclass labels
+
+Not too many rat brain single cell datasets easily available
+Attempting a similar analysis as with the non-allen primate data
+
+Pull the data all together from each study
+De novo cluster and than predict cell-type annotations using the original mouse subclass markers, homologous markers, and the probably the primate markers too
+
+
+Aydin dataset
+https://pubmed.ncbi.nlm.nih.gov/39455606/
+
+Aydin data seems non-conventional
+
+
+Wang dataset
+https://pubmed.ncbi.nlm.nih.gov/38495123/
+
+Wang data is in the cellRanger barcodes, genes, matrix output
+
+```{r}
+library(Seurat)
+library(SingleCellExperiment)
+library(MetaMarkers)
+library(dplyr)
+library(ggplot2)
+```
+
+
+
+```{r}
+
+final_present_1to1s = readRDS('/home/werner/projects/mouse_brain_consensus_taxonomy/data/final_present_1to1s.rds')
+
+final_present_1to1s
+
+
+```
+
+
+Aydin data
+
+Data files are ParseBiosciences output, Seurat has a wrapper function
+
+
+
+
+```{r}
+
+aydin_path = '/inkwell03/werner/sc_data/rattus_brain/aydin_2024'
+
+aydin_counts = Seurat::ReadParseBio(aydin_path)
+
+aydin_cell_metadata = data.table::fread(paste0(aydin_path, '/GSM8182337_cell_metadata.csv'))
+
+
+#Only keep the genes in the final 1to1s, match to the mouse gene name and swap in the human gene name
+
+index = match(rownames(aydin_counts), final_present_1to1s$`Mouse gene name`)
+final_present_1to1s[index,]$`Gene name`
+
+rownames(aydin_counts) = final_present_1to1s[index,]$`Gene name`
+
+gene_filt = !is.na(rownames(aydin_counts))
+aydin_counts = aydin_counts[gene_filt, ]
+
+
+
+
+aydin_seurat <- CreateSeuratObject(counts = aydin_counts, project = "aydin_rat", min.features = 200, meta.data = aydin_cell_metadata )
+
+aydin_seurat[["percent.mt"]] <- PercentageFeatureSet(aydin_seurat, pattern = "^Mt-")
+aydin_seurat$region = 'Auditory_cortex'
+
+Idents(aydin_seurat) = aydin_seurat$region
+
+VlnPlot(aydin_seurat, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+```
+
+Keep the genes that are in common with the final mouse orthologs in the final cross-species 1to1s that we have 
+And swap in the human name for the gene
+
+```{r}
+
+table(rownames(aydin_seurat) %in% final_present_1to1s$`Gene name`)
+
+
+aydin_seurat@assays$RNA@features[[]]
+```
+
+
+
+
+
+
+
+```{r}
+#CPM normalization
+aydin_seurat <- NormalizeData(aydin_seurat, normalization.method = 'RC', scale.factor = 1e6, verbose = F)
+aydin_seurat <- FindVariableFeatures(aydin_seurat, selection.method = "vst", nfeatures = 2000, verbose = F)
+all.genes <- rownames(aydin_seurat)
+aydin_seurat <- ScaleData(aydin_seurat, features = all.genes, verbose = F)
+
+
+aydin_seurat <- RunPCA(aydin_seurat, features = VariableFeatures(object =aydin_seurat), verbose = F)
+
+
+aydin_seurat <- FindNeighbors(aydin_seurat, dims = 1:25, verbose = F)
+aydin_seurat <- FindClusters(aydin_seurat, verbose = F)
+
+aydin_seurat <- RunUMAP(aydin_seurat, dims = 1:25, verbose = F)
+
+DimPlot(aydin_seurat, reduction = "pca", label = T)
+DimPlot(aydin_seurat, reduction = "umap", label = T)
+
+
+```
+
+```{r}
+
+cross_primate_markers = data.table::fread('/inkwell03/werner/sc_data/primate_MTG/primate_MTG_consensus_markers.csv', skip = 4)
+
+primate_class_markers = cross_primate_markers[ , c('gene','InN','NonN','ExN')]
+
+
+table(primate_class_markers$gene %in% rownames(aydin_seurat))
+
+
+top_markers = list('InN' = primate_class_markers$gene[as.logical(primate_class_markers$InN)],
+     'NonN' = primate_class_markers$gene[as.logical(primate_class_markers$NonN)],
+     'ExN' = primate_class_markers$gene[as.logical(primate_class_markers$ExN)])
+
+
+
+aydin_sce = as.SingleCellExperiment(aydin_seurat)
+names(assays(aydin_sce)) = c('counts','cpm','scaledata')
+
+
+
+ct_scores = score_cells(log1p(cpm(aydin_sce)), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+ct_pred[1:10, ]
+
+
+
+aydin_seurat$glutamatergic_enrichment = ct_enrichment['all|ExN', ] / max(ct_enrichment['all|ExN', ])
+aydin_seurat$GABAergic_enrichment = ct_enrichment['all|InN', ] / max(ct_enrichment['all|InN', ])
+aydin_seurat$non_neuronal_enrichment = ct_enrichment['all|NonN', ] / max(ct_enrichment['all|NonN', ])
+
+aydin_seurat$predicted_primate_MM_class = ct_pred$predicted
+
+```
+
+
+```{r}
+
+DimPlot(aydin_seurat, reduction = "umap", label = T, group.by = 'predicted_primate_MM_class')
+
+```
+
+
+```{r}
+
+cell_index = aydin_seurat$predicted_primate_MM_class == 'InN'
+aydin_seurat_inhibitory = aydin_seurat[ , cell_index]
+
+aydin_seurat_inhibitory
+
+saveRDS(aydin_seurat, file = '/inkwell03/werner/sc_data/rattus_brain/aydin_2024/aydin_seurat_full_data.rds')
+
+saveRDS(aydin_seurat_inhibitory, file = '/inkwell03/werner/sc_data/rattus_brain/aydin_2024/aydin_seurat_GABA.rds')
+
+
+```
+
+New de novo clusters for just the inhibitory neurons
+
+
+```{r}
+#CPM normalization
+aydin_seurat_inhibitory <- FindVariableFeatures(aydin_seurat_inhibitory, selection.method = "vst", nfeatures = 2000, verbose = F)
+all.genes <- rownames(aydin_seurat_inhibitory)
+aydin_seurat_inhibitory <- ScaleData(aydin_seurat_inhibitory, features = all.genes, verbose = F)
+
+
+aydin_seurat_inhibitory <- RunPCA(aydin_seurat_inhibitory, features = VariableFeatures(object =aydin_seurat_inhibitory), verbose = F)
+
+
+aydin_seurat_inhibitory <- FindNeighbors(aydin_seurat_inhibitory, dims = 1:25, verbose = F)
+aydin_seurat_inhibitory <- FindClusters(aydin_seurat_inhibitory, verbose = F)
+
+aydin_seurat_inhibitory <- RunUMAP(aydin_seurat_inhibitory, dims = 1:25, verbose = F)
+
+DimPlot(aydin_seurat_inhibitory, reduction = "pca", label = T)
+DimPlot(aydin_seurat_inhibitory, reduction = "umap", label = T)
+
+
+```
+
+Load up the mouse and primate CGE/MGE metamarkers
+
+```{r}
+mouse_class_meta_markers = read_meta_markers("../metamarkers/MGE_CGE/mouse_meta_markers.csv.gz")
+primate_class_meta_markers = read_meta_markers("../metamarkers/MGE_CGE/primate_meta_markers.csv.gz")
+
+mammal_class_meta_markers = read_meta_markers("../metamarkers/MGE_CGE/mammal_CGE_MGE_meta_markers.csv.gz")
+```
+
+
+
+
+Check out the CGE and MGE predictions for the tree shrew data
+
+```{r}
+
+rownames(aydin_seurat_inhibitory@assays$RNA@layers$data) = rownames(aydin_seurat_inhibitory)
+
+
+#mouse class markers
+top_markers = mouse_class_meta_markers %>% filter(rank <= 100)
+ct_scores = score_cells(log1p(aydin_seurat_inhibitory@assays$RNA@layers$data), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+aydin_seurat_inhibitory$mouse_cge_mge = ct_pred$predicted
+
+#Primate class markers
+top_markers = primate_class_meta_markers %>% filter(rank <= 100)
+ct_scores = score_cells(log1p(aydin_seurat_inhibitory@assays$RNA@layers$data), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+aydin_seurat_inhibitory$primate_cge_mge = ct_pred$predicted
+
+#Cross_mammal class markers
+top_markers = mammal_class_meta_markers %>% filter(rank <= 100)
+ct_scores = score_cells(log1p(aydin_seurat_inhibitory@assays$RNA@layers$data), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+aydin_seurat_inhibitory$mammal_cge_mge = ct_pred$predicted
+
+#Add the cross-mammal CGE-MGE enrichments for plotting
+aydin_seurat_inhibitory$mammal_cge_enrich = ct_enrichment['all|CGE', ]
+aydin_seurat_inhibitory$mammal_mge_enrich = ct_enrichment['all|MGE', ]
+
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'seurat_clusters', label = T) + ggtitle('Initial Aydin-Rat de novo GABA clusters')
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'mouse_cge_mge', label = T) + ggtitle('CGE-MGE annotations using Mouse markers')
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'primate_cge_mge', label = T)+ ggtitle('CGE-MGE annotations using Primate markers')
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'mammal_cge_mge', label = T)+ 
+  ggtitle('CGE-MGE annotations using Mammal markers') +
+  scale_color_manual(values = c('CGE' = 'darkorchid', 'MGE' = 'goldenrod1', 'unassigned' = 'red'))
+
+FeaturePlot(aydin_seurat_inhibitory, features = c('mammal_cge_enrich'))+ 
+  ggtitle('Mammalian CGE enrichment: Aydin-Rat') +
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 1)
+
+FeaturePlot(aydin_seurat_inhibitory, features = c('mammal_mge_enrich'))+ 
+  ggtitle('Mammalian MGE enrichment: Aydin-Rat') +
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 1)
+
+```
+
+Add in the primate and mouse subclass predictions
+
+```{r}
+all_mouse_markers = list(
+    tasic18 = read_markers("../metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("../metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("../metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("../metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("../metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("../metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("../metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("../metamarkers/ortho_markers_macosko_wba.csv.gz")
+)
+
+
+mouse_subclass_meta_markers = make_meta_markers(all_mouse_markers, detailed_stats = TRUE)
+
+mouse_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+```
+
+
+```{r}
+all_species_markers = list(
+    human_10x = read_markers("../metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("../metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("../metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("../metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("../metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("../metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("../metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("../metamarkers/markers_marmoset_10x.csv.gz"),
+    tasic18 = read_markers("../metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("../metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("../metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("../metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("../metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("../metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("../metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("../metamarkers/ortho_markers_macosko_wba.csv.gz")
+)
+
+
+all_species_markers$human_10x$cell_type[all_species_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$human_ss$cell_type[all_species_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$chimp_10x$cell_type[all_species_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$chimp_ss$cell_type[all_species_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$gorilla_10x$cell_type[all_species_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$gorilla_ss$cell_type[all_species_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$macaca_10x$cell_type[all_species_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+all_species_markers$marmoset_10x$cell_type[all_species_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+conserved_subclass_meta_markers = make_meta_markers(all_species_markers, detailed_stats = TRUE)
+
+conserved_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+all_primate_markers = all_species_markers[c('human_10x', 'human_ss', 'chimp_10x','chimp_ss','gorilla_10x','gorilla_ss','macaca_10x','marmoset_10x')]
+
+primate_subclass_meta_markers = make_meta_markers(all_primate_markers, detailed_stats = TRUE)
+
+primate_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+
+```
+
+```{r}
+orig_mouse_markers = list(
+    tasic18 = read_markers("../metamarkers/markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("../metamarkers/markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("../metamarkers/markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("../metamarkers/markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("../metamarkers/markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("../metamarkers/markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("../metamarkers/markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("../metamarkers/markers_macosko_wba.csv.gz")
+)
+
+
+original_mouse_subclass_meta_markers = make_meta_markers(orig_mouse_markers, detailed_stats = TRUE)
+
+original_mouse_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+
+```
+
+
+```{r}
+
+top_allen_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
+top_mouse_markers = mouse_subclass_meta_markers %>% filter(rank <= 50)
+top_ori_mouse_markers = original_mouse_subclass_meta_markers %>% filter(rank <= 50)
+
+
+ct_scores = score_cells(log1p(aydin_seurat_inhibitory@assays$RNA@layers$data), top_allen_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+aydin_seurat_inhibitory$primate_subclass_annot = ct_pred$predicted
+
+ct_scores = score_cells(log1p(aydin_seurat_inhibitory@assays$RNA@layers$data), top_mouse_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+aydin_seurat_inhibitory$mouse_subclass_annot = ct_pred$predicted
+
+ct_scores = score_cells(log1p(aydin_seurat_inhibitory@assays$RNA@layers$data), top_ori_mouse_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+aydin_seurat_inhibitory$ori_mouse_subclass_annot = ct_pred$predicted
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'seurat_clusters', label = T) + ggtitle('Initial Aydin-Rat de novo GABA clusters')
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'mouse_cge_mge', label = T) + ggtitle('CGE-MGE annotations using Mouse markers')
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'primate_cge_mge', label = T)+ ggtitle('CGE-MGE annotations using Primate markers')
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'primate_subclass_annot', label = T) + ggtitle('subclass annotations using Primate markers')
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'mouse_subclass_annot', label = T)+ ggtitle('subclass annotations using Mouse markers')
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'ori_mouse_subclass_annot', label = T)+ ggtitle('subclass annotations using Mouse markers')
+
+
+#confuse_mat_sestan = table(sesten_gaba_data$primate_metaMarker_annot, sesten_gaba_data$seurat_clusters)
+#cluster_totals_sestan = colSums(confuse_mat_sestan )
+#confuse_mat_sestan = t(t(confuse_mat_sestan)/cluster_totals_sestan)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
