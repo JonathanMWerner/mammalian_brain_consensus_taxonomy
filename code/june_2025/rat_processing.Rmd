@@ -28,7 +28,19 @@ library(dplyr)
 library(ggplot2)
 ```
 
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C')
 
+
+```
 
 ```{r}
 
@@ -177,6 +189,20 @@ saveRDS(aydin_seurat_inhibitory, file = '/inkwell03/werner/sc_data/rattus_brain/
 
 ```
 
+
+
+```{r}
+
+
+aydin_seurat_inhibitory = readRDS(file = '/inkwell03/werner/sc_data/rattus_brain/aydin_2024/aydin_seurat_GABA.rds')
+
+aydin_seurat_inhibitory
+```
+
+
+
+
+
 New de novo clusters for just the inhibitory neurons
 
 
@@ -268,6 +294,66 @@ FeaturePlot(aydin_seurat_inhibitory, features = c('mammal_mge_enrich'))+
   scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 1)
 
 ```
+
+
+```{r}
+mouse_class_nums = table(aydin_seurat_inhibitory$mouse_cge_mge, aydin_seurat_inhibitory$seurat_clusters)
+total_clust_nums = colSums(mouse_class_nums)
+mouse_class_ratios = t(t(mouse_class_nums) / total_clust_nums)
+
+primate_class_nums = table(aydin_seurat_inhibitory$primate_cge_mge, aydin_seurat_inhibitory$seurat_clusters)
+total_clust_nums = colSums(primate_class_nums)
+primate_class_ratios = t(t(primate_class_nums) / total_clust_nums)
+
+
+primate_class_ratios = t(primate_class_ratios)
+for_ggplot_df = data.frame(CGE = primate_class_ratios[ ,'CGE'], MGE = primate_class_ratios[ ,'MGE'], cluster = rownames(primate_class_ratios))
+for_ggplot_df$cluster[for_ggplot_df$CGE >= .80 | for_ggplot_df$CGE <= .20] = NA
+
+ggplot(for_ggplot_df, aes(x = CGE, y = MGE, label = cluster)) + geom_point() +
+  ggrepel::geom_label_repel(max.overlaps = Inf, min.segment.length = 0) + 
+  theme_bw() + coord_fixed() + ggtitle('CGE-MGE cluster proportions: Aydin-Rat')
+
+
+mouse_class_ratios = t(mouse_class_ratios)
+for_ggplot_df = data.frame(CGE = mouse_class_ratios[ ,'CGE'], MGE = mouse_class_ratios[ ,'MGE'], cluster = rownames(mouse_class_ratios))
+for_ggplot_df$cluster[for_ggplot_df$CGE >= .80 | for_ggplot_df$CGE <= .20] = NA
+
+ggplot(for_ggplot_df, aes(x = CGE, y = MGE, label = cluster)) + geom_point() +
+  ggrepel::geom_label_repel(max.overlaps = Inf, min.segment.length = 0) + 
+  theme_bw() + coord_fixed() + ggtitle('Mouse CGE-MGE cluster proportions: Aydin-Rat')
+
+
+
+ggsave(filename = 'initial_aydin_rat_mouse_CGEMGE_clust_ratios_ggplot.pdf', path = '../../graphs/non_allen_data/', useDingbats = F,
+       device = 'pdf', height = 4, width = 4)
+
+
+```
+
+Filter out cluster 7 and re cluster
+
+```{r}
+
+#filter out cluster 7
+cell_index = aydin_seurat_inhibitory$seurat_clusters != '7'
+aydin_seurat_inhibitory = aydin_seurat_inhibitory[, cell_index]
+
+
+aydin_seurat_inhibitory <- RunPCA(aydin_seurat_inhibitory, features = VariableFeatures(object =aydin_seurat_inhibitory), verbose = F)
+
+aydin_seurat_inhibitory <- FindNeighbors(aydin_seurat_inhibitory, dims = 1:25, verbose = F)
+aydin_seurat_inhibitory <- FindClusters(aydin_seurat_inhibitory, verbose = F)
+
+aydin_seurat_inhibitory <- RunUMAP(aydin_seurat_inhibitory, dims = 1:25, verbose = F)
+
+DimPlot(aydin_seurat_inhibitory, reduction = "pca", label = T)
+DimPlot(aydin_seurat_inhibitory, reduction = "umap", label = T)
+
+
+```
+
+
 
 Add in the primate and mouse subclass predictions
 
@@ -364,6 +450,7 @@ top_allen_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
 top_mouse_markers = mouse_subclass_meta_markers %>% filter(rank <= 50)
 top_ori_mouse_markers = original_mouse_subclass_meta_markers %>% filter(rank <= 50)
 
+rownames(aydin_seurat_inhibitory@assays$RNA@layers$data) = rownames(aydin_seurat_inhibitory)
 
 ct_scores = score_cells(log1p(aydin_seurat_inhibitory@assays$RNA@layers$data), top_allen_markers)
 ct_enrichment = compute_marker_enrichment(ct_scores)
@@ -393,21 +480,176 @@ DimPlot(aydin_seurat_inhibitory, group.by = 'mouse_subclass_annot', label = T)+ 
 DimPlot(aydin_seurat_inhibitory, group.by = 'ori_mouse_subclass_annot', label = T)+ ggtitle('subclass annotations using Mouse markers')
 
 
-#confuse_mat_sestan = table(sesten_gaba_data$primate_metaMarker_annot, sesten_gaba_data$seurat_clusters)
-#cluster_totals_sestan = colSums(confuse_mat_sestan )
-#confuse_mat_sestan = t(t(confuse_mat_sestan)/cluster_totals_sestan)
+```
+
+
+```{r}
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'seurat_clusters', label = T) + ggtitle('Aydin-Rat de novo GABA clusters') 
+ggsave(filename = 'aydin_rat_de_novo_clusters_umap.pdf', path = '../../graphs/non_allen_data/umaps/', device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'mouse_subclass_annot')+ ggtitle('subclass annotations using homologous Mouse markers') + scale_color_manual(values = celltype_color_palette)
+ggsave(filename = 'aydin_rat_homo_mouse_predict_umap.pdf', path = '../../graphs/non_allen_data/umaps/', device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+DimPlot(aydin_seurat_inhibitory, group.by = 'ori_mouse_subclass_annot')+ ggtitle('subclass annotations using original Mouse markers') + scale_color_manual(values = celltype_color_palette)
+ggsave(filename = 'aydin_rat_ori_mouse_predict_umap.pdf', path = '../../graphs/non_allen_data/umaps/', device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+
+```
+
+
+Save with the de novo clusters and all the annotations
+```{r}
+saveRDS(aydin_seurat_inhibitory, file = '/inkwell03/werner/sc_data/rattus_brain/aydin_2024/aydin_seurat_GABA_annotated.rds')
 
 ```
 
 
 
 
+And get the confusion matrix per de novo cluster
+
+```{r}
+
+
+confuse_mat_aydin_rat = table(aydin_seurat_inhibitory$ori_mouse_subclass_annot, aydin_seurat_inhibitory$seurat_clusters)
+cluster_totals_aydin_rat = colSums(confuse_mat_aydin_rat )
+confuse_mat_aydin_rat = t(t(confuse_mat_aydin_rat)/cluster_totals_aydin_rat)
+
+#Ordering by CGE and MGE
+row_order = match(c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5','Lamp5 Lhx6','Vip','Sncg', 'unassigned'), rownames(confuse_mat_aydin_rat))
+#round(confuse_mat_aydin_rat)[row_order, ]
+
+col_order = c(3, 4, 5, 10, 8, 14, 0, 1, 6, 13, 11, 7, 2, 12, 9) +1
+
+col_fun = circlize::colorRamp2(breaks = c(0,.5, 1) , colors = c('white','orange','red'))
+hm = ComplexHeatmap::Heatmap(confuse_mat_aydin_rat,name = 'cluster proportion',
+                        col = col_fun,
+                        cluster_rows = F, row_order = row_order,
+                        cluster_columns = F, column_order = col_order,
+                        column_title = 'Aydin-rat cluster predictions with original mouse markers')
+hm = ComplexHeatmap::draw(hm)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/ori_mouse_MM_predict_aydin_rat_clusters.pdf', 
+    useDingbats = F, height = 4, width = 8)
+hm
+dev.off()
+
+
+confuse_mat_aydin_rat = table(aydin_seurat_inhibitory$mouse_subclass_annot, aydin_seurat_inhibitory$seurat_clusters)
+cluster_totals_aydin_rat = colSums(confuse_mat_aydin_rat )
+confuse_mat_aydin_rat = t(t(confuse_mat_aydin_rat)/cluster_totals_aydin_rat)
+
+#Ordering by CGE and MGE
+row_order = match(c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5','Lamp5 Lhx6','Vip','Sncg', 'Pax6', 'unassigned'), rownames(confuse_mat_aydin_rat))
+#round(confuse_mat_aydin_rat)[row_order, ]
+col_order = c(3, 4, 5, 10, 8, 14, 0, 1, 6, 13, 11, 7, 2, 12, 9) +1
+
+col_fun = circlize::colorRamp2(breaks = c(0,.5, 1) , colors = c('white','orange','red'))
+hm = ComplexHeatmap::Heatmap(confuse_mat_aydin_rat,name = 'cluster proportion',
+                        col = col_fun,
+                        cluster_rows = F, row_order = row_order,
+                        cluster_columns = F, column_order = col_order,
+                        column_title = 'Aydin-rat cluster predictions with homologous mouse markers')
+hm = ComplexHeatmap::draw(hm)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/homo_mouse_MM_predict_aydin_rat_clusters.pdf', 
+    useDingbats = F, height = 4, width = 8)
+hm
+dev.off()
+
+
+```
+
+#########################################
+
+And now the Wang dataset
+
+Each sample has separate files
+
+And the number of genes per sample don't match, which is odd considering they make the 10X files available, not sure what's going on there
+
+###########################################
+
+
+```{r}
+
+wang_path = '/inkwell03/werner/sc_data/rattus_brain/wang_2024'
+wang_directories = list.dirs(wang_path, recursive = F)
+
+cortex_directories = wang_directories[grepl('CT', wang_directories)]
+
+cortex_samples = sapply(strsplit(cortex_directories, split = '/', fixed = T), '[[', 7)
+cortex_samples = sapply(strsplit(cortex_samples, split = '_', fixed = T), '[[', 1)
+
+
+all_cortex_list = vector(mode = 'list', length = length(cortex_samples))
+for(i in 1:length(cortex_samples)){
+
+  seurat_counts = Read10X(cortex_directories[[i]])
+  
+  #Filter for the 1to1s and swap in the human gene names
+  index = match(rownames(seurat_counts), final_present_1to1s$`Mouse gene name`)
+  rownames(seurat_counts) = final_present_1to1s[index,]$`Gene name`
+  
+  gene_filt = !is.na(rownames(seurat_counts))
+  seurat_counts = seurat_counts[gene_filt, ]
+  
+  current_seurat <- CreateSeuratObject(counts = seurat_counts, project = "current_rat", min.features = 200)
+  current_seurat[["percent.mt"]] <- PercentageFeatureSet(current_seurat, pattern = "^MT-")
+  current_seurat$region = 'Cortex'
+  current_seurat$sample = cortex_samples[i]
+  all_cortex_list[[i]] = current_seurat
+
+}
+
+all_cortex_list
+
+#Go through and get the intersect genes
+all_genes_list = vector(mode = 'list', length = length(all_cortex_list))
+for(i in 1:length(all_cortex_list)){
+  all_genes_list[[i]] = rownames(all_cortex_list[[i]])
+}
+final_genes = Reduce(intersect, all_genes_list)
+
+#And go through and filter to the same gene set
+
+for(i in 1:length(all_cortex_list)){
+ 
+  current_seurat = all_cortex_list[[i]]
+  gene_index = rownames(current_seurat) %in% final_genes
+  current_seurat = current_seurat[gene_index, ]
+  
+  gene_index = match(final_genes, rownames(current_seurat))
+  current_seurat = current_seurat[gene_index, ]
+  
+  all_cortex_list[[i]] = as.SingleCellExperiment(current_seurat)
+
+}
+
+wang_sce = do.call('cbind', all_cortex_list)
+table(colData(wang_sce)$sample)
 
 
 
+wang_seurat = as.Seurat(wang_sce, counts = "counts", data = NULL)
+
+
+Idents(wang_seurat) = wang_seurat$region
+
+VlnPlot(wang_seurat, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+```
+
+
+```{r}
 
 
 
+```
 
 
 
