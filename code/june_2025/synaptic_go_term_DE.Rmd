@@ -1,0 +1,230 @@
+
+Checking out the differential expression of specific GO terms across the subclasses
+
+Focus on the Ion channels, as proxies for electrophysiological properties of the subclasses
+
+
+
+GO database
+SynGO database
+KEGG database
+
+
+```{r}
+
+library(dplyr)
+library(tidyr)
+library(SingleCellExperiment)
+library(ggplot2)
+library(org.Hs.eg.db)
+library(GO.db)
+library(ComplexHeatmap)
+
+```
+
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C')
+
+
+```
+
+
+SynGo Terms of interest
+
+synapse adhesion between pre- and post-synapse
+presynaptic modulation of chemical synaptic transmission
+postsynaptic modulation of chemical synaptic transmission
+transmitter-gated ion channel activity involved in regulation of postsynaptic membrane potential 
+ligand-gated ion channel activity involved in regulation of presynaptic membrane potential
+voltage-gated ion channel activity involved in regulation of presynaptic membrane potential 
+
+```{r}
+#synGo_path = '/home/werner/tools/syn_go/SynGO_bulk_download_release_20231201/'
+
+synGo_annots_df = data.table::fread('/home/werner/tools/syn_go/SynGO_bulk_download_release_20231201/syngo_annotations.csv')
+
+synGo_annots_df %>% filter(grepl('presynaptic membrane', synGo_annots_df$go_name)) %>% group_by(go_name) %>% summarise(n = n())
+
+```
+
+
+Go terms of interest
+
+
+```{r}
+
+org.Hs.eg.db #running this will print out the GO database version information
+go_table <- as.data.frame(org.Hs.egGO2ALLEGS) #gene mapping to the direct GO term and that term's children
+go_table$gene_symbol = mapIds(org.Hs.eg.db, go_table$gene_id, "SYMBOL","ENTREZID") #Add gene symbol 
+
+go_table %>% filter(go_id == 'GO:0000009') %>% filter(!duplicated(gene_symbol))
+
+```
+
+```{r}
+
+
+# Get all GO IDs in the database
+all_ids <- keys(GO.db, keytype = "GOID")
+
+# Get their term names (descriptions)
+all_terms <- Term(all_ids)
+
+# Get ontology type (BP, MF, CC)
+all_ont <- Ontology(all_ids)
+
+# Optional: get definitions
+all_defs <- Definition(all_ids)
+
+
+# 2. Map GO terms to genes
+go2gene <- AnnotationDbi::as.list(org.Hs.egGO2ALLEGS)  # GOID -> list of Entrez IDs
+
+# 3. Count how many genes per GO term
+gene_counts <- sapply(all_ids, function(go) {
+  genes <- go2gene[[go]]
+  if (is.null(genes)) return(0)
+  length(unique(genes))
+})
+
+
+
+# Combine into a data.frame
+go_table <- data.frame(
+  GOID = all_ids,
+  Term = all_terms,
+  N_genes = gene_counts,
+  Ontology = all_ont,
+  Definition = all_defs,
+  stringsAsFactors = FALSE
+)
+
+head(go_table, 10)
+
+```
+
+```{r}
+
+go_table %>% filter(grepl('calcium', Term)) %>% arrange(desc(N_genes))
+
+```
+
+
+
+Initially just visualize average expression of these gene sets, focus on just the CGE celltypes
+
+```{r}
+
+zeng_10xv2_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba_primate_MN.rds')
+zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
+
+```
+
+
+
+```{r}
+
+cge_index = zeng_10xv2_wba$cell_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg')
+mouse_clusters = unique(as.character(zeng_10xv2_wba$cell_cluster[cge_index]))
+
+
+clust_to_mouse_subclass = c('Lamp5', 'Lamp5', 'Lamp5 Lhx6', 'Sncg', 'Vip', 'Vip', 'Vip', 'Vip', 'Vip', 'Sncg','Vip','Vip','Vip','Vip','Vip','Sncg','Sncg','Vip', 'Sncg', 'Lamp5')
+names(clust_to_mouse_subclass) = mouse_clusters
+
+clust_to_primate_subclass = c('Lamp5', 'Lamp5', 'Lamp5 Lhx6', 'Pax6', 'Vip', 'Vip', 'Vip', 'Vip', 'Sncg', 'Pax6','Vip','Vip','Vip','Vip','Sncg','Pax6','Pax6','Vip', 'Pax6', 'Pax6')
+names(clust_to_primate_subclass) = mouse_clusters
+
+
+```
+
+
+
+
+
+Just get the average expression of the genes in a gene set, at their cluster level
+
+
+```{r}
+
+gene_set = 'GO:0005891'
+go_term_name = Term(gene_set)
+genes <- org.Hs.egGO2ALLEGS[[gene_set]]
+# Add gene symbols
+symbols <- mapIds(org.Hs.eg.db,
+                  keys = genes,
+                  column = "SYMBOL",
+                  keytype = "ENTREZID",
+                  multiVals = "first")
+symbols = unique(symbols)
+
+
+cell_index = colData(zeng_10xv2_wba)$cell_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg') 
+gene_index = rownames(zeng_10xv2_wba) %in% symbols
+
+#Subset the data
+go_set_exp_sce = zeng_10xv2_wba[gene_index, cell_index]
+
+#Compute the mean CPM per gene for each cluster
+exp_cpm = assay(go_set_exp_sce, 'cpm')
+colnames(exp_cpm) = go_set_exp_sce$cell_cluster
+
+exp_cpm = reshape2::melt(as.matrix(exp_cpm), varnames = c('Gene','Cluster'), value.name = 'CPM')
+
+mean_exp_cpm_df = exp_cpm %>% group_by(Cluster, Gene) %>% summarise(mean_CPM = mean(CPM)) %>%
+  pivot_wider(names_from = Cluster, values_from = mean_CPM) %>% tibble::column_to_rownames(var = 'Gene')
+
+#Scale the data
+mean_exp_cpm_df = as.matrix(mean_exp_cpm_df)
+mean_exp_cpm_df = t(scale(t(mean_exp_cpm_df)))
+
+column_annot = HeatmapAnnotation(mouse_subclass = clust_to_mouse_subclass[colnames(mean_exp_cpm_df)],
+                                 homologous_subclass = clust_to_primate_subclass[colnames(mean_exp_cpm_df)],
+                                 col = list(mouse_subclass = celltype_color_palette,
+                                            homologous_subclass = celltype_color_palette))
+
+Heatmap(mean_exp_cpm_df, name = 'z-scored Mean CPM',
+        show_row_names = F, show_row_dend = F, 
+        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+        top_annotation = column_annot,
+        column_title = go_term_name)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
