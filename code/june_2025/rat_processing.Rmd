@@ -81,7 +81,7 @@ aydin_counts = aydin_counts[gene_filt, ]
 
 
 
-aydin_seurat <- CreateSeuratObject(counts = aydin_counts, project = "aydin_rat", min.features = 200, meta.data = aydin_cell_metadata )
+aydin_seurat <- CreateSeuratObject(counts = aydin_counts, project = "aydin_rat", min.features = 500, meta.data = aydin_cell_metadata )
 
 aydin_seurat[["percent.mt"]] <- PercentageFeatureSet(aydin_seurat, pattern = "^Mt-")
 aydin_seurat$region = 'Auditory_cortex'
@@ -295,6 +295,7 @@ FeaturePlot(aydin_seurat_inhibitory, features = c('mammal_mge_enrich'))+
 
 ```
 
+14 had clear enrichment of chandelier markers
 
 ```{r}
 mouse_class_nums = table(aydin_seurat_inhibitory$mouse_cge_mge, aydin_seurat_inhibitory$seurat_clusters)
@@ -331,12 +332,12 @@ ggsave(filename = 'initial_aydin_rat_mouse_CGEMGE_clust_ratios_ggplot.pdf', path
 
 ```
 
-Filter out cluster 7 and re cluster
+Filter out cluster 10 and re cluster
 
 ```{r}
 
-#filter out cluster 7
-cell_index = aydin_seurat_inhibitory$seurat_clusters != '7'
+#filter out cluster 10
+cell_index = aydin_seurat_inhibitory$seurat_clusters != '10'
 aydin_seurat_inhibitory = aydin_seurat_inhibitory[, cell_index]
 
 
@@ -520,10 +521,10 @@ cluster_totals_aydin_rat = colSums(confuse_mat_aydin_rat )
 confuse_mat_aydin_rat = t(t(confuse_mat_aydin_rat)/cluster_totals_aydin_rat)
 
 #Ordering by CGE and MGE
-row_order = match(c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5','Lamp5 Lhx6','Vip','Sncg', 'unassigned'), rownames(confuse_mat_aydin_rat))
-#round(confuse_mat_aydin_rat)[row_order, ]
+row_order = match(c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5','Lamp5 Lhx6','Vip','Sncg'), rownames(confuse_mat_aydin_rat))
+round(confuse_mat_aydin_rat)[row_order, ]
 
-col_order = c(3, 4, 5, 10, 8, 14, 0, 1, 6, 13, 11, 7, 2, 12, 9) +1
+col_order = c(2,4,5,6,14,13,0,1,7,11,8,10,3,12, 9) +1
 
 col_fun = circlize::colorRamp2(breaks = c(0,.5, 1) , colors = c('white','orange','red'))
 hm = ComplexHeatmap::Heatmap(confuse_mat_aydin_rat,name = 'cluster proportion',
@@ -546,7 +547,7 @@ confuse_mat_aydin_rat = t(t(confuse_mat_aydin_rat)/cluster_totals_aydin_rat)
 #Ordering by CGE and MGE
 row_order = match(c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5','Lamp5 Lhx6','Vip','Sncg', 'Pax6', 'unassigned'), rownames(confuse_mat_aydin_rat))
 #round(confuse_mat_aydin_rat)[row_order, ]
-col_order = c(3, 4, 5, 10, 8, 14, 0, 1, 6, 13, 11, 7, 2, 12, 9) +1
+col_order = c(2,4,5,6,14,13,0,1,7,11,8,10,3,12, 9) +1
 
 col_fun = circlize::colorRamp2(breaks = c(0,.5, 1) , colors = c('white','orange','red'))
 hm = ComplexHeatmap::Heatmap(confuse_mat_aydin_rat,name = 'cluster proportion',
@@ -598,7 +599,7 @@ for(i in 1:length(cortex_samples)){
   gene_filt = !is.na(rownames(seurat_counts))
   seurat_counts = seurat_counts[gene_filt, ]
   
-  current_seurat <- CreateSeuratObject(counts = seurat_counts, project = "current_rat", min.features = 200)
+  current_seurat <- CreateSeuratObject(counts = seurat_counts, project = "current_rat", min.features = 500)
   current_seurat[["percent.mt"]] <- PercentageFeatureSet(current_seurat, pattern = "^MT-")
   current_seurat$region = 'Cortex'
   current_seurat$sample = cortex_samples[i]
@@ -645,12 +646,758 @@ VlnPlot(wang_seurat, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), n
 ```
 
 
+
+```{r}
+#CPM normalization
+wang_seurat <- NormalizeData(wang_seurat, normalization.method = 'RC', scale.factor = 1e6, verbose = F)
+wang_seurat <- FindVariableFeatures(wang_seurat, selection.method = "vst", nfeatures = 2000, verbose = F)
+all.genes <- rownames(wang_seurat)
+wang_seurat <- ScaleData(wang_seurat, features = all.genes, verbose = F)
+
+
+wang_seurat <- RunPCA(wang_seurat, features = VariableFeatures(object =wang_seurat), verbose = F)
+
+
+wang_seurat <- FindNeighbors(wang_seurat, dims = 1:25, verbose = F)
+wang_seurat <- FindClusters(wang_seurat, verbose = F)
+
+wang_seurat <- RunUMAP(wang_seurat, dims = 1:25, verbose = F)
+
+
+
+DimPlot(wang_seurat, reduction = "pca", label = T)
+DimPlot(wang_seurat, reduction = "umap", label = T)
+DimPlot(wang_seurat, reduction = 'umap', group.by = 'sample'  )
+
+```
+
+
 ```{r}
 
+cross_primate_markers = data.table::fread('/inkwell03/werner/sc_data/primate_MTG/primate_MTG_consensus_markers.csv', skip = 4)
+
+primate_class_markers = cross_primate_markers[ , c('gene','InN','NonN','ExN')]
+
+
+table(primate_class_markers$gene %in% rownames(wang_seurat))
+
+
+top_markers = list('InN' = primate_class_markers$gene[as.logical(primate_class_markers$InN)],
+     'NonN' = primate_class_markers$gene[as.logical(primate_class_markers$NonN)],
+     'ExN' = primate_class_markers$gene[as.logical(primate_class_markers$ExN)])
+
+
+
+wang_sce = as.SingleCellExperiment(wang_seurat)
+names(assays(wang_sce)) = c('counts','cpm','scaledata')
+
+
+ct_scores = score_cells(log1p(cpm(wang_sce)), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+ct_pred[1:10, ]
+
+
+wang_seurat$glutamatergic_enrichment = ct_enrichment['all|ExN', ] / max(ct_enrichment['all|ExN', ])
+wang_seurat$GABAergic_enrichment = ct_enrichment['all|InN', ] / max(ct_enrichment['all|InN', ])
+wang_seurat$non_neuronal_enrichment = ct_enrichment['all|NonN', ] / max(ct_enrichment['all|NonN', ])
+
+wang_seurat$predicted_primate_MM_class = ct_pred$predicted
+
+```
+
+
+```{r}
+
+DimPlot(wang_seurat, reduction = "umap", label = T, group.by = 'predicted_primate_MM_class')
+
+```
+
+```{r}
+
+cell_index = wang_seurat$predicted_primate_MM_class == 'InN'
+wang_seurat_inhibitory = wang_seurat[ , cell_index]
+
+wang_seurat_inhibitory
+
+saveRDS(wang_seurat, file = '/inkwell03/werner/sc_data/rattus_brain/wang_2024/wang_seurat_full_data.rds')
+
+saveRDS(wang_seurat_inhibitory, file = '/inkwell03/werner/sc_data/rattus_brain/wang_2024/wang_seurat_GABA.rds')
 
 
 ```
 
+```{r}
+
+wang_seurat_inhibitory = readRDS(file = '/inkwell03/werner/sc_data/rattus_brain/wang_2024/wang_seurat_GABA.rds')
+
+wang_seurat_inhibitory 
+
+```
+
+
+
+
+New de novo clusters for just the inhibitory neurons
+
+
+```{r}
+#CPM normalization
+wang_seurat_inhibitory <- FindVariableFeatures(wang_seurat_inhibitory, selection.method = "vst", nfeatures = 2000, verbose = F)
+all.genes <- rownames(wang_seurat_inhibitory)
+wang_seurat_inhibitory <- ScaleData(wang_seurat_inhibitory, features = all.genes, verbose = F)
+
+
+wang_seurat_inhibitory <- RunPCA(wang_seurat_inhibitory, features = VariableFeatures(object =wang_seurat_inhibitory), verbose = F)
+
+
+wang_seurat_inhibitory <- FindNeighbors(wang_seurat_inhibitory, dims = 1:25, verbose = F)
+wang_seurat_inhibitory <- FindClusters(wang_seurat_inhibitory, verbose = F)
+
+wang_seurat_inhibitory <- RunUMAP(wang_seurat_inhibitory, dims = 1:25, verbose = F)
+
+DimPlot(wang_seurat_inhibitory, reduction = "pca", label = T)
+DimPlot(wang_seurat_inhibitory, reduction = "umap", label = T, group.by = 'seurat_clusters')
+
+
+```
+
+
+
+Load up the mouse and primate CGE/MGE metamarkers
+
+```{r}
+mouse_class_meta_markers = read_meta_markers("../metamarkers/MGE_CGE/mouse_meta_markers.csv.gz")
+primate_class_meta_markers = read_meta_markers("../metamarkers/MGE_CGE/primate_meta_markers.csv.gz")
+
+mammal_class_meta_markers = read_meta_markers("../metamarkers/MGE_CGE/mammal_CGE_MGE_meta_markers.csv.gz")
+```
+
+
+Check out the CGE and MGE predictions
+
+```{r}
+
+#rownames(wang_seurat_inhibitory@assays$RNA@data) = rownames(wang_seurat_inhibitory)
+
+
+#mouse class markers
+top_markers = mouse_class_meta_markers %>% filter(rank <= 100)
+ct_scores = score_cells(log1p(wang_seurat_inhibitory@assays$RNA@data), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+wang_seurat_inhibitory$mouse_cge_mge = ct_pred$predicted
+
+#Primate class markers
+top_markers = primate_class_meta_markers %>% filter(rank <= 100)
+ct_scores = score_cells(log1p(wang_seurat_inhibitory@assays$RNA@data), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+wang_seurat_inhibitory$primate_cge_mge = ct_pred$predicted
+
+#Cross_mammal class markers
+top_markers = mammal_class_meta_markers %>% filter(rank <= 100)
+ct_scores = score_cells(log1p(wang_seurat_inhibitory@assays$RNA@data), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+wang_seurat_inhibitory$mammal_cge_mge = ct_pred$predicted
+
+#Add the cross-mammal CGE-MGE enrichments for plotting
+wang_seurat_inhibitory$mammal_cge_enrich = ct_enrichment['all|CGE', ]
+wang_seurat_inhibitory$mammal_mge_enrich = ct_enrichment['all|MGE', ]
+
+
+DimPlot(wang_seurat_inhibitory, group.by = 'seurat_clusters', label = T) + ggtitle('Initial Wang-Rat de novo GABA clusters')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'mouse_cge_mge', label = T) + ggtitle('CGE-MGE annotations using Mouse markers')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'primate_cge_mge', label = T)+ ggtitle('CGE-MGE annotations using Primate markers')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'mammal_cge_mge', label = T)+ 
+  ggtitle('CGE-MGE annotations using Mammal markers') +
+  scale_color_manual(values = c('CGE' = 'darkorchid', 'MGE' = 'goldenrod1', 'unassigned' = 'red'))
+
+FeaturePlot(wang_seurat_inhibitory, features = c('mammal_cge_enrich'))+ 
+  ggtitle('Mammalian CGE enrichment: wang-Rat') +
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 1)
+
+FeaturePlot(wang_seurat_inhibitory, features = c('mammal_mge_enrich'))+ 
+  ggtitle('Mammalian MGE enrichment: wang-Rat') +
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 1)
+
+```
+
+```{r}
+mouse_class_nums = table(wang_seurat_inhibitory$mouse_cge_mge, wang_seurat_inhibitory$seurat_clusters)
+total_clust_nums = colSums(mouse_class_nums)
+mouse_class_ratios = t(t(mouse_class_nums) / total_clust_nums)
+
+primate_class_nums = table(wang_seurat_inhibitory$primate_cge_mge, wang_seurat_inhibitory$seurat_clusters)
+total_clust_nums = colSums(primate_class_nums)
+primate_class_ratios = t(t(primate_class_nums) / total_clust_nums)
+
+
+primate_class_ratios = t(primate_class_ratios)
+for_ggplot_df = data.frame(CGE = primate_class_ratios[ ,'CGE'], MGE = primate_class_ratios[ ,'MGE'], cluster = rownames(primate_class_ratios))
+for_ggplot_df$cluster[for_ggplot_df$CGE >= .80 | for_ggplot_df$CGE <= .20] = NA
+
+ggplot(for_ggplot_df, aes(x = CGE, y = MGE, label = cluster)) + geom_point() +
+  ggrepel::geom_label_repel(max.overlaps = Inf, min.segment.length = 0) + 
+  theme_bw() + coord_fixed() + ggtitle('CGE-MGE cluster proportions: Wang-Rat')
+
+
+mouse_class_ratios = t(mouse_class_ratios)
+for_ggplot_df = data.frame(CGE = mouse_class_ratios[ ,'CGE'], MGE = mouse_class_ratios[ ,'MGE'], cluster = rownames(mouse_class_ratios))
+for_ggplot_df$cluster[for_ggplot_df$CGE >= .80 | for_ggplot_df$CGE <= .20] = NA
+
+ggplot(for_ggplot_df, aes(x = CGE, y = MGE, label = cluster)) + geom_point() +
+  ggrepel::geom_label_repel(max.overlaps = Inf, min.segment.length = 0) + 
+  theme_bw() + coord_fixed() + ggtitle('Mouse CGE-MGE cluster proportions: Wang-Rat')
+
+
+
+ggsave(filename = 'initial_wang_rat_mouse_CGEMGE_clust_ratios_ggplot.pdf', path = '../../graphs/non_allen_data/', useDingbats = F,
+       device = 'pdf', height = 4, width = 4)
+
+
+```
+
+
+Filter out the hybrid clusters, chandelier cells are cluster 11 so keep
+
+```{r}
+
+cell_index = !wang_seurat_inhibitory$seurat_clusters %in% c('1','10','12','13','16','17','18')
+wang_seurat_inhibitory = wang_seurat_inhibitory[, cell_index]
+
+
+wang_seurat_inhibitory <- RunPCA(wang_seurat_inhibitory, features = VariableFeatures(object =wang_seurat_inhibitory), verbose = F)
+
+wang_seurat_inhibitory <- FindNeighbors(wang_seurat_inhibitory, dims = 1:25, verbose = F)
+wang_seurat_inhibitory <- FindClusters(wang_seurat_inhibitory, verbose = F, resolution = .9)
+
+wang_seurat_inhibitory <- RunUMAP(wang_seurat_inhibitory, dims = 1:25, verbose = F)
+
+DimPlot(wang_seurat_inhibitory, reduction = "pca", label = T)
+DimPlot(wang_seurat_inhibitory, reduction = "umap", label = T, group.by = 'seurat_clusters')
+
+
+```
+
+
+
+```{r}
+
+top_allen_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
+top_mouse_markers = mouse_subclass_meta_markers %>% filter(rank <= 50)
+top_ori_mouse_markers = original_mouse_subclass_meta_markers %>% filter(rank <= 50)
+
+#rownames(wang_seurat_inhibitory@assays$RNA@layers$data) = rownames(wang_seurat_inhibitory)
+
+ct_scores = score_cells(log1p(wang_seurat_inhibitory@assays$RNA@data), top_allen_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+wang_seurat_inhibitory$primate_subclass_annot = ct_pred$predicted
+
+ct_scores = score_cells(log1p(wang_seurat_inhibitory@assays$RNA@data), top_mouse_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+wang_seurat_inhibitory$mouse_subclass_annot = ct_pred$predicted
+
+ct_scores = score_cells(log1p(wang_seurat_inhibitory@assays$RNA@data), top_ori_mouse_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+wang_seurat_inhibitory$ori_mouse_subclass_annot = ct_pred$predicted
+
+DimPlot(wang_seurat_inhibitory, group.by = 'seurat_clusters', label = T) + ggtitle('Initial Wang-Rat de novo GABA clusters')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'mouse_cge_mge', label = T) + ggtitle('CGE-MGE annotations using Mouse markers')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'primate_cge_mge', label = T)+ ggtitle('CGE-MGE annotations using Primate markers')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'primate_subclass_annot', label = T) + ggtitle('subclass annotations using Primate markers')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'mouse_subclass_annot', label = T)+ ggtitle('subclass annotations using Mouse markers')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'ori_mouse_subclass_annot', label = T)+ ggtitle('subclass annotations using Mouse markers')
+
+
+```
+
+```{r}
+
+DimPlot(wang_seurat_inhibitory, group.by = 'seurat_clusters', label = T) + ggtitle('Wang-Rat de novo GABA clusters') 
+ggsave(filename = 'wang_rat_de_novo_clusters_umap.pdf', path = '../../graphs/non_allen_data/umaps/', device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+DimPlot(wang_seurat_inhibitory, group.by = 'mouse_subclass_annot')+ ggtitle('subclass annotations using homologous Mouse markers') + scale_color_manual(values = celltype_color_palette)
+ggsave(filename = 'Wang_rat_homo_mouse_predict_umap.pdf', path = '../../graphs/non_allen_data/umaps/', device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+DimPlot(wang_seurat_inhibitory, group.by = 'ori_mouse_subclass_annot')+ ggtitle('subclass annotations using original Mouse markers') + scale_color_manual(values = celltype_color_palette)
+ggsave(filename = 'Wang_rat_ori_mouse_predict_umap.pdf', path = '../../graphs/non_allen_data/umaps/', device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+
+```
+
+
+Save with the de novo clusters and all the annotations
+```{r}
+saveRDS(wang_seurat_inhibitory, file = '/inkwell03/werner/sc_data/rattus_brain/wang_2024/wang_seurat_GABA_cortex_annotated.rds')
+
+```
+
+
+
+
+```{r}
+
+
+confuse_mat_wang_rat = table(wang_seurat_inhibitory$ori_mouse_subclass_annot, wang_seurat_inhibitory$seurat_clusters)
+cluster_totals_wang_rat = colSums(confuse_mat_wang_rat )
+confuse_mat_wang_rat = t(t(confuse_mat_wang_rat)/cluster_totals_wang_rat)
+
+#Ordering by CGE and MGE
+row_order = match(c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5','Lamp5 Lhx6','Vip','Sncg', 'unassigned'), rownames(confuse_mat_wang_rat))
+#round(confuse_mat_wang_rat)[row_order, ]
+
+col_order = c(1,5,11,0,2,7,10,9,4,6,3,12,8) +1
+
+col_fun = circlize::colorRamp2(breaks = c(0,.5, 1) , colors = c('white','orange','red'))
+hm = ComplexHeatmap::Heatmap(confuse_mat_wang_rat,name = 'cluster proportion',
+                        col = col_fun,
+                        cluster_rows = F, row_order = row_order,
+                        cluster_columns = F, column_order = col_order,
+                        column_title = 'Wang-rat cluster predictions with original mouse markers')
+hm = ComplexHeatmap::draw(hm)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/ori_mouse_MM_predict_wang_rat_clusters.pdf', 
+    useDingbats = F, height = 4, width = 8)
+hm
+dev.off()
+
+
+confuse_mat_wang_rat = table(wang_seurat_inhibitory$mouse_subclass_annot, wang_seurat_inhibitory$seurat_clusters)
+cluster_totals_wang_rat = colSums(confuse_mat_wang_rat )
+confuse_mat_wang_rat = t(t(confuse_mat_wang_rat)/cluster_totals_wang_rat)
+
+#Ordering by CGE and MGE
+row_order = match(c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5','Lamp5 Lhx6','Vip','Sncg', 'Pax6', 'unassigned'), rownames(confuse_mat_wang_rat))
+#round(confuse_mat_wang_rat)[row_order, ]
+col_order = c(1,5,11,0,2,7,10,9,4,6,3,12,8) +1
+
+col_fun = circlize::colorRamp2(breaks = c(0,.5, 1) , colors = c('white','orange','red'))
+hm = ComplexHeatmap::Heatmap(confuse_mat_wang_rat,name = 'cluster proportion',
+                        col = col_fun,
+                        cluster_rows = F, row_order = row_order,
+                        cluster_columns = F, column_order = col_order,
+                        column_title = 'wang-rat cluster predictions with homologous mouse markers')
+hm = ComplexHeatmap::draw(hm)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/homo_mouse_MM_predict_wang_rat_clusters.pdf', 
+    useDingbats = F, height = 4, width = 8)
+hm
+dev.off()
+
+
+```
+
+
+
+And just see what the hippocampal samples look like
+
+```{r}
+
+wang_path = '/inkwell03/werner/sc_data/rattus_brain/wang_2024'
+wang_directories = list.dirs(wang_path, recursive = F)
+
+hippo_directories = wang_directories[grepl('HP', wang_directories)]
+
+hippo_samples = sapply(strsplit(hippo_directories, split = '/', fixed = T), '[[', 7)
+hippo_samples = sapply(strsplit(hippo_samples, split = '_', fixed = T), '[[', 1)
+
+
+all_hippo_list = vector(mode = 'list', length = length(hippo_samples))
+for(i in 1:length(hippo_samples)){
+
+  seurat_counts = Read10X(hippo_directories[[i]])
+  
+  #Filter for the 1to1s and swap in the human gene names
+  index = match(rownames(seurat_counts), final_present_1to1s$`Mouse gene name`)
+  rownames(seurat_counts) = final_present_1to1s[index,]$`Gene name`
+  
+  gene_filt = !is.na(rownames(seurat_counts))
+  seurat_counts = seurat_counts[gene_filt, ]
+  
+  current_seurat <- CreateSeuratObject(counts = seurat_counts, project = "current_rat", min.features = 500)
+  current_seurat[["percent.mt"]] <- PercentageFeatureSet(current_seurat, pattern = "^MT-")
+  current_seurat$region = 'hippo'
+  current_seurat$sample = hippo_samples[i]
+  all_hippo_list[[i]] = current_seurat
+
+}
+
+all_hippo_list
+
+#Go through and get the intersect genes
+all_genes_list = vector(mode = 'list', length = length(all_hippo_list))
+for(i in 1:length(all_hippo_list)){
+  all_genes_list[[i]] = rownames(all_hippo_list[[i]])
+}
+final_genes = Reduce(intersect, all_genes_list)
+
+#And go through and filter to the same gene set
+
+for(i in 1:length(all_hippo_list)){
+ 
+  current_seurat = all_hippo_list[[i]]
+  gene_index = rownames(current_seurat) %in% final_genes
+  current_seurat = current_seurat[gene_index, ]
+  
+  gene_index = match(final_genes, rownames(current_seurat))
+  current_seurat = current_seurat[gene_index, ]
+  
+  all_hippo_list[[i]] = as.SingleCellExperiment(current_seurat)
+
+}
+
+wang_sce = do.call('cbind', all_hippo_list)
+table(colData(wang_sce)$sample)
+
+
+
+wang_seurat = as.Seurat(wang_sce, counts = "counts", data = NULL)
+
+
+Idents(wang_seurat) = wang_seurat$region
+
+VlnPlot(wang_seurat, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+```
+
+```{r}
+#CPM normalization
+wang_seurat <- NormalizeData(wang_seurat, normalization.method = 'RC', scale.factor = 1e6, verbose = F)
+wang_seurat <- FindVariableFeatures(wang_seurat, selection.method = "vst", nfeatures = 2000, verbose = F)
+all.genes <- rownames(wang_seurat)
+wang_seurat <- ScaleData(wang_seurat, features = all.genes, verbose = F)
+
+
+wang_seurat <- RunPCA(wang_seurat, features = VariableFeatures(object =wang_seurat), verbose = F)
+
+
+wang_seurat <- FindNeighbors(wang_seurat, dims = 1:25, verbose = F)
+wang_seurat <- FindClusters(wang_seurat, verbose = F)
+
+wang_seurat <- RunUMAP(wang_seurat, dims = 1:25, verbose = F)
+
+
+
+DimPlot(wang_seurat, reduction = "pca", label = T)
+DimPlot(wang_seurat, reduction = "umap", label = T)
+DimPlot(wang_seurat, reduction = 'umap', group.by = 'sample'  )
+
+```
+
+
+
+
+```{r}
+top_markers = list('InN' = primate_class_markers$gene[as.logical(primate_class_markers$InN)],
+     'NonN' = primate_class_markers$gene[as.logical(primate_class_markers$NonN)],
+     'ExN' = primate_class_markers$gene[as.logical(primate_class_markers$ExN)])
+
+wang_sce = as.SingleCellExperiment(wang_seurat)
+names(assays(wang_sce)) = c('counts','cpm','scaledata')
+
+ct_scores = score_cells(log1p(cpm(wang_sce)), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+dim(wang_seurat)
+ct_enrichment[ , 1:10]
+
+wang_seurat$glutamatergic_enrichment = ct_enrichment['all|ExN', ] / max(ct_enrichment['all|ExN', ])
+wang_seurat$GABAergic_enrichment = ct_enrichment['all|InN', ] / max(ct_enrichment['all|InN', ])
+wang_seurat$non_neuronal_enrichment = ct_enrichment['all|NonN', ] / max(ct_enrichment['all|NonN', ])
+
+wang_seurat$predicted_primate_MM_class = ct_pred$predicted
+
+
+DimPlot(wang_seurat, reduction = "umap", label = T, group.by = 'predicted_primate_MM_class')
+
+```
+
+
+
+
+```{r}
+
+cell_index = wang_seurat$predicted_primate_MM_class == 'InN'
+wang_seurat_inhibitory = wang_seurat[ , cell_index]
+
+wang_seurat_inhibitory
+
+saveRDS(wang_seurat, file = '/inkwell03/werner/sc_data/rattus_brain/wang_2024/wang_seurat_full_data_hippo.rds')
+
+saveRDS(wang_seurat_inhibitory, file = '/inkwell03/werner/sc_data/rattus_brain/wang_2024/wang_seurat_GABA_hippo.rds')
+
+
+```
+
+New de novo clusters for just the inhibitory neurons
+
+
+```{r}
+#CPM normalization
+wang_seurat_inhibitory <- FindVariableFeatures(wang_seurat_inhibitory, selection.method = "vst", nfeatures = 2000, verbose = F)
+all.genes <- rownames(wang_seurat_inhibitory)
+wang_seurat_inhibitory <- ScaleData(wang_seurat_inhibitory, features = all.genes, verbose = F)
+
+
+wang_seurat_inhibitory <- RunPCA(wang_seurat_inhibitory, features = VariableFeatures(object =wang_seurat_inhibitory), verbose = F)
+
+
+wang_seurat_inhibitory <- FindNeighbors(wang_seurat_inhibitory, dims = 1:25, verbose = F)
+wang_seurat_inhibitory <- FindClusters(wang_seurat_inhibitory, verbose = F)
+
+wang_seurat_inhibitory <- RunUMAP(wang_seurat_inhibitory, dims = 1:25, verbose = F)
+
+DimPlot(wang_seurat_inhibitory, reduction = "pca", label = T)
+DimPlot(wang_seurat_inhibitory, reduction = "umap", label = T, group.by = 'seurat_clusters')
+
+
+```
+
+
+Check out the CGE and MGE predictions
+
+```{r}
+
+#rownames(wang_seurat_inhibitory@assays$RNA@data) = rownames(wang_seurat_inhibitory)
+
+
+#mouse class markers
+top_markers = mouse_class_meta_markers %>% filter(rank <= 100)
+ct_scores = score_cells(log1p(wang_seurat_inhibitory@assays$RNA@data), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+wang_seurat_inhibitory$mouse_cge_mge = ct_pred$predicted
+
+#Primate class markers
+top_markers = primate_class_meta_markers %>% filter(rank <= 100)
+ct_scores = score_cells(log1p(wang_seurat_inhibitory@assays$RNA@data), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+wang_seurat_inhibitory$primate_cge_mge = ct_pred$predicted
+
+#Cross_mammal class markers
+top_markers = mammal_class_meta_markers %>% filter(rank <= 100)
+ct_scores = score_cells(log1p(wang_seurat_inhibitory@assays$RNA@data), top_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+
+wang_seurat_inhibitory$mammal_cge_mge = ct_pred$predicted
+
+#Add the cross-mammal CGE-MGE enrichments for plotting
+wang_seurat_inhibitory$mammal_cge_enrich = ct_enrichment['all|CGE', ]
+wang_seurat_inhibitory$mammal_mge_enrich = ct_enrichment['all|MGE', ]
+
+
+DimPlot(wang_seurat_inhibitory, group.by = 'seurat_clusters', label = T) + ggtitle('Initial Wang-Rat de novo GABA clusters')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'mouse_cge_mge', label = T) + ggtitle('CGE-MGE annotations using Mouse markers')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'primate_cge_mge', label = T)+ ggtitle('CGE-MGE annotations using Primate markers')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'mammal_cge_mge', label = T)+ 
+  ggtitle('CGE-MGE annotations using Mammal markers') +
+  scale_color_manual(values = c('CGE' = 'darkorchid', 'MGE' = 'goldenrod1', 'unassigned' = 'red'))
+
+FeaturePlot(wang_seurat_inhibitory, features = c('mammal_cge_enrich'))+ 
+  ggtitle('Mammalian CGE enrichment: wang-Rat') +
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 1)
+
+FeaturePlot(wang_seurat_inhibitory, features = c('mammal_mge_enrich'))+ 
+  ggtitle('Mammalian MGE enrichment: wang-Rat') +
+  scale_colour_gradient2(low = "white", mid = "white", high = "black", midpoint = 1)
+
+```
+
+
+
+
+```{r}
+mouse_class_nums = table(wang_seurat_inhibitory$mouse_cge_mge, wang_seurat_inhibitory$seurat_clusters)
+total_clust_nums = colSums(mouse_class_nums)
+mouse_class_ratios = t(t(mouse_class_nums) / total_clust_nums)
+
+primate_class_nums = table(wang_seurat_inhibitory$primate_cge_mge, wang_seurat_inhibitory$seurat_clusters)
+total_clust_nums = colSums(primate_class_nums)
+primate_class_ratios = t(t(primate_class_nums) / total_clust_nums)
+
+
+primate_class_ratios = t(primate_class_ratios)
+for_ggplot_df = data.frame(CGE = primate_class_ratios[ ,'CGE'], MGE = primate_class_ratios[ ,'MGE'], cluster = rownames(primate_class_ratios))
+for_ggplot_df$cluster[for_ggplot_df$CGE >= .8 | for_ggplot_df$CGE <= .2] = NA
+
+ggplot(for_ggplot_df, aes(x = CGE, y = MGE, label = cluster)) + geom_point() +
+  ggrepel::geom_label_repel(max.overlaps = Inf, min.segment.length = 0) + 
+  theme_bw() + coord_fixed() + ggtitle('CGE-MGE cluster proportions: Wang-Rat')
+
+
+mouse_class_ratios = t(mouse_class_ratios)
+for_ggplot_df = data.frame(CGE = mouse_class_ratios[ ,'CGE'], MGE = mouse_class_ratios[ ,'MGE'], cluster = rownames(mouse_class_ratios))
+for_ggplot_df$cluster[for_ggplot_df$CGE >= .8 | for_ggplot_df$CGE <= .2] = NA
+
+ggplot(for_ggplot_df, aes(x = CGE, y = MGE, label = cluster)) + geom_point() +
+  ggrepel::geom_label_repel(max.overlaps = Inf, min.segment.length = 0) + 
+  theme_bw() + coord_fixed() + ggtitle('Mouse CGE-MGE cluster proportions: Wang-Rat')
+
+
+
+ggsave(filename = 'initial_wang_rat_mouse_CGEMGE_hippo_clust_ratios_ggplot.pdf', path = '../../graphs/non_allen_data/', useDingbats = F,
+       device = 'pdf', height = 4, width = 4)
+
+
+```
+cluster 11 is chandelier cells
+```{r}
+
+cell_index = !wang_seurat_inhibitory$seurat_clusters %in% c('1','3','9','13','14','15','16', '17')
+wang_seurat_inhibitory = wang_seurat_inhibitory[, cell_index]
+
+
+wang_seurat_inhibitory <- RunPCA(wang_seurat_inhibitory, features = VariableFeatures(object =wang_seurat_inhibitory), verbose = F)
+
+wang_seurat_inhibitory <- FindNeighbors(wang_seurat_inhibitory, dims = 1:25, verbose = F)
+wang_seurat_inhibitory <- FindClusters(wang_seurat_inhibitory, verbose = F)
+
+wang_seurat_inhibitory <- RunUMAP(wang_seurat_inhibitory, dims = 1:25, verbose = F)
+
+DimPlot(wang_seurat_inhibitory, reduction = "pca", label = T)
+DimPlot(wang_seurat_inhibitory, reduction = "umap", label = T, group.by = 'seurat_clusters')
+
+
+```
+
+
+
+```{r}
+
+top_allen_markers = primate_subclass_meta_markers %>% filter(rank <= 50)
+top_mouse_markers = mouse_subclass_meta_markers %>% filter(rank <= 50)
+top_ori_mouse_markers = original_mouse_subclass_meta_markers %>% filter(rank <= 50)
+
+#rownames(wang_seurat_inhibitory@assays$RNA@layers$data) = rownames(wang_seurat_inhibitory)
+
+ct_scores = score_cells(log1p(wang_seurat_inhibitory@assays$RNA@data), top_allen_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+wang_seurat_inhibitory$primate_subclass_annot = ct_pred$predicted
+
+ct_scores = score_cells(log1p(wang_seurat_inhibitory@assays$RNA@data), top_mouse_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+wang_seurat_inhibitory$mouse_subclass_annot = ct_pred$predicted
+
+ct_scores = score_cells(log1p(wang_seurat_inhibitory@assays$RNA@data), top_ori_mouse_markers)
+ct_enrichment = compute_marker_enrichment(ct_scores)
+ct_pred = assign_cells(ct_scores)
+wang_seurat_inhibitory$ori_mouse_subclass_annot = ct_pred$predicted
+
+DimPlot(wang_seurat_inhibitory, group.by = 'seurat_clusters', label = T) + ggtitle('Initial Wang-Rat de novo GABA clusters')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'mouse_cge_mge', label = T) + ggtitle('CGE-MGE annotations using Mouse markers')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'primate_cge_mge', label = T)+ ggtitle('CGE-MGE annotations using Primate markers')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'primate_subclass_annot', label = T) + ggtitle('subclass annotations using Primate markers')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'mouse_subclass_annot', label = T)+ ggtitle('subclass annotations using Mouse markers')
+
+DimPlot(wang_seurat_inhibitory, group.by = 'ori_mouse_subclass_annot', label = T)+ ggtitle('subclass annotations using Mouse markers')
+
+
+```
+
+
+```{r}
+
+DimPlot(wang_seurat_inhibitory, group.by = 'seurat_clusters', label = T) + ggtitle('Wang-Rat de novo GABA clusters') 
+ggsave(filename = 'wang_rat_de_novo_clusters_hippo_umap.pdf', path = '../../graphs/non_allen_data/umaps/', device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+DimPlot(wang_seurat_inhibitory, group.by = 'mouse_subclass_annot')+ ggtitle('subclass annotations using homologous Mouse markers') + scale_color_manual(values = celltype_color_palette)
+ggsave(filename = 'Wang_rat_homo_mouse_predict_hippo_umap.pdf', path = '../../graphs/non_allen_data/umaps/', device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+DimPlot(wang_seurat_inhibitory, group.by = 'ori_mouse_subclass_annot')+ ggtitle('subclass annotations using original Mouse markers') + scale_color_manual(values = celltype_color_palette)
+ggsave(filename = 'Wang_rat_ori_mouse_predict_hippo_umap.pdf', path = '../../graphs/non_allen_data/umaps/', device = 'pdf',
+       useDingbats = F, height = 4, width = 6)
+
+```
+
+
+
+
+
+```{r}
+
+confuse_mat_wang_rat = table(wang_seurat_inhibitory$ori_mouse_subclass_annot, wang_seurat_inhibitory$seurat_clusters)
+cluster_totals_wang_rat = colSums(confuse_mat_wang_rat )
+confuse_mat_wang_rat = t(t(confuse_mat_wang_rat)/cluster_totals_wang_rat)
+
+#Ordering by CGE and MGE
+row_order = match(c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5','Lamp5 Lhx6','Vip','Sncg', 'unassigned'), rownames(confuse_mat_wang_rat))
+#round(confuse_mat_wang_rat)[row_order, ]
+col_order = c(0,1,9,10,8,6,4,7,5,3,2) +1
+
+col_fun = circlize::colorRamp2(breaks = c(0,.5, 1) , colors = c('white','orange','red'))
+hm = ComplexHeatmap::Heatmap(confuse_mat_wang_rat,name = 'cluster proportion',
+                        col = col_fun,
+                        cluster_rows = F, row_order = row_order,
+                        cluster_columns = F, column_order = col_order,
+                        column_title = 'Wang-rat cluster predictions with original mouse markers')
+hm = ComplexHeatmap::draw(hm)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/ori_mouse_MM_predict_wang_rat_hippo_clusters.pdf', 
+    useDingbats = F, height = 4, width = 8)
+hm
+dev.off()
+
+
+confuse_mat_wang_rat = table(wang_seurat_inhibitory$mouse_subclass_annot, wang_seurat_inhibitory$seurat_clusters)
+cluster_totals_wang_rat = colSums(confuse_mat_wang_rat )
+confuse_mat_wang_rat = t(t(confuse_mat_wang_rat)/cluster_totals_wang_rat)
+
+#Ordering by CGE and MGE
+row_order = match(c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5','Lamp5 Lhx6','Vip','Sncg', 'Pax6', 'unassigned'), rownames(confuse_mat_wang_rat))
+#round(confuse_mat_wang_rat)[row_order, ]
+col_order = c(0,1,9,10,8,6,4,7,5,3,2) +1
+
+col_fun = circlize::colorRamp2(breaks = c(0,.5, 1) , colors = c('white','orange','red'))
+hm = ComplexHeatmap::Heatmap(confuse_mat_wang_rat,name = 'cluster proportion',
+                        col = col_fun,
+                        cluster_rows = F, row_order = row_order,
+                        cluster_columns = F, column_order = col_order,
+                        column_title = 'wang-rat cluster predictions with homologous mouse markers')
+hm = ComplexHeatmap::draw(hm)
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/homo_mouse_MM_predict_wang_rat_hippo_clusters.pdf', 
+    useDingbats = F, height = 4, width = 8)
+hm
+dev.off()
+
+
+```
 
 
 
