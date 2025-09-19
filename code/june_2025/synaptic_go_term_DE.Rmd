@@ -148,6 +148,22 @@ names(clust_to_primate_subclass) = mouse_clusters
 
 
 
+```{r}
+
+get_go_genes = function(go_ID){
+  
+  genes <- org.Hs.egGO2ALLEGS[[go_ID]]
+  # Add gene symbols
+  symbols <- mapIds(org.Hs.eg.db,
+                    keys = genes,
+                    column = "SYMBOL",
+                    keytype = "ENTREZID",
+                    multiVals = "first")
+  symbols = unique(symbols)
+  return(symbols)
+
+}
+```
 
 
 Just get the average expression of the genes in a gene set, at their cluster level
@@ -202,15 +218,145 @@ Heatmap(mean_exp_cpm_df, name = 'z-scored Mean CPM',
 ```
 
 
+Try a PCA just on the CGE clusters and the ion channels
+
+
+If the signal is clear enough, just use that
+
+
+Get the set of ion channels to use, potassium, sodium, calcium, chloride
+
+GO:0034704	calcium channel complex
+GO:0005891	voltage-gated calcium channel complex
+GO:0034705	potassium channel complex
+GO:0008076	voltage-gated potassium channel complex
+GO:0034706	sodium channel complex
+GO:0001518	voltage-gated sodium channel complex
+GO:0034707	chloride channel complex
+
+```{r}
+
+go_table %>% filter(grepl('chloride', Term)) %>% arrange(desc(N_genes))
+
+
+ion_channels = unique(c(get_go_genes('GO:0034704'), get_go_genes('GO:0005891'), get_go_genes('GO:0034705'),
+  get_go_genes('GO:0008076'), get_go_genes('GO:0034706'), get_go_genes('GO:0001518'),
+  get_go_genes('GO:0034707')))
+
+length(ion_channels)
+
+```
+
+
+
+```{r}
+
+cell_index = colData(zeng_10xv2_wba)$cell_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg') 
+gene_index = rownames(zeng_10xv2_wba) %in% ion_channels
+
+#Subset the data
+go_set_exp_sce = zeng_10xv2_wba[gene_index, cell_index]
+
+mouse_clust_and_subclass = colData(go_set_exp_sce)$cell_subclass
+mouse_clust_and_subclass[go_set_exp_sce$cell_cluster == 'Lamp5 Gaba_4'] = 'Lamp5 Gaba_4'
+mouse_clust_and_subclass[go_set_exp_sce$cell_cluster == 'Vip Gaba_1'] = 'Vip Gaba_1'
+mouse_clust_and_subclass[go_set_exp_sce$cell_cluster == 'Vip Gaba_9'] = 'Vip Gaba_9'
+
+go_set_exp_sce$mouse_clust_and_subclass = mouse_clust_and_subclass
+
+
+go_set_exp_sce 
+```
+
+
+```{r}
+celltype_and_clust_palette = c("Chandelier"='grey80', 
+                           "Pvalb"='grey80', 
+                           "Sst"='grey80', 
+                           "Sst Chodl"='grey80', 
+                           "Lamp5"='grey80',
+                           "Sncg"='grey80',
+                           "Vip"='grey80', 
+                           "Lamp5 Lhx6"='grey80',
+                           "Pax6"='grey80',
+                           'Lamp5 Gaba_4' = '#DA808C', 'Vip Gaba_1' = '#A45FBF', 'Vip Gaba_9' = '#A45FBF')
+
+
+```
 
 
 
 
+```{r}
+
+#dataset_hvg = scran::getTopHVGs(stats, n = 2000)
+logcounts(go_set_exp_sce) = log1p(cpm(go_set_exp_sce))
+#Run PCA on the HVG
+go_set_exp_sce = scater::runPCA(go_set_exp_sce , scale = T)
+#Run UMAP
+go_set_exp_sce = scater::runUMAP(go_set_exp_sce , dimred = 'PCA', n_dimred = 10)
 
 
 
+p_mouse_subclass = scater::plotReducedDim(go_set_exp_sce , dimred = 'UMAP', color_by = 'mouse_clust_and_subclass') + 
+  scale_color_manual(values = celltype_and_clust_palette)
+#Randomly shuffle point order and then manually plot to add an alpha option
+p_mouse_subclass$data <- p_mouse_subclass$data[sample(nrow(p_mouse_subclass$data)), ]
+p_mouse_subclass$layers <- list()
+
+#Add centroid labels of the clusters we want to highlight
+coords <- as.data.frame(reducedDim(go_set_exp_sce, "UMAP"))
+coords$cell_type <- colData(go_set_exp_sce)$mouse_clust_and_subclass
+
+centroids <- coords %>%
+  group_by(cell_type) %>%
+  summarise(Dim1 = mean(UMAP1), Dim2 = mean(UMAP2)) %>%
+  filter(cell_type %in% c('Lamp5 Gaba_4','Vip Gaba_1','Vip Gaba_9'))
 
 
+scater::plotReducedDim(go_set_exp_sce , dimred = 'UMAP', color_by = 'cell_subclass') + 
+  scale_color_manual(values = celltype_color_palette) + ggtitle('Ion channel UMAP: original mouse subclasses') +
+  ggrepel::geom_label_repel(
+  data = centroids,
+  aes(x = Dim1, y = Dim2, label = cell_type),
+  inherit.aes = FALSE,
+  size = 4,
+  box.padding = 1.25,
+  segment.color = "black") 
+
+scater::plotReducedDim(go_set_exp_sce , dimred = 'UMAP', color_by = 'primate_subclass') + 
+  scale_color_manual(values = celltype_color_palette) + ggtitle('Ion channel UMAP: homologous mouse subclasses') +
+  ggrepel::geom_label_repel(
+  data = centroids,
+  aes(x = Dim1, y = Dim2, label = cell_type),
+  inherit.aes = FALSE,
+  size = 4,
+  box.padding = 1.25,
+  segment.color = "black") 
+
+p_mouse_subclass + geom_point(data = p_mouse_subclass$data, 
+                              aes(x = p_mouse_subclass$data$X, y = p_mouse_subclass$data$Y, colour = p_mouse_subclass$data$colour_by),
+                              alpha = 0.5) +
+  ggrepel::geom_label_repel(
+  data = centroids,
+  aes(x = Dim1, y = Dim2, label = cell_type),
+  inherit.aes = FALSE,
+  size = 4,
+  box.padding = 1.25,
+  segment.color = "black") +
+  ggtitle('Ion channel UMAP: original mouse clusters')
+
+```
+
+
+```{r}
+
+dim(go_set_exp_sce)
+```
+
+
+Perhaps try integrating all the mouse data on just the ion channel genes to get a summary UMAP and summary gene expression matrix
+Average expression at the GO term level.
 
 
 
