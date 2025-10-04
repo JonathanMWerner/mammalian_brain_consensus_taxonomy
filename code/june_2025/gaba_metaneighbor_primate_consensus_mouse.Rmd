@@ -2125,6 +2125,26 @@ interneuron.combined$cell_subclass[interneuron.combined$cell_subclass == 'Serpin
 
 ```{r}
 
+rownames(interneuron.combined)[grepl('ID2',rownames(interneuron.combined) )]
+
+
+interneuron.combined[[]]
+
+DefaultAssay(object = interneuron.combined) = 'integrated'
+FeaturePlot(interneuron.combined, features = 'CCK', slot = 'scale.data') +
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(interneuron.combined, features = 'ID2', slot = 'scale.data') +
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+
+```
+
+
+
+
+```{r}
+
 
 study_colors = MetBrewer::met.brewer("Veronese", n=8, type="continuous")
 study_colors = study_colors[1:8] 

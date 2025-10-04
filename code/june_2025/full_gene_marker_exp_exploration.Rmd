@@ -1,0 +1,404 @@
+
+
+
+Putting the homologous labels back into the full mouse datasets, to explore the expression of genes that are not present in the 1-to-1 orthologs across the species
+
+
+
+All the mouse data with homologous annotations
+
+```{r}
+
+library(Seurat)
+library(SingleCellExperiment)
+library(ggplot2)
+library(dplyr)
+```
+
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C',
+                           'Serpinf1' = 'grey20')
+
+```
+
+```{r}
+
+load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/mouse_primate_MN_integrated.Rdata')
+interneuron.combined$cell_subclass[interneuron.combined$cell_subclass == 'Serpinf1'] = 'Vip'
+```
+
+
+```{r}
+
+tasic18 = readRDS(file = '/vault/werner/rotation/jonathan/data/tasic18.rds')
+table(as.character(tasic18$source.name), tasic18$characteristics..cell_subclass)
+
+#Just grab the GABAergic cells
+inhib_filt = colData(tasic18)$cell_class == 'GABAergic'
+tasic18 = tasic18[ ,inhib_filt]
+
+table(colData(tasic18)$cell_cluster)
+ncol(tasic18)
+
+```
+
+
+```{r}
+
+rownames(tasic18)[grepl('Cck', rownames(tasic18))]
+
+
+current_study_ortho_meta = interneuron.combined[[]] %>% filter(study == 'tasic18')
+index = match( colData(tasic18)$title,rownames(current_study_ortho_meta) )
+
+tasic18$homologous_subclass = current_study_ortho_meta$primate_subclass[index]
+tasic18$homologous_type = current_study_ortho_meta$orthology[index]
+tasic18$mouse_sanity_check = current_study_ortho_meta$cell_subclass[index]
+
+
+as.data.frame(colData(tasic18))
+
+as.data.frame(colData(tasic18))[(tasic18$cell_subclass != tasic18$mouse_sanity_check), ]
+
+```
+
+
+
+
+```{r}
+assay(tasic18, "cpm") = MetaMarkers::convert_to_cpm(assay(tasic18))
+
+tasic18_seurat = as.Seurat(tasic18, counts = "counts", data = "cpm")
+
+all.genes <- rownames(tasic18_seurat)
+tasic18_seurat <- FindVariableFeatures(tasic18_seurat, nfeatures = 2000)
+tasic18_seurat <- ScaleData(tasic18_seurat, features = all.genes)
+tasic18_seurat <- RunPCA(tasic18_seurat, features = VariableFeatures(object = tasic18_seurat), verbose = F)
+tasic18_seurat <- RunUMAP(tasic18_seurat , dims = 1:20, verbose = F)
+
+
+
+DimPlot(tasic18_seurat, group.by = 'homologous_subclass',cols = celltype_color_palette)
+DimPlot(tasic18_seurat, group.by = 'cell_subclass',cols = celltype_color_palette)
+
+FeaturePlot(tasic18_seurat, features = 'Id2', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(tasic18_seurat, features = 'Sncg', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(tasic18_seurat, features = 'Pax6', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(tasic18_seurat, features = 'Cck', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(tasic18_seurat, features = 'Cnr1', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(tasic18_seurat , features = 'Vip', slot = 'data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+```
+
+
+```{r}
+library(org.Mm.eg.db)
+gene_map <- select(org.Mm.eg.db, keys(org.Mm.eg.db), c("SYMBOL", "ENSEMBL"), "ENTREZID")
+gene_map
+
+
+```
+
+```{r}
+
+zeng_10x_cells = readRDS("/vault/werner/rotation/jonathan/data/zeng_10x_cells/zeng_10x_cells.rds")
+zeng_10x_cells
+
+
+zeng_10x_nuclei = readRDS("/vault/werner/rotation/jonathan/data/zeng_10x_nuclei/zeng_10x_nuclei.rds")
+zeng_10x_nuclei
+
+zeng_smart_cells = readRDS("/vault/werner/rotation/jonathan/data/zeng_smart_cells/zeng_smart_cells.rds")
+zeng_smart_nuclei = readRDS("/vault/werner/rotation/jonathan/data/zeng_smart_nuclei/zeng_smart_nuclei.rds")
+
+
+inhib_filt = colData(zeng_10x_cells)$class_label == 'GABAergic'
+zeng_10x_cells = zeng_10x_cells[ , inhib_filt]
+
+inhib_filt = colData(zeng_10x_nuclei)$class_label == 'GABAergic'
+zeng_10x_nuclei = zeng_10x_nuclei[ , inhib_filt]
+
+inhib_filt = colData(zeng_smart_cells)$class_label == 'GABAergic'
+zeng_smart_cells = zeng_smart_cells[ , inhib_filt]
+
+inhib_filt = colData(zeng_smart_nuclei)$class_label == 'GABAergic'
+zeng_smart_nuclei = zeng_smart_nuclei[ , inhib_filt]
+
+
+ncol(zeng_10x_cells)
+ncol(zeng_10x_nuclei)
+ncol(zeng_smart_cells)
+ncol(zeng_smart_nuclei)
+```
+
+```{r}
+#10X datasets are already ensembl genes
+zeng_10x_cells_genes = rownames(zeng_10x_cells)
+index = match(zeng_10x_cells_genes, gene_map$ENSEMBL)
+zeng_10x_cells_genes = gene_map[index, 'SYMBOL']
+rownames(zeng_10x_cells) = paste(rownames(zeng_10x_cells), zeng_10x_cells_genes, sep = '_' )
+
+zeng_10x_nuclei_genes = rownames(zeng_10x_nuclei)
+index = match(zeng_10x_nuclei_genes, gene_map$ENSEMBL)
+zeng_10x_nuclei_genes = gene_map[index, 'SYMBOL']
+rowData(zeng_10x_nuclei)$full_gene_id = zeng_10x_nuclei_genes
+zeng_10x_nuclei_genes[zeng_10x_nuclei_genes == 'NA'] = NA
+zeng_10x_nuclei_genes = zeng_10x_nuclei_genes[!is.na(zeng_10x_nuclei_genes)]
+rownames(zeng_10x_nuclei) = rowData(zeng_10x_nuclei)$full_gene_id
+
+
+```
+
+
+
+
+```{r}
+
+rownames(zeng_smart_cells)[grepl('Cnr1', rownames(zeng_smart_cells))]
+
+table( interneuron.combined$study)
+
+current_study_ortho_meta = interneuron.combined[[]] %>% filter(study == 'zeng_10x_cells')
+index = match( rownames(colData(zeng_10x_cells)),rownames(current_study_ortho_meta) )
+
+zeng_10x_cells$homologous_subclass = current_study_ortho_meta$primate_subclass[index]
+zeng_10x_cells$homologous_type = current_study_ortho_meta$orthology[index]
+zeng_10x_cells$mouse_sanity_check = current_study_ortho_meta$cell_subclass[index]
+
+
+as.data.frame(colData(zeng_10x_cells))
+table(zeng_10x_cells$subclass_label == zeng_10x_cells$mouse_sanity_check)
+
+as.data.frame(colData(zeng_10x_cells))[(zeng_10x_cells$cell_subclass != zeng_10x_cells$mouse_sanity_check), ]
+
+```
+
+
+```{r}
+assay(zeng_10x_cells, "cpm") = MetaMarkers::convert_to_cpm(assay(zeng_10x_cells))
+names(assays(zeng_10x_cells)) = c('counts','cpm')
+
+dim(cpm(zeng_10x_cells))
+
+zeng_10x_cells_seurat = as.Seurat(zeng_10x_cells, counts = "counts", data = "cpm")
+
+all.genes <- rownames(zeng_10x_cells_seurat)
+zeng_10x_cells_seurat <- FindVariableFeatures(zeng_10x_cells_seurat, nfeatures = 2000)
+zeng_10x_cells_seurat <- ScaleData(zeng_10x_cells_seurat, features = all.genes)
+zeng_10x_cells_seurat <- RunPCA(zeng_10x_cells_seurat, features = VariableFeatures(object = zeng_10x_cells_seurat), verbose = F)
+zeng_10x_cells_seurat <- RunUMAP(zeng_10x_cells_seurat , dims = 1:20, verbose = F)
+
+zeng_10x_cells_seurat[[]]
+
+DimPlot(zeng_10x_cells_seurat, group.by = 'homologous_subclass',cols = celltype_color_palette)
+DimPlot(zeng_10x_cells_seurat, group.by = 'subclass_label',cols = celltype_color_palette)
+
+
+rownames(zeng_10x_cells)[grepl('Vip', rownames(zeng_10x_cells))]
+
+FeaturePlot(zeng_10x_cells_seurat, features = 'ENSMUSG00000020644-Id2', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(zeng_10x_cells_seurat, features = 'ENSMUSG00000023064-Sncg', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(zeng_10x_cells_seurat, features = 'ENSMUSG00000027168-Pax6', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(zeng_10x_cells_seurat, features = 'ENSMUSG00000032532-Cck', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(zeng_10x_cells_seurat, features = 'ENSMUSG00000044288-Cnr1', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(zeng_10x_cells_seurat, features = 'ENSMUSG00000019772-Vip', slot = 'data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+
+
+```
+
+
+
+And check out the human data
+
+
+
+```{r}
+
+human_data = readRDS(file = '/inkwell03/werner/sc_data/primate_MTG/human_raw_UMI_expression_matrix.RDS')
+
+table('ID2' %in% rownames(human_data))
+
+
+```
+
+
+```{r}
+
+cell_index = human_data$confirmed_subclass %in% c('Vip','Sncg','Pax6','Lamp5','Lamp5_Lhx6','Pvalb','Chandelier','Sst','Sst Chodl')
+
+dim(human_data)
+human_data = human_data[, cell_index ]
+dim(human_data)
+
+#Convert to singlecell experiment
+human_data = as.SingleCellExperiment(human_data)
+#CPM normalize
+assay(human_data, "cpm") = MetaMarkers::convert_to_cpm(assay(human_data))
+#Split by smartseq and 10x
+ss_index = colData(human_data)$species_tech == 'human_ss'
+human_data_ss = human_data[ , ss_index]
+human_data_10x = human_data[ , !ss_index]
+
+dim(human_data_ss)
+dim(human_data_10x)
+
+
+```
+
+
+
+```{r}
+
+primate_cluster_mappings = data.table::fread('../../data/cross_species_mapping_cls86.csv')
+table(primate_cluster_mappings$consensus_cluster_label)
+```
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5_Lhx6"='#935F50',
+                           "Pax6"='#71238C',
+                           'Serpinf1' = 'grey20')
+
+```
+
+```{r}
+
+colData(human_data_ss)
+
+index = match(human_data_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_data_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_data_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+#Note the cells without cross-species consensus
+human_data_ss$subclass_label[is.na(human_data_ss$consensus_cluster_label)] = NA
+
+human_data_ss_seurat = as.Seurat(human_data_ss, counts = "counts", data = "cpm")
+
+all.genes <- rownames(human_data_ss_seurat)
+human_data_ss_seurat <- FindVariableFeatures(human_data_ss_seurat, nfeatures = 2000)
+human_data_ss_seurat <- ScaleData(human_data_ss_seurat, features = all.genes)
+human_data_ss_seurat <- RunPCA(human_data_ss_seurat, features = VariableFeatures(object = human_data_ss_seurat), verbose = F)
+human_data_ss_seurat <- RunUMAP(human_data_ss_seurat , dims = 1:20, verbose = F)
+
+human_data_ss_seurat[[]]
+
+
+DimPlot(human_data_ss_seurat, group.by = 'subclass_label',cols = celltype_color_palette)
+
+
+FeaturePlot(human_data_ss_seurat, features = 'ID2', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(human_data_ss_seurat, features = 'SNCG', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(human_data_ss_seurat, features = 'PAX6', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(human_data_ss_seurat, features = 'CCK', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(human_data_ss_seurat, features = 'CNR1', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(human_data_ss_seurat, features = 'VIP', slot = 'data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+
+
+
+```
+
+
+```{r}
+
+colData(human_data_10x)
+
+index = match(human_data_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_data_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_data_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+#Note the cells without cross-species consensus
+human_data_10x$subclass_label[is.na(human_data_10x$consensus_cluster_label)] = NA
+
+human_data_10x_seurat = as.Seurat(human_data_10x, counts = "counts", data = "cpm")
+
+all.genes <- rownames(human_data_10x_seurat)
+human_data_10x_seurat <- FindVariableFeatures(human_data_10x_seurat, nfeatures = 2000)
+human_data_10x_seurat <- ScaleData(human_data_10x_seurat, features = all.genes)
+human_data_10x_seurat <- RunPCA(human_data_10x_seurat, features = VariableFeatures(object = human_data_10x_seurat), verbose = F)
+human_data_10x_seurat <- RunUMAP(human_data_10x_seurat , dims = 1:20, verbose = F)
+
+human_data_10x_seurat[[]]
+
+
+DimPlot(human_data_10x_seurat, group.by = 'subclass_label',cols = celltype_color_palette)
+
+
+FeaturePlot(human_data_10x_seurat, features = 'ID2', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(human_data_10x_seurat, features = 'SNCG', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(human_data_10x_seurat, features = 'PAX6', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(human_data_10x_seurat, features = 'CCK', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(human_data_10x_seurat, features = 'CNR1', slot = 'scale.data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+FeaturePlot(human_data_10x_seurat, features = 'VIP', slot = 'data') + 
+  scale_color_gradient2(low = '#313695', mid ='grey95', high = '#A50026', midpoint = 0 )
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
