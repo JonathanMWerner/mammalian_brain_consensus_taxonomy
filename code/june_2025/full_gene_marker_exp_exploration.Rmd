@@ -37,6 +37,30 @@ interneuron.combined$cell_subclass[interneuron.combined$cell_subclass == 'Serpin
 ```
 
 
+Also get a summary plot for the datasets, number of cells and technology
+
+
+```{r}
+
+
+mouse_metadata = interneuron.combined[[]]
+
+
+mouse_cell_num = mouse_metadata %>% group_by(study) %>% summarise(n = n()) %>% mutate(species = 'Mouse')
+
+
+mouse_cell_num$study = c('Broad sN 10V3 2023','Allen sC Smart-seq V4 2018','Allen sC 10xV2 2021','Allen sN 10xV2 2021',
+                         'Allen sC 10xV2 2023','Allen sC 10xV3 2023','Allen sC Smart-seq V4 2021','Allen sN Smart-seq V4 2021')
+
+
+mouse_cell_num
+
+```
+
+
+
+
+
 ```{r}
 
 tasic18 = readRDS(file = '/vault/werner/rotation/jonathan/data/tasic18.rds')
@@ -394,8 +418,120 @@ FeaturePlot(human_data_10x_seurat, features = 'VIP', slot = 'data') +
 
 ```
 
+Get all the Allen primate data
+
+```{r}
+
+human_data_10x  = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_10x_gaba.rds')
+human_data_ss = readRDS( file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_ss_gaba.rds')
+
+chimp_data_10x  = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_10x_gaba.rds')
+chimp_data_ss = readRDS( file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_ss_gaba.rds')
+
+gorilla_data_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_10x_gaba.rds')
+gorilla_data_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_ss_gaba.rds')
+
+macaca_data = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/macaca_data_10x_gaba.rds')
+
+marmoset_data = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
+
+```
+
+```{r}
+mouse_cell_num
 
 
+allen_primate_cell_num = data.frame(study = c('Allen Human sN 10xV3 2023', 'Allen Human sN Smart-seq V4 2023', 'Allen Chimpanzee sN 10xV3 2023', 'Allen Chimpanzee sN Smart-seq V4 2023',
+                                              'Allen Gorilla sN 10xV3 2023', 'Allen Gorilla sN Smart-seq V4 2023', 'Allen Macaque sN 10xV3 2023', 'Allen Marmoset sN 10xV3 2023'), 
+                                    n = c(ncol(human_data_10x), ncol(human_data_ss), ncol(chimp_data_10x), ncol(chimp_data_ss), ncol(gorilla_data_10x), ncol(gorilla_data_ss),
+                                          ncol(macaca_data), ncol(marmoset_data) ),
+                                    species = c('Human','Human','Chimpanzee','Chimpanzee','Gorilla','Gorilla','Macaque','Marmoset'))
+
+allen_primate_cell_num 
+
+```
+
+
+And the Yale and UT southwestern primate datasets
+
+```{r}
+
+
+caglayan_utSouthwestern = readRDS(file = '/inkwell03/werner/sc_data/primate_caglayan_konopka/caglayan_gaba_processed.rds')
+utSouth_cell_num = caglayan_utSouthwestern[[]] %>% group_by(Species) %>% summarise(n = n())
+
+utSouth_cell_num$study = c('UT SouthWestern Human sN 10xV3 2023','UT SouthWestern Chimpanzee sN 10xV3 2023','UT SouthWestern Macaque sN 10xV3 2023')
+colnames(utSouth_cell_num) = c('species','n','study')
+utSouth_cell_num$species = c('Human','Chimpanzee','Macaque')
+
+
+
+utSouth_cell_num
+```
+
+
+```{r}
+
+sesten_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_ma_sestan/sestan_integrated_gaba.rds')
+
+yale_cell_num = sesten_gaba_data[[]] %>% group_by(species) %>% summarise(n = n())
+
+yale_cell_num$species[yale_cell_num$species == 'Rhesus'] = 'Macaque'
+
+
+yale_cell_num$study = c('Yale Chimpanzee sN 10xV3 2022', 'Yale Human sN 10xV3 2022','Yale Marmoset sN 10xV3 2022','Yale Macaque sN 10xV3 2022' )
+
+
+yale_cell_num
+
+```
+
+
+```{r}
+
+
+mouse_cell_num
+
+allen_primate_cell_num
+
+utSouth_cell_num
+
+yale_cell_num
+
+
+
+all_cell_num_df = do.call('rbind', list(mouse_cell_num,allen_primate_cell_num, utSouth_cell_num, yale_cell_num ))
+
+all_cell_num_df$species = factor(all_cell_num_df$species, levels = c('Mouse','Marmoset','Macaque','Gorilla','Chimpanzee','Human'))
+
+
+all_cell_num_df$study = factor(all_cell_num_df$study , levels = c("Allen Human sN 10xV3 2023","Allen Human sN Smart-seq V4 2023", 
+                                                                  "Allen Chimpanzee sN 10xV3 2023","Allen Chimpanzee sN Smart-seq V4 2023",
+                                                                  "Allen Gorilla sN 10xV3 2023","Allen Gorilla sN Smart-seq V4 2023",
+                                                                  "Allen Macaque sN 10xV3 2023","Allen Marmoset sN 10xV3 2023",
+                                                                  "UT SouthWestern Human sN 10xV3 2023" , "UT SouthWestern Chimpanzee sN 10xV3 2023" ,
+                                                                  "UT SouthWestern Macaque sN 10xV3 2023" , "Yale Human sN 10xV3 2022", 
+                                                                  "Yale Chimpanzee sN 10xV3 2022", "Yale Macaque sN 10xV3 2022", "Yale Marmoset sN 10xV3 2022",
+                                                                  'Allen sC Smart-seq V4 2018', 'Allen sC 10xV2 2021', 'Allen sN 10xV2 2021', 
+                                                                  'Allen sC Smart-seq V4 2021', 'Allen sN Smart-seq V4 2021',
+                                                                  'Allen sC 10xV2 2023','Allen sC 10xV3 2023','Broad sN 10V3 2023'))
+
+
+
+all_cell_num_df$technology = '10x'
+all_cell_num_df$technology[all_cell_num_df$study %in% c('Allen sC Smart-seq V4 2018', 'Allen sC Smart-seq V4 2021','Allen sN Smart-seq V4 2021',
+                                                        'Allen Human sN Smart-seq V4 2023','Allen Chimpanzee sN Smart-seq V4 2023', 'Allen Gorilla sN Smart-seq V4 2023')] = 'Smart-seq'
+
+ggplot(all_cell_num_df, aes(x = study, y = species, size = log10(n), color = technology )) + geom_point() +
+  guides(size=guide_legend(title="log10(Cell num.)")) + scale_color_manual(values = c('10x' = 'slateblue1', 'Smart-seq' = 'goldenrod')) +
+  theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+
+ggsave(filename = 'cell_num_dataset_summary.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/', 
+       device = 'pdf', useDingbats = F, height = 5, width = 8)
+
+
+
+```
 
 
 
