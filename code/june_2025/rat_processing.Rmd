@@ -1401,6 +1401,339 @@ dev.off()
 
 
 
+###################################
+
+Probably should do a mouse MetaNeighbor, focus on the Rat clusters that replicate in the mouse datasets
+
+##################################
+
+```{r}
+aydin_seurat_inhibitory = readRDS(file = '/inkwell03/werner/sc_data/rattus_brain/aydin_2024/aydin_seurat_GABA_annotated.rds')
+
+wang_seurat_inhibitory = readRDS( file = '/inkwell03/werner/sc_data/rattus_brain/wang_2024/wang_seurat_GABA_cortex_annotated.rds')
+
+
+aydin_sce_inhibitory = as.SingleCellExperiment(aydin_seurat_inhibitory)
+names(assays(aydin_sce_inhibitory)) = c('counts','cpm','scaledata')
+
+aydin_sce_inhibitory$cluster_label = aydin_sce_inhibitory$seurat_clusters
+aydin_sce_inhibitory$subclass_label = NA
+aydin_sce_inhibitory$study = 'rat_aydin'
+
+wang_sce_inhibitory = as.SingleCellExperiment(wang_seurat_inhibitory)
+names(assays(wang_sce_inhibitory)) = c('counts','cpm','scaledata')
+
+wang_sce_inhibitory$cluster_label = wang_sce_inhibitory$seurat_clusters
+wang_sce_inhibitory$subclass_label = NA
+wang_sce_inhibitory$study = 'rat_wang'
+
+```
+These are the mouse clusters that are replicable across the mouse datasets
+
+
+```{r}
+
+load('/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/mouse_MN_results.Rdata')
+
+keep_mouse_clusters = unname(unlist(mouse_mclusters))
+
+```
+
+
+Load up the full mouse datasets and filter down just to the replicable mouse clusters
+Add in the ratdata, using the de novo clusters, for metaNeighbor
+
+
+```{r}
+
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba.rds')
+
+#Change metdata columns to match other datasets
+tasic18$subclass_label = tasic18$cell_subclass
+tasic18$cluster_label = tasic18$cell_cluster
+
+keep_meta = colData(tasic18)[ , c('subclass_label','cluster_label')]
+colData(tasic18)= keep_meta
+
+#keep the replicable mouse clusters
+tasic18$study = 'tasic18'
+dataset_cluster_labels = paste(tasic18$study, tasic18$cluster_label, sep = '|')
+tasic18 = tasic18[, dataset_cluster_labels %in% keep_mouse_clusters]
+tasic18
+
+```
+
+
+```{r}
+
+zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba.rds')
+
+keep_meta = colData(zeng_10x_cells)[ , c('subclass_label','cluster_label')]
+colData(zeng_10x_cells)= keep_meta
+
+#keep the replicable mouse clusters
+zeng_10x_cells$study = 'zeng_10x_cells'
+dataset_cluster_labels = paste(zeng_10x_cells$study, zeng_10x_cells$cluster_label, sep = '|')
+zeng_10x_cells = zeng_10x_cells[, dataset_cluster_labels %in% keep_mouse_clusters]
+zeng_10x_cells
+
+```
+
+
+```{r}
+
+zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba.rds')
+
+keep_meta = colData(zeng_10x_nuclei)[ , c('subclass_label','cluster_label')]
+colData(zeng_10x_nuclei)= keep_meta
+
+#keep the replicable mouse clusters
+zeng_10x_nuclei$study = 'zeng_10x_nuclei'
+dataset_cluster_labels = paste(zeng_10x_nuclei$study, zeng_10x_nuclei$cluster_label, sep = '|')
+zeng_10x_nuclei = zeng_10x_nuclei[, dataset_cluster_labels %in% keep_mouse_clusters]
+zeng_10x_nuclei
+
+
+
+```
+
+```{r}
+
+zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba.rds')
+
+keep_meta = colData(zeng_smart_cells)[ , c('subclass_label','cluster_label')]
+colData(zeng_smart_cells)= keep_meta
+
+#keep the replicable mouse clusters
+zeng_smart_cells$study = 'zeng_smart_cells'
+dataset_cluster_labels = paste(zeng_smart_cells$study, zeng_smart_cells$cluster_label, sep = '|')
+zeng_smart_cells = zeng_smart_cells[, dataset_cluster_labels %in% keep_mouse_clusters]
+zeng_smart_cells
+
+
+
+```
+
+```{r}
+
+zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba.rds')
+
+keep_meta = colData(zeng_smart_nuclei)[ , c('subclass_label','cluster_label')]
+colData(zeng_smart_nuclei)= keep_meta
+
+#keep the replicable mouse clusters
+zeng_smart_nuclei$study = 'zeng_smart_nuclei'
+dataset_cluster_labels = paste(zeng_smart_nuclei$study, zeng_smart_nuclei$cluster_label, sep = '|')
+zeng_smart_nuclei = zeng_smart_nuclei[, dataset_cluster_labels %in% keep_mouse_clusters]
+zeng_smart_nuclei
+
+
+
+```
+
+Whole brain atlases
+```{r}
+
+zeng_10xv2_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba.rds')
+
+zeng_10xv2_wba$cluster_label = zeng_10xv2_wba$supertype_label
+
+keep_meta = colData(zeng_10xv2_wba)[ , c('subclass_label','cluster_label')]
+colData(zeng_10xv2_wba)= keep_meta
+
+#keep the replicable mouse clusters
+zeng_10xv2_wba$study = 'zeng_10xv2_wba'
+dataset_cluster_labels = paste(zeng_10xv2_wba$study, zeng_10xv2_wba$cluster_label, sep = '|')
+zeng_10xv2_wba = zeng_10xv2_wba[, dataset_cluster_labels %in% keep_mouse_clusters]
+zeng_10xv2_wba
+
+
+```
+
+```{r}
+
+zeng_10xv3_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv3_gaba.rds')
+
+zeng_10xv3_wba$cluster_label = zeng_10xv3_wba$supertype_label
+
+keep_meta = colData(zeng_10xv3_wba)[ , c('subclass_label','cluster_label')]
+colData(zeng_10xv3_wba)= keep_meta
+
+#keep the replicable mouse clusters
+zeng_10xv3_wba$study = 'zeng_10xv3_wba'
+dataset_cluster_labels = paste(zeng_10xv3_wba$study, zeng_10xv3_wba$cluster_label, sep = '|')
+zeng_10xv3_wba = zeng_10xv3_wba[, dataset_cluster_labels %in% keep_mouse_clusters]
+zeng_10xv3_wba
+
+
+```
+
+
+```{r}
+
+macosko_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba.rds')
+
+#No subclass labels
+macosko_wba$cluster_label = macosko_wba$cell.type
+macosko_wba$subclass_label = rep(NA, length = ncol(macosko_wba))
+
+#keep the replicable mouse clusters
+macosko_wba$study = 'macosko_wba'
+dataset_cluster_labels = paste(macosko_wba$study, macosko_wba$cluster_label, sep = '|')
+macosko_wba = macosko_wba[, dataset_cluster_labels %in% keep_mouse_clusters]
+macosko_wba
+
+
+```
+
+
+```{r}
+
+names(assays(zeng_10x_cells)) = c('counts','cpm')
+names(assays(zeng_10x_nuclei)) = c('counts','cpm')
+names(assays(zeng_smart_cells)) = c('counts','cpm')
+names(assays(zeng_smart_nuclei)) = c('counts','cpm')
+names(assays(zeng_10xv2_wba)) = c('counts','cpm')
+names(assays(zeng_10xv3_wba)) = c('counts','cpm')
+
+
+all_rodent_sce = list(
+  tasic18 = tasic18,
+  zeng_10x_cells = zeng_10x_cells,
+  zeng_10x_nuclei = zeng_10x_nuclei,
+  zeng_smart_cells = zeng_smart_cells,
+  zeng_smart_nuclei = zeng_smart_nuclei,
+  zeng_10xv2_wba = zeng_10xv2_wba,
+  zeng_10xv3_wba = zeng_10xv3_wba,
+  macosko_wba = macosko_wba,
+  rat_aydin = aydin_sce_inhibitory,
+  rat_wang = wang_sce_inhibitory
+)
+
+
+
+```
+
+
+```{r}
+lapply(all_rodent_sce, function(x) head(rownames(x), 3))
+
+```
+
+```{r}
+lapply(all_rodent_sce, function(x) colnames(colData(x)))
+
+```
+
+```{r}
+library(MetaNeighbor)
+
+```
+
+
+```{r}
+
+merged_rodent_sce = mergeSCE(all_rodent_sce)
+dim(merged_rodent_sce)
+
+```
+
+
+Get rid of the list of sce objects for space
+```{r}
+
+rm(all_rodent_sce)
+gc()
+```
+
+
+```{r}
+
+head(colData(merged_rodent_sce))
+
+```
+
+Run MetaNeighbor
+
+Get highly variable genes
+```{r}
+start = Sys.time()
+global_hvgs = variableGenes(dat = merged_rodent_sce, exp_labels = merged_rodent_sce$study_id, min_recurrence = 5)
+length(global_hvgs)
+Sys.time() - start
+```
+
+
+Just use the top 1000 hvgs
+```{r}
+global_hvgs = global_hvgs[1:1000]
+
+```
+
+And now the one-vs-best cell-types
+
+```{r}
+start = Sys.time()
+rodent_best_hits = MetaNeighborUS(var_genes = global_hvgs, 
+                              dat = merged_rodent_sce, 
+                              study_id = merged_rodent_sce$study_id,
+                              cell_type = merged_rodent_sce$cluster_label,
+                              fast_version = T,
+                              one_vs_best = T, symmetric_output = F)
+
+
+Sys.time() - start
+gc()
+
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/metaneighbor_plots/all_within_rodent_data_1vsbest.pdf', 
+    useDingbats = F, height = 25, width = 25)
+plotHeatmap(rodent_best_hits, cex = .2)
+dev.off()
+
+
+
+```
+
+```{r}
+rodent_mclusters = extractMetaClusters(rodent_best_hits, threshold = .7)
+rodent_mclusters
+
+```
+
+
+save the rodent metaneighbor results
+```{r}
+
+save(rodent_best_hits , rodent_mclusters,
+     file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/metaneighbor/rodent_MN_results.Rdata')
+
+
+```
+
+
+
+Non-replicable rat clusters
+"rat_aydin|1"  "rat_aydin|14" "rat_aydin|4"  "rat_wang|0"   "rat_wang|10"  "rat_wang|7" 
+```{r}
+rodent_mclusters$outliers[grepl('rat', rodent_mclusters$outliers)]
+
+```
+
+
+```{r}
+
+table(aydin_sce_inhibitory$cluster_label, aydin_sce_inhibitory$mouse_subclass_annot)
+
+```
+
+
+
+
+
+
+
 
 
 
