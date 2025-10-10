@@ -535,6 +535,152 @@ ggsave(filename = 'cell_num_dataset_summary.pdf', path = '/home/werner/projects/
 
 
 
+Add the consensus cluster label and then filter out cells not in a consensus cluster
+```{r}
+
+index = match(human_data_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_data_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_data_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+human_data_10x = human_data_10x[ ,!is.na(human_data_10x$consensus_cluster_label)]
+
+index = match(human_data_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_data_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_data_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+human_data_ss = human_data_ss[ ,!is.na(human_data_ss$consensus_cluster_label)]
+
+
+index = match(chimp_data_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_data_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_data_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+chimp_data_10x = chimp_data_10x[ ,!is.na(chimp_data_10x$consensus_cluster_label)]
+
+index = match(chimp_data_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_data_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_data_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+chimp_data_ss = chimp_data_ss[ ,!is.na(chimp_data_ss$consensus_cluster_label)]
+
+
+index = match(gorilla_data_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_data_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_data_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+gorilla_data_10x = gorilla_data_10x[ ,!is.na(gorilla_data_10x$consensus_cluster_label)]
+
+index = match(gorilla_data_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_data_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_data_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+gorilla_data_ss = gorilla_data_ss[ ,!is.na(gorilla_data_ss$consensus_cluster_label)]
+
+
+index = match(macaca_data$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+macaca_data$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+macaca_data$subclass_label = primate_cluster_mappings$subclass_label[index]
+macaca_data = macaca_data[ ,!is.na(macaca_data$consensus_cluster_label)]
+
+index = match(marmoset_data$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+marmoset_data$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+marmoset_data$subclass_label = primate_cluster_mappings$subclass_label[index]
+marmoset_data = marmoset_data[ ,!is.na(marmoset_data$consensus_cluster_label)]
+
+gc()
+
+```
+
+
+```{r}
+
+human_data_10x = as.Seurat(human_data_10x, counts = "counts", data = "cpm")
+human_data_ss = as.Seurat(human_data_ss, counts = "counts", data = "cpm")
+chimp_data_10x = as.Seurat(chimp_data_10x, counts = "counts", data = "cpm")
+chimp_data_ss = as.Seurat(chimp_data_ss, counts = "counts", data = "cpm")
+gorilla_data_10x = as.Seurat(gorilla_data_10x, counts = "counts", data = "cpm")
+gorilla_data_ss = as.Seurat(gorilla_data_ss, counts = "counts", data = "cpm")
+macaca_data = as.Seurat(macaca_data, counts = "counts", data = "cpm")
+marmoset_data = as.Seurat(marmoset_data, counts = "counts", data = "cpm")
+gc()
+```
+
+FindIntegrationAnchors took 1.5 hours
+
+```{r}
+
+#Make the list of objects
+seurat.list = list('human_data_10x' = human_data_10x, 'human_data_ss' = human_data_ss, 'chimp_data_10x' = chimp_data_10x ,  
+                   'chimp_data_ss' = chimp_data_ss, 'gorilla_data_10x' =  gorilla_data_10x,
+                   'gorilla_data_ss' = gorilla_data_ss, 'macaca_data ' = macaca_data  , 'marmoset_data' = marmoset_data )
+
+
+integration_features <- SelectIntegrationFeatures(object.list = seurat.list)
+length(integration_features)
+
+start = Sys.time()
+integration_anchors <- FindIntegrationAnchors(object.list = seurat.list, anchor.features = integration_features)
+start - Sys.time()
+
+```
+
+```{r}
+rm(seurat.list)
+gc()
+```
+
+
+
+```{r}
+start = Sys.time()
+
+#Make a single integrated object
+primate_mtg_integrate <- IntegrateData(anchorset = integration_anchors)
+
+start - Sys.time()
+```
+
+```{r}
+rm(integration_anchors)
+gc()
+```
+
+```{r}
+start = Sys.time()
+
+DefaultAssay(primate_mtg_integrate ) <- "integrated"
+# Run the standard workflow for visualization and clustering
+primate_mtg_integrate  <- ScaleData(primate_mtg_integrate , verbose = FALSE)
+primate_mtg_integrate  <- RunPCA(primate_mtg_integrate , verbose = FALSE)
+primate_mtg_integrate  <- RunUMAP(primate_mtg_integrate , reduction = "pca", dims = 1:20)
+
+Sys.time() - start
+
+```
+
+
+```{r}
+primate_mtg_integrate$subclass_label[primate_mtg_integrate$subclass_label == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+primate_mtg_integrate$confirmed_subclass[primate_mtg_integrate$confirmed_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+DimPlot(primate_mtg_integrate , group.by = 'species')
+DimPlot(primate_mtg_integrate , group.by = 'species_tech')
+DimPlot(primate_mtg_integrate , group.by = 'subclass_label', cols = celltype_color_palette) 
+DimPlot(primate_mtg_integrate , group.by = 'confirmed_subclass', cols = celltype_color_palette) 
+
+
+```
+
+
+```{r}
+FeaturePlot(primate_mtg_integrate, slot = 'scale.data', features = c('SNCG'))
+
+```
+
+```{r}
+
+save(primate_mtg_integrate, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/all_mtg_primate_integrated.Rdata')
+
+```
+
+
+
+
+
 
 
 
