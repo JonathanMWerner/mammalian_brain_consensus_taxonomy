@@ -1,0 +1,1010 @@
+
+Plotting the spatial mouse data Leon pulled together for the interneuron subclasses
+
+Need two plots, 1 showing the neighborhood profiles across the subclasses
+
+And the other showing the layer distributions of the subclasses
+
+
+
+
+```{r}
+
+library(ggplot2)
+library(ComplexHeatmap)
+library(dplyr)
+
+
+```
+
+
+
+```{r}
+
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C')
+
+
+```
+
+
+```{r}
+
+temp_df = data.table::fread('/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/results/cortical_heatmap_data/row_meta.csv')
+
+temp_df
+
+
+temp_df_2 = data.table::fread('/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/results/cortical_heatmap_data/mat_wide.csv')
+
+temp_df_2
+
+```
+
+
+###################################
+Below is a script from Leon
+
+
+###################################
+
+```{r}
+#CODE for testing nearest cell for a subclass
+#CODE for brain region memberships
+
+library(dplyr)
+library(tidyr)
+library(ComplexHeatmap)
+library(circlize)
+library(RColorBrewer)
+library(grid)
+library(stringr)
+library(RANN)
+library(tibble)
+library(reshape2)
+library(ComplexHeatmap)
+library(viridis)
+library(grid)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(here)
+library(magrittr)
+library(conflicted)
+library(readxl)
+conflict_prefer("first", "dplyr")
+conflict_prefer("rename", "dplyr")
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+conflict_prefer("count", "dplyr")
+```
+
+
+```{r}
+
+#from https://allen-brain-cell-atlas.s3.us-west-2.amazonaws.com/index.html#metadata/MERFISH-C57BL6J-638850/20231215/
+Zeng_calls_direct <- read_csv(here("/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/data/Zeng/MERFISH-C57BL6J-638850/20230830/cell_metadata.csv"))
+Zeng_calls_direct
+
+ccf_annotations <- read_csv(here("/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/data/Zeng/from_API/ccf_coordinates_MERFISH-C57BL6J-638850.csv.gz"))
+ccf_annotations %>% group_by(parcellation_division) %>% count() %>% as.data.frame()
+Zeng_calls_direct %<>% left_join(ccf_annotations %>% select(cell_label, parcellation_division, parcellation_structure, parcellation_substructure)) #HPF or Isocortex
+
+Zeng_calls_direct %<>% select(cell_label, cl = cluster_alias, x, y, z, parcellation_division, parcellation_structure, parcellation_substructure)
+Zeng_calls_direct %>% pull(cl) %>% max()
+Zeng_calls_direct %>% pull(z) %>% unique() %>% length()
+Zeng_calls_direct
+Zeng_calls_direct %>% pull(parcellation_substructure) %>% unique()
+
+ccf_expansions <- read_xlsx(here("/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/data/Allen_CCFv3/1-s2.0-S0092867420304025-mmc2.xlsx"), skip = 1)
+ccf_expansions %<>% select(parcellation_substructure = abbreviation, parcellation_substructure_expansion = `full structure name`)
+
+#extract layer information
+ccf_expansions %<>% mutate(
+    cortical_layer = parcellation_substructure_expansion %>%
+      # grab "layer 2/3", "Layer 6b", etc. (case-insensitive, optional spaces)
+      str_extract(regex("\\blayer\\s*[0-6](?:\\s*/\\s*[0-6])?[ab]?\\b", ignore_case = TRUE)) %>%
+      # drop the word "layer" and any spaces so you get "2/3", "6b", "1", ...
+      str_remove(regex("^layer\\s*", ignore_case = TRUE)) %>%
+      str_replace_all("\\s+", "")
+  )
+
+Zeng_calls_direct %<>% left_join(ccf_expansions)
+#handle the nuclei with layers
+Zeng_calls_direct %<>% mutate(cortical_layer = if_else(parcellation_division != "Isocortex", NA, cortical_layer))
+Zeng_calls_direct %<>% mutate(cortical_layer_plus_hippocampus = cortical_layer)
+Zeng_calls_direct %<>% mutate(cortical_layer_plus_hippocampus = if_else(parcellation_structure %in% c("CA1", "CA2", "CA3"), "Hippocampus",cortical_layer_plus_hippocampus))
+Zeng_calls_direct %>% group_by(cortical_layer) %>% count()
+Zeng_calls_direct %>% group_by(cortical_layer_plus_hippocampus) %>% count()
+Zeng_calls_direct %>% filter(!is.na(cortical_layer)) %>% group_by(cortical_layer, parcellation_division) %>% count()
+
+
+#mark for classic cortical areas (motor, auditory, olfactory)?
+Zeng_calls_direct %>% filter(!is.na(cortical_layer)) %>% arrange(-y)
+
+#plot the layers across the slices
+ggplot(data = Zeng_calls_direct, aes(x=x, y=-1*y, color = cortical_layer)) + 
+  geom_point(size=.03, data = Zeng_calls_direct %>% sample_frac(.1), color ="gray90") + theme_classic() +    
+  geom_point(data = Zeng_calls_direct %>% filter(!is.na(cortical_layer)), size = 0.1) + 
+  coord_equal() +# theme(legend.position="none") +
+  facet_wrap(. ~ z) + 
+  theme(
+    plot.title = element_text(
+      size = 28,          # ← increase / tweak this number
+      hjust = 0.5,
+      face  = "bold"
+    ),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line = element_line(color = 'white'),
+    plot.background = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.border = element_blank(),
+    strip.text = element_blank()  # Removes facet title
+  )
+
+#plot the layers across the slices
+ggplot(data = Zeng_calls_direct, aes(x=x, y=-1*y, color = cortical_layer)) + 
+  geom_point(size=.03, data = Zeng_calls_direct %>% sample_frac(.1), color ="gray90") + theme_classic() +    
+  geom_point(data = Zeng_calls_direct %>% filter(parcellation_division == "HPF"), size = 0.1, color = 'black') + 
+  coord_equal() +# theme(legend.position="none") +
+  facet_wrap(. ~ z) + 
+  theme(
+    plot.title = element_text(
+      size = 28,          # ← increase / tweak this number
+      hjust = 0.5,
+      face  = "bold"
+    ),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line = element_line(color = 'white'),
+    plot.background = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.border = element_blank(),
+    strip.text = element_blank()  # Removes facet title
+  )
+
+ggplot(data = Zeng_calls_direct, aes(x=x, y=-1*y, color = parcellation_structure)) + 
+  geom_point(size=.03, data = Zeng_calls_direct %>% sample_frac(.1), color ="gray90") + theme_classic() +    
+  geom_point(data = Zeng_calls_direct %>% filter(parcellation_structure %in% c("CA1", "CA2", "CA3", "DG" )), size = 0.1) + 
+  coord_equal() +# theme(legend.position="none") +
+  facet_wrap(. ~ z) + 
+  theme(
+    plot.title = element_text(
+      size = 28,          # ← increase / tweak this number
+      hjust = 0.5,
+      face  = "bold"
+    ),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line = element_line(color = 'white'),
+    plot.background = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.border = element_blank(),
+    strip.text = element_blank()  # Removes facet title
+  )
+
+
+```
+
+
+
+```{r}
+
+
+cluster_annotations <- read_tsv(here("/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/data/Zeng/from_AWS/AIT21.0/AIT21_annotation_freeze_081523.tsv"))
+cluster_annotations %>% pull(subclass_label)%>% unique() %>% sort()
+cluster_annotations %>% pull(class_label)%>% unique() %>% sort()
+cluster_annotations %<>% select(cl, subclass_id, subclass_label, supertype_label, class_label) 
+cluster_annotations %>% filter(grepl("Lamp", supertype_label))
+#cluster_annotations %<>% select(cl, subclass_id, subclass_label) 
+
+MGE_supertypes <- cluster_annotations %>% filter(grepl("MGE", class_label)) %>% pull(supertype_label) %>% unique()
+CGE_supertypes <- cluster_annotations %>% filter(grepl("CGE", class_label)) %>% pull(supertype_label) %>% unique()
+
+
+
+Zeng_calls_direct %<>% inner_join(cluster_annotations)
+
+```
+
+
+
+
+
+##########################
+##########################
+
+
+```{r}
+
+load("/inkwell03/werner/mouse_brain_consensus_taxonomy/20_3_25_interneuron_mouse_metadata.Rdata", verbose=T)
+
+#loads interneuron_metadata
+(interneuron_metadata %<>% tibble())
+
+interneuron_metadata %>% group_by(cell_cluster,study, cell_subclass, primate_subclass) %>% summarise(n = n())
+
+interneuron_metadata %>% group_by(study) %>% select(study, cell_cluster) %>% distinct() %>% count()
+setdiff(interneuron_metadata %>% filter(study == "zeng_10xv2_wba") %>% pull(cell_cluster) %>% unique(),
+        interneuron_metadata %>% filter(study == "zeng_10xv3_wba") %>% pull(cell_cluster) %>% unique())
+setdiff(interneuron_metadata %>% filter(study == "zeng_10xv3_wba") %>% pull(cell_cluster) %>% unique(),
+        interneuron_metadata %>% filter(study == "zeng_10xv2_wba") %>% pull(cell_cluster) %>% unique())
+
+zeng_mappings <- interneuron_metadata %>% filter(study %in% c('zeng_10xv2_wba','zeng_10xv3_wba')) %>% tibble()
+zeng_mappings %>% group_by(cell_subclass, primate_subclass)  %>% count() %>% mutate(change = cell_subclass != primate_subclass)
+zeng_mappings %>% group_by(cell_subclass, primate_subclass)  %>% count() %>% filter(cell_subclass != primate_subclass)
+
+zeng_mappings %>% pull(cell_subclass) %>% unique() %>% length()
+zeng_mappings %>% pull(primate_subclass) %>% unique() %>% length()
+
+
+
+#find cell_cluster's that switch from one to another subclass
+split_counts <- zeng_mappings %>% group_by(cell_cluster, cell_subclass, primate_subclass) %>% count()
+split_counts %<>% filter(cell_subclass != primate_subclass)
+
+#all the Sncg becomes Pax6 and a Lamp5 joins the Pax6 group, so skip those
+split_counts %<>% filter(cell_subclass != "Sncg")
+split_counts 
+
+split_counts_cluster <- zeng_mappings %>% select(cell_cluster, cell_subclass, primate_subclass) %>% distinct() 
+split_counts_cluster %>% filter(cell_subclass != primate_subclass)
+split_counts_cluster %>% as.data.frame()
+#cell cluster is the subtype not cluster
+
+
+#subset all the inhib supertypes to be the same size
+#get average distance to closest cell of a given subclass
+
+#subclass_cells <- Zeng_calls_direct %>% filter(subclass_label == "DG-PIR Ex IMN")
+
+inhib_cells <- Zeng_calls_direct %>% filter(supertype_label %in% (split_counts_cluster %>% pull(cell_cluster)))
+
+#####################
+#####################
+#####################
+#set target parcellation here
+#####################
+#####################
+#inhib_cells %<>% mutate(target_parcellation = parcellation_substructure)
+inhib_cells %<>% mutate(target_parcellation = cortical_layer_plus_hippocampus)
+#####################
+#####################
+#####################
+#####################
+#####################
+
+#inhib_cells %<>% mutate(target_parcellation = parcellation_structure)
+#inhib_cells %<>% mutate(target_parcellation = parcellation_division)
+#look at structure proportions
+#Getting the counts ignoring the cells that are not annotated to a parcellation
+substructure_counts <- inhib_cells %>% filter(!is.na(target_parcellation)) %>% group_by(supertype_label, target_parcellation) %>% count()
+substructure_counts
+substructure_counts  %<>%
+  group_by(supertype_label) %>%                  # totals within each supertype
+  mutate( prop_supertype_in_parcellation = n / sum(n))  # proportion in this substructure
+substructure_counts %<>% select(-n)
+substructure_counts %>% pull(target_parcellation) %>% n_distinct()
+substructure_counts %<>% inner_join(split_counts_cluster %>% rename(supertype_label = cell_cluster))
+substructure_counts 
+
+substructure_compare <- substructure_counts %>% 
+  # ── 1.  Pad with explicit 0’s for *every* (target_parcellation × supertype_label)
+  #         that is missing **within each cell_subclass** ───────────────────────
+  group_by(cell_subclass, primate_subclass) %>% 
+  complete(target_parcellation, supertype_label,
+           fill = list(prop_supertype_in_parcellation = 0)) %>% 
+  ungroup() %>% 
+  
+  # ── 2.  Count how many distinct supertypes exist in each hierarchy level ─────
+  group_by(cell_subclass) %>% 
+  mutate(total_supertypes_cell    = n_distinct(supertype_label)) %>% 
+  ungroup() %>% 
+  group_by(primate_subclass) %>% 
+  mutate(total_supertypes_primate = n_distinct(supertype_label)) %>% 
+  ungroup() %>% 
+  
+  # ── 3.  “Other-supertypes” *mean* inside the **cell_subclass** slice ─────────
+  group_by(cell_subclass, target_parcellation) %>% 
+  mutate(
+    prop_other_supertypes_cell = if_else(
+      total_supertypes_cell > 1,
+      (sum(prop_supertype_in_parcellation) - prop_supertype_in_parcellation) /
+        (total_supertypes_cell - 1),
+      NA_real_
+    )
+  ) %>% 
+  ungroup() %>% 
+  
+  # ── 4.  The same calculation, now at the **primate_subclass** level ─────────
+  group_by(primate_subclass, target_parcellation) %>% 
+  mutate(
+    prop_other_supertypes_primate = if_else(
+      total_supertypes_primate > 1,
+      (sum(prop_supertype_in_parcellation) - prop_supertype_in_parcellation) /
+        (total_supertypes_primate - 1),
+      NA_real_
+    )
+  ) %>% 
+  ungroup() %>% 
+  
+  # ── 5.  House-keeping ────────────────────────────────────────────────────────
+  select(-total_supertypes_cell, -total_supertypes_primate)
+
+substructure_counts %>% filter(supertype_label == "Lamp5 Gaba_2")
+substructure_compare %>% filter(supertype_label == "Lamp5 Gaba_2")
+substructure_compare %<>% filter(!is.na(prop_other_supertypes_cell))
+substructure_compare
+substructure_compare %<>% filter(prop_other_supertypes_cell != prop_other_supertypes_primate)
+substructure_compare %<>% mutate(diff = abs(prop_other_supertypes_cell - prop_other_supertypes_primate))
+substructure_compare %>% filter(cell_subclass != primate_subclass) %>% arrange(-diff)
+
+#  select(-total_supertypes)       # drop helper column
+substructure_compare
+substructure_compare %>% filter(cell_subclass != primate_subclass) %>% arrange(-diff) %>% filter(primate_subclass != "Pax6") %>% select(supertype_label, everything()) %>% head(20)
+
+```
+
+
+
+
+##############
+##############
+
+
+```{r}
+#for plotting subclasses
+#target_subclass <- "Sst Chodl Gaba"
+#target_subclass <- "Sst Gaba"
+#target_subclass <- "Pvalb Gaba"
+#target_subclass <- "Vip Gaba"
+#target_subclass <- "Lamp5 Gaba"
+#target_subclass <- "Pvalb chandelier Gaba"
+target_subclass <- "Lamp5 Lhx6 Gaba"
+#target_subclass <- "Sncg Gaba"
+
+plot_df <- Zeng_calls_direct %>% 
+  mutate(z = factor(z, levels = rev(sort(unique(z)))))   # descending
+
+ggplot(data = plot_df, aes(x=x, y=-1*y)) + 
+  geom_point(size=.03, data = plot_df %>% sample_frac(.1), color ="gray90") + theme_classic() +    
+  geom_point(data = plot_df %>% filter(subclass_label == target_subclass), size = 0.1, color = 'black') + 
+  coord_equal() +# theme(legend.position="none") +
+  facet_wrap(. ~ z) + ggtitle(target_subclass) +
+  theme(
+    plot.title = element_text(
+      size = 28,          # ← increase / tweak this number
+      hjust = 0.5,
+      face  = "bold"
+    ),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line = element_line(color = 'white'),
+    plot.background = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.border = element_blank(),
+    strip.text = element_blank()  # Removes facet title
+  )
+
+
+```
+
+
+```{r}
+##############
+#heatmap
+#############################################
+#############################################
+substructure_counts %>% pull(target_parcellation) %>% unique() %>% sort()
+# ---- 1) Build matrix for ComplexHeatmap ----
+# rows = supertype_label, cols = target_parcellation, values = prop_supertype_in_parcellation
+mat_wide <- substructure_counts %>%
+  select(supertype_label, target_parcellation, prop_supertype_in_parcellation) %>%
+  group_by(supertype_label, target_parcellation) %>%
+  summarise(prop = sum(prop_supertype_in_parcellation), .groups = "drop") %>%
+  pivot_wider(
+    names_from  = target_parcellation,
+    values_from = prop,
+    values_fill = 0
+  )
+
+# Row metadata aligned to the matrix row order
+row_meta <- substructure_counts %>%
+  distinct(supertype_label, cell_subclass, primate_subclass) %>%
+  slice(match(mat_wide$supertype_label, supertype_label))
+
+mat <- mat_wide %>% select(-supertype_label) %>% as.matrix()
+rownames(mat) <- mat_wide$supertype_label
+
+# ---- 2) Colors for row annotations ----
+subclass_levels <- sort(unique(row_meta$cell_subclass))
+primate_levels  <- sort(unique(row_meta$primate_subclass))
+
+subclass_cols <- setNames(
+  colorRampPalette(brewer.pal(12, "Set3"))(length(subclass_levels)),
+  subclass_levels
+)
+primate_cols <- setNames(
+  colorRampPalette(brewer.pal(8, "Dark2"))(length(primate_levels)),
+  primate_levels
+)
+
+# ---- 3) PATCH #2: add a marking bar for specific rows ----
+# (the rows to mark come from split_counts$cell_cluster)
+markers <- split_counts %>% pull(cell_cluster) %>% unique()
+
+# Factor for the ZengSwitch bar
+zeng_switch_vec <- factor(
+  ifelse(rownames(mat) %in% markers, "marked", "other"),
+  levels = c("other", "marked")
+)
+
+# Colours for ZengSwitch
+zengswitch_cols <- c(other = "white", marked = "black")
+
+# Row annotations (3 bars): cell_subclass, primate_subclass, and ZengSwitch
+row_anno <- rowAnnotation(
+  cell_subclass    = row_meta$cell_subclass,
+  primate_subclass = row_meta$primate_subclass,
+  ZengSwitch       = zeng_switch_vec,  # << renamed bar
+  col = list(
+    cell_subclass    = subclass_cols,
+    primate_subclass = primate_cols,
+    ZengSwitch       = zengswitch_cols # << key must match the bar name
+  ),
+  annotation_width = unit.c(unit(4, "mm"), unit(4, "mm"), unit(2, "mm")),
+  show_annotation_name = TRUE,
+  annotation_name_gp = gpar(fontface = "bold")
+)
+
+# ---- 4) Heatmap color scale (robust to outliers) ----
+mx <- as.numeric(quantile(mat, 0.99, na.rm = TRUE))
+if (!is.finite(mx) || mx <= 0) {
+  mx <- max(mat, na.rm = TRUE)
+  if (!is.finite(mx) || mx <= 0) mx <- 1
+}
+col_fun <- colorRamp2(c(0, mx), c("white", "red"))
+
+# ---- 5) PATCH #1: enable clustering for rows and columns ----
+row_dend <- hclust(dist(mat), method = "ward.D2")       # cluster rows
+col_dend <- hclust(dist(t(mat)), method = "ward.D2")    # cluster columns
+
+# ---- 6) Draw heatmap ----
+ht <- Heatmap(
+  mat,
+  name            = "Proportion",
+  col             = col_fun,
+  left_annotation = row_anno,
+  
+  # clustering (patch #1)
+  cluster_rows    = row_dend,
+  cluster_columns = col_dend,
+  
+  # labels & aesthetics
+  row_title       = "supertype_label",
+  column_title    = "target_parcellation",
+  row_names_gp    = gpar(fontsize = 8),
+  column_names_gp = gpar(fontsize = 8)
+)
+
+draw(ht, heatmap_legend_side = "right", annotation_legend_side = "right")
+
+```
+
+
+
+
+#############################################
+#############################################
+#######################
+
+
+```{r}
+
+#heat map for layers specifically
+
+# ---- 1) Build matrix for ComplexHeatmap ----
+mat_wide <- substructure_counts %>%
+  select(supertype_label, target_parcellation, prop_supertype_in_parcellation) %>%
+  group_by(supertype_label, target_parcellation) %>%
+  summarise(prop = sum(prop_supertype_in_parcellation), .groups = "drop") %>%
+  pivot_wider(
+    names_from  = target_parcellation,
+    values_from = prop,
+    values_fill = 0
+  )
+
+# Row metadata aligned to the matrix row order
+row_meta <- substructure_counts %>%
+  distinct(supertype_label, cell_subclass, primate_subclass) %>%
+  slice(match(mat_wide$supertype_label, supertype_label))
+
+
+row_meta %<>% left_join(tibble(
+  supertype_label = c(CGE_supertypes, MGE_supertypes),
+  GE_origin = c(rep("CGE", length(CGE_supertypes)),
+                rep("MGE", length(MGE_supertypes)))
+))
+
+#writing out for Jonathan
+#row_meta %>% write_csv(here("results","cortical_heatmap_data", "row_meta.csv"))
+#mat_wide %>% write_csv(here("results","cortical_heatmap_data", "mat_wide.csv"))
+
+
+mat <- mat_wide %>% select(-supertype_label) %>% as.matrix()
+rownames(mat) <- mat_wide$supertype_label
+
+# ---- Column order (explicit) ----
+parcellation_order <- c("1", "2/3", "4", "5", "6a", "6b", 'Hippocampus')
+col_order <- intersect(parcellation_order, colnames(mat))
+mat <- mat[, col_order, drop = FALSE]
+
+# ---- 2) Colors for row annotations ----
+#subclass_levels <- sort(unique(na.omit(row_meta$cell_subclass)))
+#primate_levels  <- sort(unique(na.omit(row_meta$primate_subclass)))
+
+# base palettes (any length via interpolation)
+#subclass_palette <- celltype_color_palette
+#primate_palette  <- celltype_color_palette
+
+#subclass_cols <- setNames(subclass_palette(length(subclass_levels)), subclass_levels)
+#primate_cols  <- setNames(primate_palette(length(primate_levels)),  primate_levels)
+
+# make overlapping labels share the SAME color
+#shared_levels <- intersect(names(subclass_cols), names(primate_cols))
+#if (length(shared_levels) > 0) {
+#  primate_cols[shared_levels] <- subclass_cols[shared_levels]
+#}
+
+# ---- 3) Marking bar for specific rows ----
+markers <- split_counts %>% pull(cell_cluster) %>% unique()
+zeng_switch_vec <- factor(
+  ifelse(rownames(mat) %in% markers, "marked", "other"),
+  levels = c("other", "marked")
+)
+zengswitch_cols <- c(other = "white", marked = "black")
+
+row_meta %>% pull(primate_subclass) %>% unique()
+
+row_anno <- rowAnnotation(
+  origin    = row_meta$GE_origin,
+  mouse_subclass    = row_meta$cell_subclass,
+  primate_subclass = row_meta$primate_subclass,
+  SpeciesSwitch       = zeng_switch_vec,
+  col = list(
+    mouse_subclass    = celltype_color_palette,
+    primate_subclass = celltype_color_palette,
+    SpeciesSwitch       = zengswitch_cols,
+    origin = c('CGE' = 'darkviolet', 'MGE' = 'gold')
+  ),
+  annotation_width = unit.c(unit(4, "mm"), unit(4, "mm"), unit(2, "mm")),
+  show_annotation_name = TRUE,
+  annotation_name_gp = gpar(fontface = "bold")
+)
+
+# ---- 4) Heatmap color scale (robust to outliers) ----
+mx <- as.numeric(quantile(mat, 0.99, na.rm = TRUE))
+if (!is.finite(mx) || mx <= 0) {
+  mx <- max(mat, na.rm = TRUE)
+  if (!is.finite(mx) || mx <= 0) mx <- 1
+}
+col_fun <- colorRamp2(c(0, mx), c("white", "red"))
+
+########Order based on primate subclass:
+primate_order <- c(
+  "Lamp5 Lhx6", "Lamp5", "Vip", "Sncg", "Pax6",
+  "Sst", "Sst Chodl", "Pvalb", "Chandelier"
+)
+
+# Build an ordered key; NAs or unseen labels go last
+primate_key <- factor(row_meta$primate_subclass,
+                      levels = primate_order, ordered = TRUE)
+
+# Order rows primarily by primate_subclass, then (optionally) by cell_subclass and rowname
+row_order <- order(primate_key, row_meta$cell_subclass, rownames(mat), na.last = TRUE)
+
+
+# ---- 5) Clustering ----
+row_dend <- hclust(dist(mat), method = "ward.D2")  # keep row clustering
+
+# ---- 6) Draw heatmap ----
+ht <- Heatmap(
+  mat,
+  name             = "Proportion",
+  col              = col_fun,
+  left_annotation  = row_anno,
+  cluster_columns  = FALSE,              # disable to respect explicit order
+  column_order     = col_order,          # enforce 1, 2/3, 4, 5, 6a, 6b
+  row_title        = "supertype_label",
+  ####different row clusterings###
+  #cluster_rows     = row_dend,
+  #row_order = row_order, 
+  split = primate_key,
+  cluster_rows = TRUE,
+  column_names_rot = 90,
+  column_names_centered = T,
+  row_names_gp     = gpar(fontsize = 11),
+  column_names_gp  = gpar(fontsize = 11)
+)
+
+ht = draw(ht, heatmap_legend_side = "right", annotation_legend_side = "right")
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_spatial/layer_subclass_heatmap.pdf', useDingbats = F, height = 8, width = 6)
+ht
+dev.off()
+
+
+```
+
+########################
+#########################
+
+
+And now going through his script for the neighborhood profiles
+
+###########################
+############################
+
+```{r}
+
+direction <- "coronal"
+
+
+if (direction == "sagittal") {
+  Zeng_calls_direct <- read_csv(here("/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/data/Zhuang/Zhuang-ABCA-3/20241115/cell_metadata_with_cluster_annotation.csv")) #sagittal
+  Zeng_calls_direct %<>% select(cell_label, cl = cluster_alias, x, y, z)
+} else {
+  Zeng_calls_direct <- read_csv(here("/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/data/Zeng/MERFISH-C57BL6J-638850/20230830/cell_metadata.csv")) #500 gene panel coronal
+  ccf_annotations <- read_csv(here("/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/data/Zeng/from_API/ccf_coordinates_MERFISH-C57BL6J-638850.csv.gz"))
+  ccf_annotations %>% group_by(parcellation_division) %>% count() %>% as.data.frame()
+  Zeng_calls_direct %<>% left_join(ccf_annotations %>% select(cell_label, parcellation_division, parcellation_structure, parcellation_substructure)) #HPF or Isocortex
+  Zeng_calls_direct %<>% select(cell_label, cl = cluster_alias, x, y, z, parcellation_division, parcellation_structure, parcellation_substructure)
+}
+
+Zeng_calls_direct %>% pull(cl) %>% max()
+Zeng_calls_direct %>% pull(z) %>% unique() %>% length()
+Zeng_calls_direct
+
+cluster_annotations <- read_tsv(here("/vault/lfrench/mouse_brain_consensus_taxonomy_spatial/data/Zeng/from_AWS/AIT21.0/AIT21_annotation_freeze_081523.tsv"))
+cluster_annotations %>% pull(subclass_label)%>% unique() %>% sort()
+cluster_annotations %>% pull(class_label)%>% unique() %>% sort()
+cluster_annotations %<>% select(cl, subclass_id, subclass_label, supertype_label, class_label) 
+cluster_annotations %>% filter(grepl("Lamp", supertype_label))
+#cluster_annotations %<>% select(cl, subclass_id, subclass_label) 
+
+Zeng_calls_direct %<>% inner_join(cluster_annotations)
+
+```
+##########################
+##########################
+
+
+
+```{r}
+
+load("/inkwell03/werner/mouse_brain_consensus_taxonomy/20_3_25_interneuron_mouse_metadata.Rdata", verbose=T)
+
+#loads interneuron_metadata
+(interneuron_metadata %<>% tibble())
+
+interneuron_metadata %>% group_by(study) %>% select(study, cell_cluster) %>% distinct() %>% count()
+setdiff(interneuron_metadata %>% filter(study == "zeng_10xv2_wba") %>% pull(cell_cluster) %>% unique(),
+        interneuron_metadata %>% filter(study == "zeng_10xv3_wba") %>% pull(cell_cluster) %>% unique())
+setdiff(interneuron_metadata %>% filter(study == "zeng_10xv3_wba") %>% pull(cell_cluster) %>% unique(),
+        interneuron_metadata %>% filter(study == "zeng_10xv2_wba") %>% pull(cell_cluster) %>% unique())
+
+zeng_mappings <- interneuron_metadata %>% filter(study %in% c('zeng_10xv2_wba','zeng_10xv3_wba')) %>% tibble()
+zeng_mappings %>% group_by(cell_subclass, primate_subclass)  %>% count() %>% mutate(change = cell_subclass != primate_subclass)
+zeng_mappings %>% group_by(cell_subclass, primate_subclass)  %>% count() %>% filter(cell_subclass != primate_subclass)
+
+zeng_mappings %>% pull(cell_subclass) %>% unique() %>% length()
+zeng_mappings %>% pull(primate_subclass) %>% unique() %>% length()
+
+#find cell_cluster's that switch from one to another subclass
+split_counts <- zeng_mappings %>% group_by(cell_cluster, cell_subclass, primate_subclass) %>% count()
+split_counts %<>% filter(cell_subclass != primate_subclass)
+
+#all the Sncg becomes Pax6 and a Lamp5 joins the Pax6 group, so skip those
+split_counts %<>% filter(cell_subclass != "Sncg")
+split_counts 
+
+split_counts_cluster <- zeng_mappings %>% select(cell_cluster, cell_subclass, primate_subclass) %>% distinct() 
+split_counts_cluster %>% filter(cell_subclass != primate_subclass)
+split_counts_cluster %>% as.data.frame()
+#cell cluster is the subtype not cluster
+
+```
+
+```{r}
+
+Zeng_calls_direct %>% group_by(class_label, subclass_label) %>% summarise(n = n())
+
+keep_classes = c('Astro-Epen','CNU-LGE GABA','CNU-MGE GABA','CTX-CGE GABA','CTX-MGE GABA','DG-IMN Glut','IT-ET Glut','Immune','NP-CT-L6b Glut','OPC-Oligo','Vascular')
+
+
+Zeng_calls_direct = Zeng_calls_direct %>% filter(class_label %in% keep_classes)
+
+```
+
+
+
+```{r}
+
+#subset all the inhib supertypes to be the same size
+#get average distance to closest cell of a given subclass
+
+#subclass_cells <- Zeng_calls_direct %>% filter(subclass_label == "DG-PIR Ex IMN")
+
+inhib_cells <- Zeng_calls_direct %>% filter(supertype_label %in% (split_counts_cluster %>% pull(cell_cluster)))
+
+#SET VARIABLES here
+number_of_neighbors_profiled <- 100
+#Zeng_calls_direct %<>% mutate(target_level = class_label)
+Zeng_calls_direct %<>% mutate(target_level = subclass_label)
+
+#get the same per supertype - lowest is 47, exclude? 
+inhib_cells %>% group_by(supertype_label) %>% count() %>% arrange(n)
+inhib_cells %>% group_by(supertype_label) %>% count() %>% arrange(-n)
+
+target_membership <- Zeng_calls_direct %>% pull(target_level)
+target_membership <- factor(target_membership)
+target_levels <- levels(target_membership)
+
+# Extract XYZ coordinates into a matrix for the reference points  
+reference_points <- Zeng_calls_direct %>% 
+  select(x, y, z) %>%
+  as.matrix()
+
+all_profiles <- tibble()
+for(target_subtype in (inhib_cells %>% pull(supertype_label) %>% unique())) {
+  print(target_subtype)
+
+  query_points <- inhib_cells %>% filter(supertype_label == target_subtype) %>% ungroup() %>%
+    select(x, y, z) %>%
+    as.matrix()
+  
+  
+  # Find nearest neighbors
+  nn_results <- nn2(reference_points, query_points, k=number_of_neighbors_profiled + 1)
+  #it's own cell is the closest, drop it
+  neighbor_idx <- nn_results$nn.idx[, -1, drop = FALSE]  # n_query x k
+
+  neighbor_targets <- matrix(
+    target_membership[neighbor_idx],
+    nrow = nrow(neighbor_idx),
+    ncol = ncol(neighbor_idx),
+    dimnames = list(rownames(nn_results$nn.idx), NULL)
+  )
+  
+  # Convert neighbor_targets to integer codes in 1..length(target_levels)
+  neighbor_codes <- matrix(
+    as.integer(factor(neighbor_targets, levels = target_levels)),
+    nrow = nrow(neighbor_targets),
+    ncol = ncol(neighbor_targets),
+    dimnames = dimnames(neighbor_targets)
+  )
+  target_profile_counts <- t(apply(
+    neighbor_codes, 1,
+    function(x) tabulate(x, nbins = length(target_levels))
+  ))
+  colnames(target_profile_counts) <- target_levels
+  target_profile_props <- target_profile_counts/number_of_neighbors_profiled
+  avg_profile <- tibble(
+    target_level = colnames(target_profile_props),
+    mean_prop    = colMeans(target_profile_props, na.rm = TRUE),
+    target_subtype = target_subtype
+  )
+  all_profiles %<>% bind_rows(avg_profile)
+}
+all_profiles %>% arrange(-mean_prop)
+
+
+all_profiles %<>% inner_join(split_counts_cluster %>% rename(target_subtype = cell_cluster))
+all_profiles
+
+all_profiles %<>%
+  group_by(cell_subclass, target_level) %>%
+  mutate(
+    cell_subclass_prop_rank01 = percent_rank(mean_prop),          # 0..1
+  ) %>%
+  group_by(primate_subclass, target_level) %>%
+  mutate(
+    primate_subclass_prop_rank01 = percent_rank(mean_prop)          # 0..1
+  ) %>%
+  ungroup()
+
+all_profiles %<>% mutate(diff = abs(cell_subclass_prop_rank01 - primate_subclass_prop_rank01)) %>% arrange(-diff)
+all_profiles 
+all_profiles %>% filter(target_level == "OB-CR Glut") %>% as.data.frame() %>% arrange(-mean_prop)
+
+all_profiles %>% filter(target_level == "Vascular", cell_subclass %in% c("Lamp5", "Lamp5 Lhx6")) %>% arrange(-mean_prop) %>% as.data.frame()
+
+all_profiles %>% select(target_subtype, target_level, mean_prop)
+#all_profiles_sag <- all_profiles
+#all_profiles_cor <- all_profiles
+#joined <- inner_join(all_profiles_sag %>% select(target_level, target_subtype, mean_prop_sag = mean_prop),
+#all_profiles_cor %>% select(target_level, target_subtype, mean_prop_cor = mean_prop))
+#cor.test(joined$mean_prop_cor, joined$mean_prop_sag)
+#cor.test(joined$mean_prop_cor, joined$mean_prop_sag,m='s')
+
+```
+
+```{r}
+no_signal_celltypes = all_profiles %>% group_by(target_level, target_subtype) %>% summarise(mean_prop_2 = mean(mean_prop)) %>% arrange(mean_prop_2) %>%
+  group_by(target_level) %>% summarise(num_detect = sum(mean_prop_2 != 0)) %>% arrange(num_detect) %>% filter(num_detect == 0) %>% pull(target_level)
+
+```
+
+
+```{r}
+
+all_profiles %>% filter(!target_level %in% no_signal_celltypes)
+
+```
+
+
+
+
+```{r}
+
+#heatmap
+#all_profiles 
+#Zeng_calls_direct %>% filter(grepl("GE", class_label)) %>% select(class_label) %>% unique()
+CGE_supertypes <- Zeng_calls_direct %>% filter(class_label == "CTX-CGE GABA") %>% pull(supertype_label) %>% unique()
+MGE_supertypes <- Zeng_calls_direct %>% filter(class_label == "CTX-MGE GABA") %>% pull(supertype_label) %>% unique()
+
+mat_wide <- all_profiles  %>% #filter(!target_level %in% no_signal_celltypes & target_subtype %in% CGE_supertypes) %>%
+  select(target_subtype, target_level, mean_prop) %>%
+  group_by(target_subtype, target_level) %>%
+  summarise(prop = sum(mean_prop, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(
+    names_from  = target_level,
+    values_from = prop,
+    values_fill = 0
+  )
+mat_wide <- mat_wide %>%
+  select(target_subtype, where(~ is.numeric(.x) && sum(.x, na.rm = TRUE) != 0))
+dim(mat_wide)
+
+# Row metadata aligned to the matrix row order
+row_meta <- all_profiles %>%
+  distinct(target_subtype, cell_subclass, primate_subclass) %>%
+  slice(match(mat_wide$target_subtype, target_subtype))
+
+
+row_meta$GE_origin = 'MGE'
+row_meta$GE_origin[row_meta$cell_subclass %in% c('Lamp5','Vip','Sncg') ] = 'CGE'
+
+
+mat <- mat_wide %>% select(-target_subtype) %>% as.matrix()
+dim(mat)
+rownames(mat) <- mat_wide$target_subtype
+
+# ---- 2) Colors for row annotations ----
+# Make identical subclass/primate labels share the EXACT same color
+subclass_levels <- sort(unique(row_meta$cell_subclass))
+primate_levels  <- sort(unique(row_meta$primate_subclass))
+shared_levels   <- sort(unique(c(subclass_levels, primate_levels)))
+
+# One shared palette over the union of labels
+shared_cols <- setNames(
+  colorRampPalette(brewer.pal(12, "Set3"))(length(shared_levels)),
+  shared_levels
+)
+
+# Subset the shared palette for each bar
+subclass_cols <- shared_cols[subclass_levels]
+primate_cols  <- shared_cols[primate_levels]
+
+# ---- 3) Optional marking bar ----
+markers <- split_counts %>% pull(cell_cluster) %>% unique()
+zeng_switch_vec <- factor(
+  ifelse(rownames(mat) %in% markers, "marked", "other"),
+  levels = c("other", "marked")
+)
+zengswitch_cols <- c(other = "white", marked = "black")
+
+row_anno <- rowAnnotation(
+  GE_origin = row_meta$GE_origin,
+  cell_subclass    = row_meta$cell_subclass,
+  primate_subclass = row_meta$primate_subclass,
+  SpeciesSwitch       = zeng_switch_vec,
+  col = list(
+    cell_subclass    = celltype_color_palette,
+    primate_subclass = celltype_color_palette,
+    SpeciesSwitch       = zengswitch_cols,
+    GE_origin = c('CGE' = 'darkviolet', 'MGE' = 'gold')
+  ),
+  annotation_width = unit.c(unit(4, "mm"), unit(4, "mm"), unit(2, "mm")),
+  show_annotation_name = TRUE,
+  annotation_name_gp = gpar(fontface = "bold")
+)
+
+# ---- 4) Heatmap color scale: plain white->red using the true max (no clipping) ----
+mx <- max(mat, na.rm = TRUE)
+if (!is.finite(mx) || mx <= 0) mx <- 1
+col_fun <- colorRamp2(c(0, mx), c("white", "red"))
+
+# ---- 5) Clustering ----
+row_dend <- hclust(dist(mat), method = "ward.D2")  # keep row clustering
+col_dend <- hclust(dist(t(mat)), method = "ward.D2")  # keep row clustering
+
+# ---- 6) Draw heatmap ----
+ht <- Heatmap(
+  mat,
+  name            = "Proportion",
+  col             = col_fun,
+  left_annotation = row_anno,
+  row_title       = "supertype",
+  column_title    = paste0("Nearest cell grouping type for ", number_of_neighbors_profiled, " cells"),
+  cluster_rows = row_dend,
+  cluster_columns = col_dend,
+  row_names_gp    = gpar(fontsize = 8),
+  column_names_gp = gpar(fontsize = 8)
+)
+ht = draw(ht, heatmap_legend_side = "right", annotation_legend_side = "right")
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_spatial/neighborhood_profile_subclass_heatmap.pdf', useDingbats = F, height = 6, width = 10)
+ht
+dev.off()
+
+```
+
+```{r}
+no_signal_celltypes = all_profiles %>% group_by(target_level, target_subtype) %>% summarise(mean_prop_2 = mean(mean_prop)) %>% arrange(mean_prop_2) %>%
+  group_by(target_level) %>% summarise(num_detect = sum(mean_prop_2 != 0)) %>% arrange(num_detect) %>% filter(num_detect == 0) %>% pull(target_level)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
