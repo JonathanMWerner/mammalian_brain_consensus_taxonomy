@@ -12,6 +12,7 @@ library(SingleCellExperiment)
 library(ggplot2)
 library(dplyr)
 library(MetaMarkers)
+library(ComplexHeatmap)
 
 options(dplyr.summarise.inform = FALSE)
 
@@ -316,14 +317,14 @@ Get the average per dataset per subclass
 
 ```{r}
 all_mouse_markers = list(
-    tasic18 = read_markers("metamarkers/ortho_markers_tasic18.csv.gz"),
-    zeng_10x_cells = read_markers("metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
-    zeng_10x_nuclei = read_markers("metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
-    zeng_smart_nuclei = read_markers("metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
-    zeng_smart_cells = read_markers("metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
-    zeng_10xv2_wba = read_markers("metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
-    zeng_10xv3_wba = read_markers("metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
-    macosko_wba = read_markers("metamarkers/ortho_markers_macosko_wba.csv.gz")
+    tasic18 = read_markers("../metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("../metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("../metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("../metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("../metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("../metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("../metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("../metamarkers/ortho_markers_macosko_wba.csv.gz")
 )
 
 
@@ -333,6 +334,126 @@ mouse_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
 
 
 ```
+
+Also get plots demonstrating the homologous DE in mouse, people keep asking questions that amount to How transcriptomically distinct are the CGE homologous subclasses
+heatmap of expression, but grabbing the top signal-to-noise markers per subclass
+
+
+Grab the top 10 recurrent DE markers, get heatmaps of the AUROCs and the fold_change_detection as coverage markers and signal-to-noise markers
+Then get dot-line plots of the average AUROC (or average fold_change detection) for each level of recurrence for the subclasses. As we go from consistent DE to dataset specific DE, what's the variability across the subclasses? Are the Vip, Pax6, Sncg subclasses the less distinct globally?
+
+
+```{r}
+
+top_markers = mouse_subclass_meta_markers %>% filter(rank <= 10)
+dup_genes = top_markers$gene[which(duplicated(top_markers$gene))]
+
+#For each duplicate, assign it to the cell-type with the better (minimum) rank
+keep_dups = top_markers %>% filter(gene %in% dup_genes) %>% group_by(gene) %>% filter(rank == min(rank))
+top_markers = top_markers %>% filter(!gene %in% dup_genes)
+top_markers = rbind(top_markers, keep_dups)
+top_markers = top_markers %>% arrange(cell_type)
+
+#Set order
+top_markers = top_markers %>% arrange(match(cell_type, c('Pvalb','Chandelier','Sst','Sst Chodl','Lamp5','Lamp5 Lhx6','Vip','Sncg','Pax6')))
+
+
+#AUROC stat
+top_auroc_mat = mouse_subclass_meta_markers %>% filter(gene %in% top_markers$gene) %>% select(cell_type, gene, auroc) %>%
+  tidyr::pivot_wider(names_from = gene, values_from = auroc) %>% tibble::column_to_rownames(var = 'cell_type')
+top_auroc_mat = t(as.matrix(top_auroc_mat))
+
+#Keep the same ordering
+index = match(top_markers$gene, rownames(top_auroc_mat))
+top_auroc_mat = top_auroc_mat[index, ]
+top_auroc_mat = top_auroc_mat[ , c('Pvalb','Chandelier','Sst','Sst Chodl','Lamp5','Lamp5 Lhx6','Vip','Sncg','Pax6')]
+
+marker_annot = rowAnnotation(subclass = top_markers$cell_type,
+                                 col = list(subclass = celltype_color_palette))
+
+col_fun = circlize::colorRamp2(breaks = c(0,.5,1), colors = c('blue','white','red'))
+Heatmap(top_auroc_mat, name = 'AUROC', col = col_fun,
+        cluster_rows = F, cluster_columns = F,
+        right_annotation = marker_annot,
+        )
+
+#Fold change stat
+top_FC_mat = mouse_subclass_meta_markers %>% filter(gene %in% top_markers$gene) %>% select(cell_type, gene, fold_change_detection) %>%
+  tidyr::pivot_wider(names_from = gene, values_from = fold_change_detection) %>% tibble::column_to_rownames(var = 'cell_type')
+top_FC_mat = t(as.matrix(top_FC_mat))
+top_FC_mat = log2(top_FC_mat)
+
+#Keep the same ordering
+index = match(top_markers$gene, rownames(top_FC_mat))
+top_FC_mat = top_FC_mat[index, ]
+top_FC_mat = top_FC_mat[ , c('Pvalb','Chandelier','Sst','Sst Chodl','Lamp5','Lamp5 Lhx6','Vip','Sncg','Pax6')]
+
+marker_annot = rowAnnotation(subclass = top_markers$cell_type,
+                                 col = list(subclass = celltype_color_palette))
+
+col_fun_2 = circlize::colorRamp2(breaks = c(-6,0,8), colors = c('blue','white','red'))
+Heatmap(top_FC_mat, name = 'log2(FC)', col = col_fun_2,
+        cluster_rows = F, cluster_columns = F,
+        right_annotation = marker_annot
+        )
+
+
+
+de_recurrence_summary_df = mouse_subclass_meta_markers %>% filter(recurrence != 0) %>% group_by(cell_type, recurrence) %>% 
+  summarise(mean_coverage = mean(auroc), mean_signal = mean(log2(fold_change_detection)))
+
+
+
+ggplot(de_recurrence_summary_df %>% filter(cell_type %in% c('Vip','Pax6','Sncg')), aes(x = recurrence, y = mean_coverage, group = cell_type, color = cell_type)) + 
+  geom_point(size = 3) + geom_line() +
+  scale_color_manual(values = celltype_color_palette) + scale_x_reverse() +
+  theme_bw()
+
+ggplot(de_recurrence_summary_df %>% filter(cell_type %in% c('Vip','Pax6','Sncg')), aes(x = recurrence, y = mean_signal, group = cell_type, color = cell_type)) + 
+  geom_point(size = 3) + geom_line() +
+  scale_color_manual(values = celltype_color_palette) + scale_x_reverse() +
+  theme_bw()
+
+
+high_recur_de = mouse_subclass_meta_markers %>% filter(recurrence %in% c(7,8))
+order_vec = high_recur_de %>% group_by(cell_type) %>% summarise(median_auroc = median(auroc)) %>% arrange(desc(median_auroc)) %>% pull(cell_type)
+high_recur_de$cell_type = factor(high_recur_de$cell_type , levels = order_vec)
+ggplot(high_recur_de, aes(x = cell_type, y = auroc, fill = cell_type)) + ggtitle('Consistent DE genes') + ylab('Coverage (AUROC)') +
+  geom_boxplot() + scale_fill_manual(values = celltype_color_palette) + theme_bw()
+
+order_vec = high_recur_de %>% group_by(cell_type) %>% summarise(median_fc = median(fold_change_detection)) %>% arrange(desc(median_fc)) %>% pull(cell_type)
+high_recur_de$cell_type = factor(high_recur_de$cell_type , levels = order_vec)
+ggplot(high_recur_de, aes(x = cell_type, y = log2(fold_change_detection), fill = cell_type)) + ggtitle('Consistent DE genes') + ylab('Signal-to-noise ( log2(FC detection) )') +
+  geom_boxplot() + scale_fill_manual(values = celltype_color_palette) + theme_bw()
+
+
+
+ggplot(mouse_subclass_meta_markers %>% filter(recurrence %in% c(1)), aes(x = cell_type, y = auroc, fill = cell_type)) +
+  geom_boxplot() + scale_fill_manual(values = celltype_color_palette) + theme_bw()
+ggplot(mouse_subclass_meta_markers %>% filter(recurrence %in% c(1)), aes(x = cell_type, y = log2(fold_change_detection), fill = cell_type)) +
+  geom_boxplot() + scale_fill_manual(values = celltype_color_palette) + theme_bw()
+
+
+```
+
+
+```{r}
+
+
+plot_pareto_summary(mouse_subclass_meta_markers %>% filter(cell_type %in% c('Pax6','Sncg', 'Vip')), min_recurrence=0)
+
+
+
+```
+
+
+
+
+
+
+
+
+
 
 ```{r}
 all_primate_markers = list(

@@ -1,0 +1,177 @@
+
+
+Exploring some human and mouse published patch-seq data
+
+At least for some mouse data, the cells are already mapped to the Tasic18 clusters, can assign them to the homologous primate subclasses.
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(SingleCellExperiment)
+
+```
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C')
+
+
+```
+
+
+```{r}
+
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+tasic_metadata = as.data.frame(colData(tasic18))
+
+tasic_clust_to_subclass_df = tasic_metadata %>% group_by(cell_cluster, cell_subclass, primate_subclass, orthology) %>% summarise(n = n()) %>% arrange(orthology)
+
+
+clust_to_primate_subclass = c(tasic_clust_to_subclass_df$primate_subclass)
+names(clust_to_primate_subclass) = tasic_clust_to_subclass_df$cell_cluster
+clust_to_primate_subclass
+
+clust_to_mouse_subclass = c(tasic_clust_to_subclass_df$cell_subclass)
+names(clust_to_mouse_subclass) = tasic_clust_to_subclass_df$cell_cluster
+clust_to_mouse_subclass
+
+
+```
+
+
+
+
+
+Tasic18 pax6 clusters
+c('Lamp5 Fam19a1 Pax6','Lamp5 Krt73','Serpinf1 Clrn1','Sncg Slc17a8')
+
+Tasic18 sncg cluster
+c('Vip Igfbp6 Pltp')
+
+
+```{r}
+
+mouse_file_path = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/patch_seq/mouse/'
+
+#Has cell IDs and their cluster annotation
+mouse_patch_meta = data.table::fread(paste0(mouse_file_path, '20200625_patchseq_metadata_mouse.csv'))
+
+table(mouse_patch_meta$corresponding_AIT2.3.1_alias)
+
+
+mouse_patch_meta %>% filter(corresponding_AIT2.3.1_alias %in% c('Lamp5 Fam19a1 Pax6','Lamp5 Krt73','Serpinf1 Clrn1','Sncg Slc17a8') )
+
+#Add the mouse and primate subclass labels to the clusters
+mouse_patch_meta$primate_subclass = clust_to_primate_subclass[mouse_patch_meta$corresponding_AIT2.3.1_alias]
+mouse_patch_meta$mouse_subclass = clust_to_mouse_subclass[mouse_patch_meta$corresponding_AIT2.3.1_alias]
+
+
+```
+
+
+
+Add the cluster annotations from the metadata and then add the mouse subclass and homologous subclass annotations from the Tasic data
+
+
+
+```{r}
+
+mouse_patch_data = data.table::fread(paste0(mouse_file_path, 'ephys_features_gouwens_w_QC.csv'))
+
+index = match(mouse_patch_data$cell_specimen_id,mouse_patch_meta$cell_specimen_id )
+table(mouse_patch_data$cell_specimen_id == mouse_patch_meta$cell_specimen_id[index] )
+
+mouse_patch_data$cell_cluster = mouse_patch_meta$corresponding_AIT2.3.1_alias[index]
+mouse_patch_data$mouse_subclass = mouse_patch_meta$mouse_subclass[index]
+mouse_patch_data$primate_subclass = mouse_patch_meta$primate_subclass[index]
+
+
+
+
+
+```
+
+
+```{r}
+
+ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip','Sncg','Lamp5')), 
+       aes(x = qc_initial_access_resistance_mohm , y = input_resistance, color = mouse_subclass )) + 
+  geom_point(alpha = .5) +
+  scale_color_manual(values = celltype_color_palette) 
+
+
+ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip','Sncg','Lamp5')), 
+       aes(x = rheo_fast_trough_t , y = input_resistance, color = primate_subclass )) + 
+  geom_point(alpha = .5) +
+  scale_color_manual(values = celltype_color_palette) 
+
+
+```
+
+
+Trying PCA just to see 
+Filtering out the variables that have mostly NAs
+filt_vars = c('file_id','file_name','cell_cluster','mouse_subclass','primate_subclass','qc_blowout_mv','rheo_slow_trough_t','rheo_adp_v','rheo_slow_trough_v',
+'hero_adapt','hero_first_isi','hero_isi_cv','hearo_mean_isi')
+
+```{r}
+
+
+filt_vars = c('file_id','file_name','cell_cluster','mouse_subclass','primate_subclass','qc_blowout_mv','rheo_slow_trough_t','rheo_adp_v','rheo_slow_trough_v',
+'hero_adapt','hero_first_isi','hero_isi_cv','hero_mean_isi', 'qc_recording_date')
+
+filt_mouse_patch_data = mouse_patch_data %>% filter(mouse_subclass %in% c('Vip','Lamp5','Sncg')) %>% select(-filt_vars)
+
+#Filter out cells with NA values
+row_filt = rowSums(is.na(filt_mouse_patch_data)) == 0 
+filt_mouse_patch_data = filt_mouse_patch_data[row_filt, ]
+
+
+filt_mouse_patch_data = as.matrix(filt_mouse_patch_data %>% tibble::column_to_rownames(var = 'cell_specimen_id'))
+
+
+data.pca <- princomp(filt_mouse_patch_data)
+summary(data.pca)
+
+pca_loadings_df = as.data.frame(data.pca$scores)
+
+
+index = match(rownames(pca_loadings_df), mouse_patch_data$cell_specimen_id )
+table(rownames(pca_loadings_df) == mouse_patch_data$cell_specimen_id[index] )
+
+pca_loadings_df$cell_cluster = mouse_patch_data$cell_cluster[index]
+pca_loadings_df$mouse_subclass = mouse_patch_data$mouse_subclass[index]
+pca_loadings_df$primate_subclass = mouse_patch_data$primate_subclass[index]
+
+
+pca_loadings_df
+
+```
+
+
+```{r}
+
+ggplot(pca_loadings_df, aes(x = Comp.1, y = Comp.2, color = mouse_subclass)) + geom_point(alpha = .75) +
+  scale_color_manual(values = celltype_color_palette)
+
+
+ggplot(pca_loadings_df, aes(x = Comp.1, y = Comp.2, color = primate_subclass)) + geom_point(alpha = .75) +
+  scale_color_manual(values = celltype_color_palette)
+
+```
+
+
+
+
+
+
+
+
