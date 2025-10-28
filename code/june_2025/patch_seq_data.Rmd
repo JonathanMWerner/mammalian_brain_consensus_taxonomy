@@ -9,6 +9,8 @@ At least for some mouse data, the cells are already mapped to the Tasic18 cluste
 library(ggplot2)
 library(dplyr)
 library(SingleCellExperiment)
+library(ggExtra)
+library(ComplexHeatmap)
 
 ```
 
@@ -30,7 +32,13 @@ celltype_color_palette = c("Chandelier"='#F641A8',
 ```{r}
 
 tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+
 tasic_metadata = as.data.frame(colData(tasic18))
+
+table(tasic_metadata$orthology)
+
+
 
 tasic_clust_to_subclass_df = tasic_metadata %>% group_by(cell_cluster, cell_subclass, primate_subclass, orthology) %>% summarise(n = n()) %>% arrange(orthology)
 
@@ -273,7 +281,7 @@ index = match(rownames(filt_mouse_patch_data ), mouse_patch_data$cell_specimen_i
 mouse_subclass = mouse_patch_data$mouse_subclass[index]
 primate_subclass = mouse_patch_data$primate_subclass[index]
 
-table(mouse_subclass)
+table(mouse_subclass, primate_subclass)
 table(primate_subclass)
 
 
@@ -301,19 +309,32 @@ plot(res_mouse$omega2, res_primate$omega2, main = 'Ephys features',
 abline(a = 0, b = 1, col = 'red', lty = 'dashed')
 
 
-res_mouse
-res_primate
-
-
 combined_res = res_mouse
 combined_res$primate_omega2 = res_primate$omega2
 combined_res$primate_pval = res_primate$pval
 combined_res$primate_padj = res_primate$padj
 
 combined_res = combined_res %>% mutate(omega_diff = abs(omega2 - primate_omega2)) %>% arrange(desc(omega_diff))
-combined_res
+combined_res %>% arrange(desc(primate_omega2))
 
 ```
+
+
+```{r}
+
+combined_res %>% arrange(desc(primate_omega2))
+
+plotting_omega_df = combined_res %>% select(feature, omega2, primate_omega2) %>% tidyr::pivot_longer(!feature, names_to = 'annotation', values_to = 'omega-squared')
+
+ggplot(plotting_omega_df, aes(x = annotation, y = `omega-squared`)) + geom_boxplot() +
+  theme_bw() + ylim(0,1) + ggtitle('Electrophysiological feature variance')
+
+
+wilcox.test(combined_res$omega2, combined_res$primate_omega2, paired = T, alternative = 'less')
+
+
+```
+
 
 
 good features for separability
@@ -334,14 +355,14 @@ library(ggExtra)
 ```{r}
 
 p_mouse = ggplot(filter(mouse_patch_data, primate_subclass %in% c('Vip','Sncg','Lamp5', 'Lamp5 Lhx6','Pax6')), 
-       aes(x = tau, y = rheo_width, color = mouse_subclass )) + 
+       aes(x = rheo_peak_t, y = sag, color = mouse_subclass )) + 
   geom_point(alpha = .75, size = 2) +
   scale_color_manual(values = celltype_color_palette) + theme_bw()
 
 ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
 
 p_primate = ggplot(filter(mouse_patch_data, primate_subclass %in% c('Vip','Sncg','Lamp5', 'Lamp5 Lhx6','Pax6')), 
-       aes(x = tau , y = rheo_width, color = primate_subclass )) + 
+       aes(x = rheo_peak_t , y = sag, color = primate_subclass )) + 
   geom_point(alpha = .75, size = 2) +
   scale_color_manual(values = celltype_color_palette) + theme_bw()
 
@@ -353,15 +374,15 @@ The features with the biggest differn
 
 ```{r}
 
-p_mouse = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Lamp5')), 
-       aes(x = sag, y = rheo_fast_trough_t, color = mouse_subclass )) + 
+p_mouse = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Lamp5', 'Sncg')), 
+       aes(x = sag, y = rheo_width, color = mouse_subclass )) + 
   geom_point(alpha = .75, size = 2) +
   scale_color_manual(values = celltype_color_palette) + theme_bw()
 
 ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
 
-p_primate = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Lamp5')), 
-       aes(x = sag , y = rheo_fast_trough_t, color = primate_subclass )) + 
+p_primate = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Lamp5', 'Sncg')), 
+       aes(x = sag , y = rheo_width, color = primate_subclass )) + 
   geom_point(alpha = .75, size = 2) +
   scale_color_manual(values = celltype_color_palette) + theme_bw()
 
@@ -370,15 +391,15 @@ ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
 
 
 p_mouse = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip')), 
-       aes(x = sag, y = rheo_fast_trough_t, color = mouse_subclass )) + 
+       aes(x = sag, y = rheo_width, color = mouse_subclass )) + 
   geom_point(alpha = .75, size = 2) +
   scale_color_manual(values = celltype_color_palette) + theme_bw()
 
 ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
 
 p_primate = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip')), 
-       aes(x = sag , y = rheo_fast_trough_t, color = primate_subclass )) + 
-  geom_point(alpha = .75, size = 2) +
+       aes(x = sag , y = rheo_width, color = primate_subclass )) + 
+  geom_point( size = 2) +
   scale_color_manual(values = celltype_color_palette) + theme_bw()
 
 ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
@@ -386,19 +407,48 @@ ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
 
 
 p_mouse = ggplot(filter(mouse_patch_data, primate_subclass %in% c('Pax6')), 
-       aes(x = sag, y = rheo_fast_trough_t, color = mouse_subclass )) + 
+       aes(x = sag, y = rheo_width, color = mouse_subclass )) + 
   geom_point(alpha = .75, size = 2) +
   scale_color_manual(values = celltype_color_palette) + theme_bw()
 
 ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
 
 p_primate = ggplot(filter(mouse_patch_data, primate_subclass %in% c('Pax6')), 
-       aes(x = sag , y = rheo_fast_trough_t, color = primate_subclass )) + 
+       aes(x = sag , y = rheo_width, color = primate_subclass )) + 
   geom_point(alpha = .75, size = 2) +
   scale_color_manual(values = celltype_color_palette) + theme_bw()
 
 ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
 
+
+
+
+```
+
+
+
+```{r}
+
+
+ephys_correlation_mat = cor(ephys_feature_mat, method = 'spearman')
+ephys_dist_mat = as.dist(1- ephys_correlation_mat)
+
+index = match(colnames(ephys_correlation_mat), mouse_patch_data$cell_specimen_id)
+
+corr_mouse_subclass = mouse_patch_data$mouse_subclass[index]
+corr_primate_subclass = mouse_patch_data$primate_subclass[index]
+
+top_annot = HeatmapAnnotation(mouse_subclass = corr_mouse_subclass, homologous_subclass = corr_primate_subclass,
+                              col = list(mouse_subclass = celltype_color_palette, homologous_subclass = celltype_color_palette))
+
+
+
+Heatmap(ephys_correlation_mat , name = 'spearman',
+        clustering_distance_rows = ephys_dist_mat,
+        clustering_distance_columns = ephys_dist_mat,
+        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+        show_row_names = F, show_column_names = F,
+        top_annotation = top_annot, column_title = 'Cell similarity over electrophysiology features')
 
 
 
@@ -427,7 +477,6 @@ table(tasic18_cge$primate_subclass)
 logcounts(tasic18_cge) = log1p(cpm(tasic18_cge))
 stats = scran::modelGeneVar(tasic18_cge)
 dataset_hvg = scran::getTopHVGs(stats, n = 2000)
-dataset_hvg
 
 #Get the logcounts of the Hvgs
 gene_filt = rownames(tasic18_cge) %in% dataset_hvg
@@ -457,27 +506,53 @@ plot(res_exp_mouse$omega2, res_exp_primate$omega2, main = 'Transcriptomic featur
      xlab = 'Variance explained by original subclasses', xlim = c(0,1), ylim = c(0,1) )
 abline(a = 0, b = 1, col = 'red', lty = 'dashed')
 
-combined_res = res_exp_mouse
-combined_res$primate_omega2 = res_exp_primate$omega2
-combined_res$primate_pval = res_exp_primate$pval
-combined_res$primate_padj = res_exp_primate$padj
+combined_res_exp = res_exp_mouse
+combined_res_exp$primate_omega2 = res_exp_primate$omega2
+combined_res_exp$primate_pval = res_exp_primate$pval
+combined_res_exp$primate_padj = res_exp_primate$padj
 
-combined_res = combined_res %>% mutate(omega_diff = abs(omega2 - primate_omega2)) %>% arrange(desc(omega_diff))
-combined_res
+combined_res_exp = combined_res_exp %>% mutate(omega_diff = primate_omega2 - omega2) %>% arrange(desc(omega_diff))
 
+
+combined_res_exp %>% arrange(desc(primate_omega2))
 
 ```
 
+
 ```{r}
 
-feature_exp
+plotting_omega_df = combined_res_exp %>% select(feature, omega2, primate_omega2) %>% tidyr::pivot_longer(!feature, names_to = 'annotation', values_to = 'omega-squared')
+
+ggplot(plotting_omega_df, aes(x = annotation, y = `omega-squared`)) + geom_boxplot() +
+  theme_bw() + ylim(0,1) + ggtitle('Transcriptomic feature variance')
+
+
+hist(combined_res_exp$omega_diff, breaks = seq(-.3, .8, .01))
+
+
+wilcox.test(combined_res_exp$omega2, combined_res_exp$primate_omega2, paired = T, alternative = 'two.sided')
+#wilcox.test(combined_res_exp$omega2, combined_res_exp$primate_omega2, paired = T, alternative = 'greater')
+wilcox.test(combined_res_exp$omega2, combined_res_exp$primate_omega2, paired = T, alternative = 'less')
+```
+
+VIP
+LAMP5
+MPPED1
+NXPH1
+PTPRM
+CPLX3
+SYNPR
+
+
+```{r}
+
 
 
 current_metadata = as.data.frame(colData(tasic18_cge))
 
 
-current_metadata$gene_1_exp = feature_exp['CALN1' ,]
-current_metadata$gene_2_exp = feature_exp['VSNL1' ,]
+current_metadata$gene_1_exp = feature_exp['VIP' ,]
+current_metadata$gene_2_exp = feature_exp['LAMP5' ,]
 
 ggplot(current_metadata, aes(x = gene_1_exp, y = gene_2_exp, color = cell_subclass)) +
   geom_point() + scale_color_manual(values = celltype_color_palette) + theme_bw()
@@ -490,10 +565,42 @@ ggplot(current_metadata, aes(x = gene_1_exp, y = gene_2_exp, color = primate_sub
 ```
 
 
+And same correlation heatmap, using the top 24 hvg genes
+
+```{r}
+
+top_hvg = scran::getTopHVGs(stats, n = 25)
+top_hvg
+
+exp_cor_mat = cor(scale_feature_exp[top_hvg, ], method = 'spearman')
+dist_exp_cor_mat = as.dist(1- exp_cor_mat)
+
+
+current_metadata = as.data.frame(colData(tasic18_cge))
+
+index = match(colnames(exp_cor_mat), rownames(current_metadata))
+exp_mouse_subclass = current_metadata$cell_subclass[index]
+exp_primate_subclass = current_metadata$primate_subclass[index]
+
+
+top_annot_exp = HeatmapAnnotation(mouse_subclass = exp_mouse_subclass, homologous_subclass = exp_primate_subclass,
+                                   col = list(mouse_subclass = celltype_color_palette, homologous_subclass = celltype_color_palette))
+
+
+Heatmap(exp_cor_mat , name = 'spearman',
+        clustering_distance_rows = dist_exp_cor_mat,
+        clustering_distance_columns = dist_exp_cor_mat,
+        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+        show_row_names = F, show_column_names = F,
+        top_annotation = top_annot_exp, column_title = 'Cell similarity over transcriptomic features (top 25 hvgs)')
 
 
 
 
+```
+
+
+See if we can incorporate the human patchseq data
 
 
 
