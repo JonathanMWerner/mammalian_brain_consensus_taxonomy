@@ -124,11 +124,17 @@ filt_vars = c('file_id','file_name','cell_cluster','mouse_subclass','primate_sub
 
 ```{r}
 
+#Denote the Lamp5 Lhx6 as a subclass in the original mouse annotations
+mouse_patch_data$mouse_subclass[mouse_patch_data$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+#Denote the Serpin mouse subclass as Vip
+mouse_patch_data$mouse_subclass[mouse_patch_data$mouse_subclass == 'Serpinf1'] = 'Vip'
+
+
 
 filt_vars = c('file_id','file_name','cell_cluster','mouse_subclass','primate_subclass','qc_blowout_mv','rheo_slow_trough_t','rheo_adp_v','rheo_slow_trough_v',
 'hero_adapt','hero_first_isi','hero_isi_cv','hero_mean_isi', 'qc_recording_date')
 
-filt_mouse_patch_data = mouse_patch_data %>% filter(mouse_subclass %in% c('Vip','Lamp5','Sncg')) %>% select(-filt_vars)
+filt_mouse_patch_data = mouse_patch_data %>% filter(mouse_subclass %in% c('Vip','Lamp5','Sncg', 'Lamp5 Lhx6')) %>% select(-filt_vars)
 
 #Filter out cells with NA values
 row_filt = rowSums(is.na(filt_mouse_patch_data)) == 0 
@@ -157,6 +163,9 @@ pca_loadings_df
 ```
 
 
+Generally very subtle differences across the ephys differences for the different subtypes, largely looks like a Lamp5 vs Vip spectrum, Sncg and Pax6 are inbetween, but very continuous.
+
+
 ```{r}
 
 ggplot(pca_loadings_df, aes(x = Comp.1, y = Comp.2, color = mouse_subclass)) + geom_point(alpha = .75) +
@@ -167,6 +176,326 @@ ggplot(pca_loadings_df, aes(x = Comp.1, y = Comp.2, color = primate_subclass)) +
   scale_color_manual(values = celltype_color_palette)
 
 ```
+
+
+PUlling together a standard variance decomposition approach to compare across the different annotations.
+Starting simply with a one-way ANOVA, univariate decomposition
+
+The goal is to compare the variance explained by the original annotations to the variance explained by the homologous annotations.
+Use ANOVA decomposition to get the coefficient of determination for labelsA (mouse subclasses) and then labelsB (homologous subclasses). 
+Can get a p-value for each coefficient/feature and can also compare the distribution of coefficients across all the features for the two labels.
+
+Since the homologous labels have 1 more annotation, need to use either adjustedR^2 or omega^2 as the coefficient. Empirical p-values will also be useful due to the varying sample size of each annotation group.
+
+Z-score the ephys features to start, since all in different units.
+
+Don't necessarily have to z-score the genes, since all CPM (may try logCPM), but if I want to compare the omegas across the modalities, will need to zscore anyhow.
+
+
+Code is from chatGPT, double checking implementation and output
+
+```{r}
+
+library(parallel)
+
+# ---------- omega^2 estimator ----------
+omega2 <- function(y, grp) {
+  grp <- factor(grp)
+  n <- length(y)
+  k <- nlevels(grp)
+  if (k < 2) return(0)
+  grand_mean <- mean(y)
+  group_means <- tapply(y, grp, mean)
+  n_k <- as.numeric(table(grp))
+  ss_b <- sum(n_k * (group_means - grand_mean)^2)
+  ss_t <- sum((y - grand_mean)^2)
+  ms_w <- (ss_t - ss_b) / (n - k)
+  num <- ss_b - (k - 1) * ms_w
+  denom <- ss_t + ms_w
+  if (denom <= 0 || num <= 0) return(0)
+  num / denom
+}
+
+# ---------- permutation test per feature ----------
+omega_perm_test <- function(y, grp, n_perm = 1000) {
+  obs <- omega2(y, grp)
+  # permute while preserving group sizes
+  n_k <- table(grp)
+  perm_fun <- function() {
+    shuffled <- sample(y)
+    shuffled_grp <- rep(names(n_k), n_k)
+    omega2(shuffled, shuffled_grp)
+  }
+  perms <- replicate(n_perm, perm_fun())
+  pval <- (1 + sum(perms >= obs)) / (1 + n_perm)
+  list(obs = obs, pval = pval)
+}
+
+# ---------- wrapper across many features ----------
+run_omega_perm <- function(mat, grp, n_perm = 1000, n_cores = 4) {
+  stopifnot(is.matrix(mat))
+  cl <- makeCluster(n_cores)
+  clusterExport(cl, c("omega2", "omega_perm_test", "grp", "n_perm"), envir = environment())
+  res <- parApply(cl, mat, 1, function(y) omega_perm_test(y, grp, n_perm))
+  stopCluster(cl)
+  
+  # Convert list output to data.frame
+  obs <- sapply(res, function(x) x$obs)
+  pval <- sapply(res, function(x) x$pval)
+  data.frame(feature = rownames(mat), omega2 = obs, pval = pval)
+}
+
+# ---------- example usage ----------
+# expr: matrix of features (genes/ephys vars) x samples (cells)
+# labels_A and labels_B: factor vectors of length ncol(expr)
+
+#res_A <- run_omega_perm(expr, labels_A, n_perm = 1000, n_cores = 8)
+#res_B <- run_omega_perm(expr, labels_B, n_perm = 1000, n_cores = 8)
+
+# Add FDR correction
+#res_A$padj <- p.adjust(res_A$pval, method = "BH")
+#res_B$padj <- p.adjust(res_B$pval, method = "BH")
+
+```
+
+
+
+
+
+```{r}
+#Rows are cells, columns are ephys features
+filt_mouse_patch_data 
+
+scaled_filt_mouse_patch_data = scale(filt_mouse_patch_data)
+
+#Get the two different annotations
+index = match(rownames(filt_mouse_patch_data ), mouse_patch_data$cell_specimen_id )
+mouse_subclass = mouse_patch_data$mouse_subclass[index]
+primate_subclass = mouse_patch_data$primate_subclass[index]
+
+table(mouse_subclass)
+table(primate_subclass)
+
+
+```
+
+```{r}
+
+# ---------- example usage ----------
+# expr: matrix of features (genes/ephys vars) x samples (cells)
+# labels_A and labels_B: factor vectors of length ncol(expr)
+
+ephys_feature_mat = t(scaled_filt_mouse_patch_data )
+
+res_mouse <- run_omega_perm(ephys_feature_mat, mouse_subclass, n_perm = 1000, n_cores = 8)
+res_primate <- run_omega_perm(ephys_feature_mat, primate_subclass, n_perm = 1000, n_cores = 8)
+
+# Add FDR correction
+res_mouse$padj <- p.adjust(res_mouse$pval, method = "BH")
+res_primate$padj <- p.adjust(res_primate$pval, method = "BH")
+
+par(pty= 's')
+plot(res_mouse$omega2, res_primate$omega2, main = 'Ephys features', 
+     ylab = 'Variance explained by homologous subclasses', 
+     xlab = 'Variance explained by original subclasses', xlim = c(0,1), ylim = c(0,1) )
+abline(a = 0, b = 1, col = 'red', lty = 'dashed')
+
+
+res_mouse
+res_primate
+
+
+combined_res = res_mouse
+combined_res$primate_omega2 = res_primate$omega2
+combined_res$primate_pval = res_primate$pval
+combined_res$primate_padj = res_primate$padj
+
+combined_res = combined_res %>% mutate(omega_diff = abs(omega2 - primate_omega2)) %>% arrange(desc(omega_diff))
+combined_res
+
+```
+
+
+good features for separability
+tau
+rheo_width
+rheobase_i
+qc_input_resistance_mohm
+
+
+
+```{r}
+
+library(ggExtra)
+
+```
+
+
+```{r}
+
+p_mouse = ggplot(filter(mouse_patch_data, primate_subclass %in% c('Vip','Sncg','Lamp5', 'Lamp5 Lhx6','Pax6')), 
+       aes(x = tau, y = rheo_width, color = mouse_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+p_primate = ggplot(filter(mouse_patch_data, primate_subclass %in% c('Vip','Sncg','Lamp5', 'Lamp5 Lhx6','Pax6')), 
+       aes(x = tau , y = rheo_width, color = primate_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+```
+
+The features with the biggest differn
+
+```{r}
+
+p_mouse = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Lamp5')), 
+       aes(x = sag, y = rheo_fast_trough_t, color = mouse_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+p_primate = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Lamp5')), 
+       aes(x = sag , y = rheo_fast_trough_t, color = primate_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+
+
+p_mouse = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip')), 
+       aes(x = sag, y = rheo_fast_trough_t, color = mouse_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+p_primate = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip')), 
+       aes(x = sag , y = rheo_fast_trough_t, color = primate_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+
+
+p_mouse = ggplot(filter(mouse_patch_data, primate_subclass %in% c('Pax6')), 
+       aes(x = sag, y = rheo_fast_trough_t, color = mouse_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+p_primate = ggplot(filter(mouse_patch_data, primate_subclass %in% c('Pax6')), 
+       aes(x = sag , y = rheo_fast_trough_t, color = primate_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+
+
+
+```
+
+
+And do the same univariate decomp with the tasic expression data
+Only use highly variable genes
+
+
+```{r}
+
+tasic18$cell_subclass[tasic18$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+tasic18$cell_subclass[tasic18$cell_subclass == 'Serpinf1'] = 'Vip'
+
+cell_filt = tasic18$cell_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg')
+tasic18_cge = tasic18[ , cell_filt]
+
+table(tasic18_cge$cell_subclass)
+table(tasic18_cge$primate_subclass)
+
+
+
+
+#Get highly variable genes
+logcounts(tasic18_cge) = log1p(cpm(tasic18_cge))
+stats = scran::modelGeneVar(tasic18_cge)
+dataset_hvg = scran::getTopHVGs(stats, n = 2000)
+dataset_hvg
+
+#Get the logcounts of the Hvgs
+gene_filt = rownames(tasic18_cge) %in% dataset_hvg
+feature_exp = logcounts(tasic18_cge)[gene_filt, ]
+scale_feature_exp = t(scale(t(feature_exp)))
+
+#And the subclass annotations
+exp_mouse_subclass = tasic18_cge$cell_subclass
+exp_primate_subclass = tasic18_cge$primate_subclass
+
+table(exp_mouse_subclass)
+table(exp_primate_subclass)
+```
+
+
+```{r}
+res_exp_mouse <- run_omega_perm(scale_feature_exp, exp_mouse_subclass, n_perm = 1000, n_cores = 8)
+res_exp_primate <- run_omega_perm(scale_feature_exp, exp_primate_subclass, n_perm = 1000, n_cores = 8)
+
+# Add FDR correction
+res_exp_mouse$padj <- p.adjust(res_exp_mouse$pval, method = "BH")
+res_exp_primate$padj <- p.adjust(res_exp_primate$pval, method = "BH")
+
+par(pty= 's')
+plot(res_exp_mouse$omega2, res_exp_primate$omega2, main = 'Transcriptomic features', 
+     ylab = 'Variance explained by homologous subclasses', 
+     xlab = 'Variance explained by original subclasses', xlim = c(0,1), ylim = c(0,1) )
+abline(a = 0, b = 1, col = 'red', lty = 'dashed')
+
+combined_res = res_exp_mouse
+combined_res$primate_omega2 = res_exp_primate$omega2
+combined_res$primate_pval = res_exp_primate$pval
+combined_res$primate_padj = res_exp_primate$padj
+
+combined_res = combined_res %>% mutate(omega_diff = abs(omega2 - primate_omega2)) %>% arrange(desc(omega_diff))
+combined_res
+
+
+```
+
+```{r}
+
+feature_exp
+
+
+current_metadata = as.data.frame(colData(tasic18_cge))
+
+
+current_metadata$gene_1_exp = feature_exp['CALN1' ,]
+current_metadata$gene_2_exp = feature_exp['VSNL1' ,]
+
+ggplot(current_metadata, aes(x = gene_1_exp, y = gene_2_exp, color = cell_subclass)) +
+  geom_point() + scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggplot(current_metadata, aes(x = gene_1_exp, y = gene_2_exp, color = primate_subclass)) +
+  geom_point() + scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+
+
+```
+
+
+
+
+
+
+
+
 
 
 
