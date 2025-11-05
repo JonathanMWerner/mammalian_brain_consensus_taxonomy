@@ -132,8 +132,9 @@ Zeng_calls_direct %>% filter(!is.na(cortical_layer)) %>% arrange(-y)
 
 #plot the layers across the slices
 ggplot(data = Zeng_calls_direct, aes(x=x, y=-1*y, color = cortical_layer)) + 
-  geom_point(size=.03, data = Zeng_calls_direct %>% sample_frac(.1), color ="gray90") + theme_classic() +    
-  geom_point(data = Zeng_calls_direct %>% filter(!is.na(cortical_layer)), size = 0.1) + 
+  ggrastr::rasterise(geom_point(size=.03, data = Zeng_calls_direct %>% sample_frac(.1), color ="gray90"), dpi = 150) + 
+  theme_classic() +    
+  ggrastr::rasterise(geom_point(data = Zeng_calls_direct %>% filter(!is.na(cortical_layer)), size = 0.1), dpi = 150) + 
   coord_equal() +# theme(legend.position="none") +
   facet_wrap(. ~ z) + 
   theme(
@@ -155,6 +156,11 @@ ggplot(data = Zeng_calls_direct, aes(x=x, y=-1*y, color = cortical_layer)) +
     panel.border = element_blank(),
     strip.text = element_blank()  # Removes facet title
   )
+
+ggsave(filename = 'mouse_spatial_cortical_layers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_spatial/', 
+       useDingbats = F, device = 'pdf', height = 6, width = 8 )
+
+
 
 #plot the layers across the slices
 ggplot(data = Zeng_calls_direct, aes(x=x, y=-1*y, color = cortical_layer)) + 
@@ -183,8 +189,9 @@ ggplot(data = Zeng_calls_direct, aes(x=x, y=-1*y, color = cortical_layer)) +
   )
 
 ggplot(data = Zeng_calls_direct, aes(x=x, y=-1*y, color = parcellation_structure)) + 
-  geom_point(size=.03, data = Zeng_calls_direct %>% sample_frac(.1), color ="gray90") + theme_classic() +    
-  geom_point(data = Zeng_calls_direct %>% filter(parcellation_structure %in% c("CA1", "CA2", "CA3", "DG" )), size = 0.1) + 
+  ggrastr::rasterise(geom_point(size=.03, data = Zeng_calls_direct %>% sample_frac(.1), color ="gray90"), dpi = 150) + 
+  theme_classic() +    
+  ggrastr::rasterise(geom_point(data = Zeng_calls_direct %>% filter(parcellation_structure %in% c("CA1", "CA2", "CA3", "DG" )), size = 0.1), dpi = 150) + 
   coord_equal() +# theme(legend.position="none") +
   facet_wrap(. ~ z) + 
   theme(
@@ -206,6 +213,10 @@ ggplot(data = Zeng_calls_direct, aes(x=x, y=-1*y, color = parcellation_structure
     panel.border = element_blank(),
     strip.text = element_blank()  # Removes facet title
   )
+
+ggsave(filename = 'mouse_hippocamp_layers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_spatial/', 
+       useDingbats = F, device = 'pdf', height = 6, width = 8 )
+
 
 
 ```
