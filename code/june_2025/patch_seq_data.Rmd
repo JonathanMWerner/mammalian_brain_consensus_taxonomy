@@ -489,15 +489,17 @@ top_annot = HeatmapAnnotation(mouse_subclass = corr_mouse_subclass, homologous_s
 
 
 
-Heatmap(ephys_correlation_mat , name = 'spearman',
-        clustering_distance_rows = ephys_dist_mat,
+corr_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+Heatmap(ephys_correlation_mat , name = 'spearman', col = corr_cols,
+        clustering_distance_rows = ephys_dist_mat, use_raster = T,
         clustering_distance_columns = ephys_dist_mat,
         clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
         show_row_names = F, show_column_names = F,
         top_annotation = top_annot, column_title = 'Cell similarity over electrophysiology features')
 
-pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/cell_siml_of_ephys_features.pdf', useDingbats = F, height = 4, width = 6)
-Heatmap(ephys_correlation_mat , name = 'spearman',
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/cell_siml_of_ephys_features.pdf', 
+    useDingbats = F, height = 4, width = 6, family = 'sans')
+Heatmap(ephys_correlation_mat , name = 'spearman', use_raster = T,col = corr_cols, 
         clustering_distance_rows = ephys_dist_mat,
         clustering_distance_columns = ephys_dist_mat,
         clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
@@ -616,7 +618,8 @@ barplot(-1*log10(plotting_feature_pval+1e-10),
         main = 'Mouse Lamp5 -> Homologous Pax6', xlab = '-log10(meta p-value)' )
 abline(v = -1*log10(0.05), col = 'red')
 
-pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/lamp5_to_pax6_sig_features_barplot.pdf', useDingbats = F, height = 6, width = 7)
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/lamp5_to_pax6_sig_features_barplot.pdf', 
+    useDingbats = F, family = 'sans', height = 6, width = 7)
 par(mar = c(4, 10, 2, 1))
 barplot(-1*log10(plotting_feature_pval+1e-10), 
         names.arg = names(plotting_feature_pval),
@@ -650,23 +653,25 @@ ggplot(pval_df, aes(x = pvals, fill = labels)) +
 
 p_mouse = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Lamp5')), 
        aes(x = rheo_width, y = tau, color = mouse_subclass )) + 
-  geom_point(alpha = .75, size = 2) +
+  geom_point(alpha = .75, size = 2, show.legend = F) +
   scale_color_manual(values = celltype_color_palette) + theme_bw()
 
 ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
 
-ggsave(filename = 'taue_and_rheo_width_lamp5_scatter.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', device = 'pdf',
+ggsave(filename = 'taue_and_rheo_width_lamp5_scatter.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
        useDingbats = F, height = 4, width = 6)
 
 
 p_primate = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Lamp5')), 
        aes(x = rheo_width, y =tau , color = primate_subclass )) + 
-  geom_point(alpha = .75, size = 2) +
+  geom_point(alpha = .75, size = 2, show.legend = F) +
   scale_color_manual(values = celltype_color_palette) + theme_bw()
 
 ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
 
-ggsave(filename = 'taue_and_rheo_width_lamp5_pax6_scatter.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', device = 'pdf',
+ggsave(filename = 'taue_and_rheo_width_lamp5_pax6_scatter.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
        useDingbats = F, height = 4, width = 6)
 
 ```
@@ -706,7 +711,8 @@ barplot(-1*log10(plotting_feature_pval+1e-10),
 abline(v = -1*log10(0.05), col = 'red')
 
 
-pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/vip_to_pax6_sig_features_barplot.pdf', useDingbats = F, height = 6, width = 7)
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/vip_to_pax6_sig_features_barplot.pdf', 
+    useDingbats = F, family = 'sans', height = 6, width = 7)
 par(mar = c(4, 10, 2, 1))
 barplot(-1*log10(plotting_feature_pval+1e-10), 
         names.arg = names(plotting_feature_pval),
@@ -722,22 +728,24 @@ dev.off()
 
 p_mouse = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip') & primate_subclass != 'Sncg'), 
        aes(x = rheo_width, y = tau, color = mouse_subclass )) + 
-  geom_point(alpha = .75, size = 2) +
+  geom_point(alpha = .75, size = 2, show.legend = F) +
   scale_color_manual(values = celltype_color_palette) + theme_bw()
 
 ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
 
-ggsave(filename = 'taue_and_rheo_width_vip_scatter.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', device = 'pdf',
+ggsave(filename = 'taue_and_rheo_width_vip_scatter.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
        useDingbats = F, height = 4, width = 6)
 
 
 p_primate = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip') & primate_subclass != 'Sncg'), 
        aes(y = tau, x =rheo_width , color = primate_subclass )) + 
-  geom_point(alpha = .75, size = 2) +
+  geom_point(alpha = .75, size = 2, show.legend = F) +
   scale_color_manual(values = celltype_color_palette) + theme_bw()
 
 ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
-ggsave(filename = 'taue_and_rheo_width_vip_pax6_scatter.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', device = 'pdf',
+ggsave(filename = 'taue_and_rheo_width_vip_pax6_scatter.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
        useDingbats = F, height = 4, width = 6)
 ```
 
@@ -808,7 +816,8 @@ plot(res_exp_mouse$omega2, res_exp_primate$omega2, main = 'Transcriptomic featur
 abline(a = 0, b = 1, col = 'red', lty = 'dashed')
 
 
-pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/omega2_transcriptomic_features.pdf', useDingbats = F, height = 4, width = 4)
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/omega2_transcriptomic_features.pdf', 
+    useDingbats = F, height = 4, width = 4, family = 'sans')
 par(pty= 's')
 plot(res_exp_mouse$omega2, res_exp_primate$omega2, main = 'Transcriptomic features', 
      ylab = 'Variance explained by homologous subclasses', 
@@ -897,8 +906,8 @@ exp_primate_subclass = current_metadata$primate_subclass[index]
 top_annot_exp = HeatmapAnnotation(mouse_subclass = exp_mouse_subclass, homologous_subclass = exp_primate_subclass,
                                    col = list(mouse_subclass = celltype_color_palette, homologous_subclass = celltype_color_palette))
 
-
-Heatmap(exp_cor_mat , name = 'spearman',use_raster = F,
+corr_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+Heatmap(exp_cor_mat , name = 'spearman',use_raster = F, col = corr_cols,
         clustering_distance_rows = dist_exp_cor_mat,
         clustering_distance_columns = dist_exp_cor_mat,
         clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
@@ -906,8 +915,9 @@ Heatmap(exp_cor_mat , name = 'spearman',use_raster = F,
         top_annotation = top_annot_exp, column_title = 'Cell similarity over transcriptomic features (top 25 hvgs)')
 
 
-pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/cell_siml_of_trans_features.pdf', useDingbats = F, height = 4, width = 6)
-Heatmap(exp_cor_mat , name = 'spearman', use_raster = F,
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/cell_siml_of_trans_features.pdf', 
+    useDingbats = F, height = 4, width = 6, family = 'sans')
+Heatmap(exp_cor_mat , name = 'spearman', use_raster = F, col = corr_cols,
         clustering_distance_rows = dist_exp_cor_mat,
         clustering_distance_columns = dist_exp_cor_mat,
         clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
@@ -916,8 +926,9 @@ Heatmap(exp_cor_mat , name = 'spearman', use_raster = F,
 dev.off()
 
 
-pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/raster_cell_siml_of_trans_features.pdf', useDingbats = F, height = 4, width = 6)
-Heatmap(exp_cor_mat , name = 'spearman', use_raster = T,
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/raster_cell_siml_of_trans_features.pdf', useDingbats = F, 
+    height = 4, width = 6, family = 'sans')
+Heatmap(exp_cor_mat , name = 'spearman', use_raster = T, col = corr_cols,
         clustering_distance_rows = dist_exp_cor_mat,
         clustering_distance_columns = dist_exp_cor_mat,
         clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',

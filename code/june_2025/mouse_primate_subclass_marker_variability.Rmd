@@ -313,6 +313,8 @@ Get the dot plot enrichments of the primate Vip Pax6 and Sncg markers across the
 Get the average per dataset per subclass
 
 
+Also get the pareto front markers for the mouse, primate, and cross-mammal markers of just Sncg and Pax6, since that's where the confusion lies
+
 ##################################
 
 ```{r}
@@ -440,9 +442,19 @@ ggplot(mouse_subclass_meta_markers %>% filter(recurrence %in% c(1)), aes(x = cel
 ```{r}
 
 
-plot_pareto_summary(mouse_subclass_meta_markers %>% filter(cell_type %in% c('Pax6','Sncg', 'Vip')), min_recurrence=0)
+p1 = plot_pareto_summary(mouse_subclass_meta_markers %>% filter(cell_type %in% c('Pax6','Sncg')), min_recurrence=4) +
+  theme_bw() + scale_color_manual(values = celltype_color_palette) + ggtitle('Homologous Mouse subclass markers') + ylim(.5, 1) + xlim(0,5)
+
+get_pareto_markers(mouse_subclass_meta_markers, "Pax6", min_recurrence=4)
+
+get_pareto_markers(mouse_subclass_meta_markers, "Sncg", min_recurrence=4)
 
 
+p1
+
+
+ggsave(plot = p1, filename = 'mouse_Sncg_Pax6_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
 
 ```
 
@@ -457,14 +469,14 @@ plot_pareto_summary(mouse_subclass_meta_markers %>% filter(cell_type %in% c('Pax
 
 ```{r}
 all_primate_markers = list(
-    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
-    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
-    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
-    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
-    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
-    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
-    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
-    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
+    human_10x = read_markers("../metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("../metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("../metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("../metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("../metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("../metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("../metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("../metamarkers/markers_marmoset_10x.csv.gz")
 )
 
 
@@ -485,6 +497,82 @@ primate_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
 
 
 ```
+
+
+```{r}
+
+primate_subclass_meta_markers 
+
+human_de_counts = rowSums(primate_subclass_meta_markers  %>% select(human_10x, human_ss))
+chimp_de_counts = rowSums(primate_subclass_meta_markers  %>% select(chimp_10x, chimp_ss))
+gorilla_de_counts = rowSums(primate_subclass_meta_markers  %>% select(gorilla_10x, gorilla_ss))
+macaca_de_counts = primate_subclass_meta_markers$macaca_10x
+marmoset_de_counts = primate_subclass_meta_markers$marmoset_10x
+
+#Getting genes DE in at least 1 dataset per species
+cross_species_de_index = human_de_counts >= 1 & chimp_de_counts >= 1 & gorilla_de_counts >= 1 & macaca_de_counts >= 1 & marmoset_de_counts >= 1
+
+
+
+p2 = plot_pareto_summary(primate_subclass_meta_markers[cross_species_de_index, ] %>% filter(cell_type %in% c('Pax6','Sncg')), min_recurrence=0) +
+  theme_bw() + scale_color_manual(values = celltype_color_palette) + ggtitle('Homologous Primate subclass markers') + ylim(.5, 1) + xlim(0,4)
+
+get_pareto_markers(primate_subclass_meta_markers[cross_species_de_index, ], "Pax6", min_recurrence=0)
+
+get_pareto_markers(primate_subclass_meta_markers[cross_species_de_index, ], "Sncg", min_recurrence=0)
+
+
+p2
+
+ggsave(plot = p2, filename = 'primate_Sncg_Pax6_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+
+```
+
+```{r}
+
+all_species_markers = c(all_mouse_markers, all_primate_markers)
+
+mammal_subclass_meta_markers = make_meta_markers(all_species_markers, detailed_stats = TRUE)
+
+mouse_de_counts = rowSums(mammal_subclass_meta_markers %>% select(tasic18, zeng_10x_cells, zeng_10x_nuclei, zeng_smart_cells, zeng_smart_nuclei, zeng_10xv2_wba, zeng_10xv3_wba, macosko_wba))
+
+human_de_counts = rowSums(mammal_subclass_meta_markers %>% select(human_10x, human_ss))
+chimp_de_counts = rowSums(mammal_subclass_meta_markers %>% select(chimp_10x, chimp_ss))
+gorilla_de_counts = rowSums(mammal_subclass_meta_markers %>% select(gorilla_10x, gorilla_ss))
+macaca_de_counts = mammal_subclass_meta_markers$macaca_10x
+marmoset_de_counts = mammal_subclass_meta_markers$marmoset_10x
+
+
+#Getting genes DE in at least 1 dataset per species
+cross_species_de_index = mouse_de_counts >= 1 & human_de_counts >= 1 & chimp_de_counts >= 1 & gorilla_de_counts >= 1 & macaca_de_counts >= 1 & marmoset_de_counts >= 1
+
+p3 = plot_pareto_summary(mammal_subclass_meta_markers[cross_species_de_index, ] %>% filter(cell_type %in% c('Pax6','Sncg')), min_recurrence=6) +
+  theme_bw() + scale_color_manual(values = celltype_color_palette) + ggtitle('Homologous Primate-Mouse subclass markers') + ylim(.5, 1) + xlim(0,4)
+
+
+get_pareto_markers(mammal_subclass_meta_markers[cross_species_de_index, ], 'Pax6', min_recurrence = 6)
+get_pareto_markers(mammal_subclass_meta_markers[cross_species_de_index, ], 'Sncg', min_recurrence = 6)
+
+p3
+
+ggsave(plot = p3, filename = 'mammalian_Sncg_Pax6_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+
+```
+
+```{r}
+
+
+mammal_subclass_meta_markers %>% filter(gene %in% c("SORCS3","CCK","CXCL14","FREM1","PAX6" ) & cell_type == 'Pax6')
+
+mammal_subclass_meta_markers %>% filter(gene %in% c("CXCL14","SYT6"  ,"COBLL1") & cell_type == 'Sncg')
+
+
+
+
+```
+
 
 
 ```{r}
