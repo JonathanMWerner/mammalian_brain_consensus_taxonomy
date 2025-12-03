@@ -573,6 +573,250 @@ mammal_subclass_meta_markers %>% filter(gene %in% c("CXCL14","SYT6"  ,"COBLL1") 
 
 ```
 
+Get the cross mammal pareto fronts for all the subclasses, put in supplement
+Get the aurocs going from human->chimp, to human->mouse
+
+
+
+```{r}
+
+p4 = plot_pareto_summary(mammal_subclass_meta_markers[cross_species_de_index, ] %>% filter(cell_type == 'Vip'),  min_recurrence=6) +
+  theme_bw() + scale_color_manual(values = celltype_color_palette) + ggtitle('Homologous Primate-Mouse Vip markers') + ylim(.5, 1) + xlim(0,4)
+p5 = plot_pareto_summary(mammal_subclass_meta_markers[cross_species_de_index, ] %>% filter(cell_type == 'Lamp5'),  min_recurrence=6) +
+  theme_bw() + scale_color_manual(values = celltype_color_palette) + ggtitle('Homologous Primate-Mouse Lamp5 markers') + ylim(.5, 1) + xlim(0,4)
+p6 = plot_pareto_summary(mammal_subclass_meta_markers[cross_species_de_index, ] %>% filter(cell_type == 'Lamp5 Lhx6'),  min_recurrence=6) +
+  theme_bw() + scale_color_manual(values = celltype_color_palette) + ggtitle('Homologous Primate-Mouse Lamp5 Lhx6 markers') + ylim(.5, 1) + xlim(0,4)
+
+p7 = plot_pareto_summary(mammal_subclass_meta_markers[cross_species_de_index, ] %>% filter(cell_type == 'Sst'),  min_recurrence=6) +
+  theme_bw() + scale_color_manual(values = celltype_color_palette) + ggtitle('Homologous Primate-Mouse Sst markers') + ylim(.5, 1) + xlim(0,4)
+p8 = plot_pareto_summary(mammal_subclass_meta_markers[cross_species_de_index, ] %>% filter(cell_type == 'Sst Chodl'),  min_recurrence=6) +
+  theme_bw() + scale_color_manual(values = celltype_color_palette) + ggtitle('Homologous Primate-Mouse Sst Chodl markers') + ylim(.5, 1) + xlim(0,4)
+p9 = plot_pareto_summary(mammal_subclass_meta_markers[cross_species_de_index, ] %>% filter(cell_type == 'Pvalb'),  min_recurrence=6) +
+  theme_bw() + scale_color_manual(values = celltype_color_palette) + ggtitle('Homologous Primate-Mouse Pvalb markers') + ylim(.5, 1) + xlim(0,4)
+p10 = plot_pareto_summary(mammal_subclass_meta_markers[cross_species_de_index, ] %>% filter(cell_type == 'Chandelier'),  min_recurrence=6) +
+  theme_bw() + scale_color_manual(values = celltype_color_palette) + ggtitle('Homologous Primate-Mouse Chandelier markers') + ylim(.5, 1) + xlim(0,4)
+
+p4
+p5
+p6
+p7
+p8
+p9
+p10
+
+get_pareto_markers(mammal_subclass_meta_markers[cross_species_de_index, ], 'Pax6', min_recurrence = 6)
+get_pareto_markers(mammal_subclass_meta_markers[cross_species_de_index, ], 'Sncg', min_recurrence = 6)
+get_pareto_markers(mammal_subclass_meta_markers[cross_species_de_index, ], 'Vip', min_recurrence = 6)
+get_pareto_markers(mammal_subclass_meta_markers[cross_species_de_index, ], 'Lamp5', min_recurrence = 6)
+get_pareto_markers(mammal_subclass_meta_markers[cross_species_de_index, ], 'Lamp5 Lhx6', min_recurrence = 6)
+get_pareto_markers(mammal_subclass_meta_markers[cross_species_de_index, ], 'Sst', min_recurrence = 6)
+get_pareto_markers(mammal_subclass_meta_markers[cross_species_de_index, ], 'Sst Chodl', min_recurrence = 6)
+get_pareto_markers(mammal_subclass_meta_markers[cross_species_de_index, ], 'Pvalb', min_recurrence = 6)
+get_pareto_markers(mammal_subclass_meta_markers[cross_species_de_index, ], 'Chandelier', min_recurrence = 6)
+
+
+
+
+
+```
+
+
+```{r}
+#human - chimp
+speciesX_subclass_meta_markers = make_meta_markers(all_species_markers[names(all_species_markers) %in% c('human_10x','human_ss','chimp_10x','chimp_ss')], detailed_stats = TRUE)
+
+human_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(human_10x, human_ss))
+chimp_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(chimp_10x, chimp_ss))
+
+#Getting genes DE in at least 1 dataset per species
+cross_species_de_index =  human_de_counts >= 1 & chimp_de_counts >= 1
+human_chimp_de_num_df = speciesX_subclass_meta_markers[cross_species_de_index, ] %>% group_by(cell_type) %>% summarise(n = n()) %>% mutate(label = 'Human-Chimp')
+
+#Human - chimp - gorilla
+speciesX_subclass_meta_markers = make_meta_markers(all_species_markers[names(all_species_markers) %in% c('human_10x','human_ss',
+                                                                                                         'gorilla_10x','gorilla_ss')], 
+                                                   detailed_stats = TRUE)
+
+human_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(human_10x, human_ss))
+gorilla_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(gorilla_10x, gorilla_ss))
+
+#Getting genes DE in at least 1 dataset per species
+cross_species_de_index =  human_de_counts >= 1 & gorilla_de_counts >= 1
+human_gorilla_de_num_df = speciesX_subclass_meta_markers[cross_species_de_index, ] %>% group_by(cell_type) %>% summarise(n = n()) %>% mutate(label = 'Human-Gorilla')
+
+
+
+#Human - macaca
+speciesX_subclass_meta_markers = make_meta_markers(all_species_markers[names(all_species_markers) %in% c('human_10x','human_ss','macaca_10x')], 
+                                                   detailed_stats = TRUE)
+
+human_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(human_10x, human_ss))
+macaca_de_counts = speciesX_subclass_meta_markers$macaca_10x
+
+#Getting genes DE in at least 1 dataset per species
+cross_species_de_index =  human_de_counts >= 1 & macaca_de_counts >= 1
+human_macaca_de_num_df = speciesX_subclass_meta_markers[cross_species_de_index, ] %>% group_by(cell_type) %>% summarise(n = n()) %>% mutate(label = 'Human-Macaca')
+
+
+#Human - marmoset
+speciesX_subclass_meta_markers = make_meta_markers(all_species_markers[names(all_species_markers) %in% c('human_10x','human_ss','marmoset_10x')], 
+                                                   detailed_stats = TRUE)
+
+human_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(human_10x, human_ss))
+
+marmoset_de_counts = speciesX_subclass_meta_markers$marmoset_10x
+
+#Getting genes DE in at least 1 dataset per species
+cross_species_de_index =  human_de_counts >= 1 & marmoset_de_counts >= 1
+human_marmoset_de_num_df = speciesX_subclass_meta_markers[cross_species_de_index, ] %>% group_by(cell_type) %>% summarise(n = n()) %>% mutate(label = 'Human-Marmoset')
+
+
+#Human - mouse
+speciesX_subclass_meta_markers = make_meta_markers(all_species_markers[names(all_species_markers) %in% 
+                                                                         c('human_10x','human_ss','tasic18', 'zeng_10x_cells', 'zeng_10x_nuclei', 
+                                                                           'zeng_smart_nuclei', 'zeng_smart_cells', 'zeng_10xv2_wba', 'zeng_10xv3_wba', 'macosko_wba')], 
+                                                   detailed_stats = TRUE)
+
+human_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(human_10x, human_ss))
+mouse_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(tasic18, zeng_10x_cells, zeng_10x_nuclei, zeng_smart_cells, zeng_smart_nuclei, zeng_10xv2_wba, zeng_10xv3_wba, macosko_wba))
+
+#Getting genes DE in at least 1 dataset per species
+cross_species_de_index =  human_de_counts >= 1 & mouse_de_counts >= 1
+human_mouse_de_num_df = speciesX_subclass_meta_markers[cross_species_de_index, ] %>% group_by(cell_type) %>% summarise(n = n()) %>% mutate(label = 'Human-Mouse')
+
+
+de_divg_df = do.call('rbind', list(human_chimp_de_num_df, human_gorilla_de_num_df, human_macaca_de_num_df, human_marmoset_de_num_df, human_mouse_de_num_df))
+
+
+p11 = ggplot(de_divg_df, aes(x = label, y = n)) + geom_boxplot() + 
+  geom_point(aes(color = cell_type), size = 3) + 
+  geom_line(aes(group = cell_type, color = cell_type), linetype = 'dashed') +
+  scale_color_manual(values = celltype_color_palette) + theme_bw() +
+  ylab('# of conserved cell-type marker genes')
+
+p11
+```
+
+
+
+
+```{r}
+#human - chimp
+speciesX_subclass_meta_markers = make_meta_markers(all_species_markers[names(all_species_markers) %in% c('human_10x','human_ss','chimp_10x','chimp_ss')], detailed_stats = TRUE)
+
+human_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(human_10x, human_ss))
+chimp_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(chimp_10x, chimp_ss))
+
+#Getting genes DE in at least 1 dataset per species
+cross_species_de_index =  human_de_counts >= 1 & chimp_de_counts >= 1
+human_chimp_de_num_df = speciesX_subclass_meta_markers[cross_species_de_index, ] %>% group_by(cell_type) %>% summarise(n = n()) %>% mutate(label = 'Human-C')
+
+#Human - chimp - gorilla
+speciesX_subclass_meta_markers = make_meta_markers(all_species_markers[names(all_species_markers) %in% c('human_10x','human_ss','chimp_10x','chimp_ss',
+                                                                                                         'gorilla_10x','gorilla_ss')], 
+                                                   detailed_stats = TRUE)
+
+human_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(human_10x, human_ss))
+chimp_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(chimp_10x, chimp_ss))
+gorilla_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(gorilla_10x, gorilla_ss))
+
+#Getting genes DE in at least 1 dataset per species
+cross_species_de_index =  human_de_counts >= 1 & chimp_de_counts >= 1 & gorilla_de_counts >= 1
+human_gorilla_de_num_df = speciesX_subclass_meta_markers[cross_species_de_index, ] %>% group_by(cell_type) %>% summarise(n = n()) %>% mutate(label = 'Human-C-G')
+
+
+
+#Human - macaca
+speciesX_subclass_meta_markers = make_meta_markers(all_species_markers[names(all_species_markers) %in% c('human_10x','human_ss','chimp_10x','chimp_ss',
+                                                                                                         'gorilla_10x','gorilla_ss','macaca_10x')], 
+                                                   detailed_stats = TRUE)
+
+human_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(human_10x, human_ss))
+chimp_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(chimp_10x, chimp_ss))
+gorilla_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(gorilla_10x, gorilla_ss))
+macaca_de_counts = speciesX_subclass_meta_markers$macaca_10x
+
+#Getting genes DE in at least 1 dataset per species
+cross_species_de_index =  human_de_counts >= 1 & chimp_de_counts >= 1 & gorilla_de_counts >= 1 & macaca_de_counts >= 1
+human_macaca_de_num_df = speciesX_subclass_meta_markers[cross_species_de_index, ] %>% group_by(cell_type) %>% summarise(n = n()) %>% mutate(label = 'Human-C-G-Mac')
+
+
+#Human - marmoset
+speciesX_subclass_meta_markers = make_meta_markers(all_species_markers[names(all_species_markers) %in% c('human_10x','human_ss','chimp_10x','chimp_ss',
+                                                                                                         'gorilla_10x','gorilla_ss','macaca_10x',
+                                                                                                         'marmoset_10x')], 
+                                                   detailed_stats = TRUE)
+
+human_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(human_10x, human_ss))
+chimp_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(chimp_10x, chimp_ss))
+gorilla_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(gorilla_10x, gorilla_ss))
+macaca_de_counts = speciesX_subclass_meta_markers$macaca_10x
+marmoset_de_counts = speciesX_subclass_meta_markers$marmoset_10x
+
+#Getting genes DE in at least 1 dataset per species
+cross_species_de_index =  human_de_counts >= 1 & chimp_de_counts >= 1 & gorilla_de_counts >= 1 & macaca_de_counts >= 1 & marmoset_de_counts >= 1
+human_marmoset_de_num_df = speciesX_subclass_meta_markers[cross_species_de_index, ] %>% group_by(cell_type) %>% summarise(n = n()) %>% mutate(label = 'Human-C-G-Mac-Mar')
+
+
+#Human - mouse
+speciesX_subclass_meta_markers = make_meta_markers(all_species_markers, 
+                                                   detailed_stats = TRUE)
+
+human_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(human_10x, human_ss))
+chimp_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(chimp_10x, chimp_ss))
+gorilla_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(gorilla_10x, gorilla_ss))
+macaca_de_counts = speciesX_subclass_meta_markers$macaca_10x
+marmoset_de_counts = speciesX_subclass_meta_markers$marmoset_10x
+mouse_de_counts = rowSums(speciesX_subclass_meta_markers %>% select(tasic18, zeng_10x_cells, zeng_10x_nuclei, zeng_smart_cells, zeng_smart_nuclei, zeng_10xv2_wba, zeng_10xv3_wba, macosko_wba))
+
+#Getting genes DE in at least 1 dataset per species
+cross_species_de_index =  human_de_counts >= 1 & chimp_de_counts >= 1 & gorilla_de_counts >= 1 & macaca_de_counts >= 1 & marmoset_de_counts >= 1 & mouse_de_counts >= 1
+human_mouse_de_num_df = speciesX_subclass_meta_markers[cross_species_de_index, ] %>% group_by(cell_type) %>% summarise(n = n()) %>% mutate(label = 'Human-C-G-Mac-Mar-Mou')
+
+
+de_divg_df = do.call('rbind', list(human_chimp_de_num_df, human_gorilla_de_num_df, human_macaca_de_num_df, human_marmoset_de_num_df, human_mouse_de_num_df))
+
+de_divg_df
+
+p12 = ggplot(de_divg_df, aes(x = label, y = n)) + geom_boxplot() + 
+  geom_point(aes(color = cell_type), size = 3) + 
+  geom_line(aes(group = cell_type, color = cell_type), linetype = 'dashed') +
+  scale_color_manual(values = celltype_color_palette) + theme_bw() +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  ylab('# of conserved cell-type marker genes')
+
+p12
+
+```
+
+
+ggsave(plot = p3, filename = 'mammalian_Sncg_Pax6_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+
+```{r}
+
+
+ggsave(plot = p4, filename = 'mammalian_Vip_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+ggsave(plot = p5, filename = 'mammalian_Lamp5_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+ggsave(plot = p6, filename = 'mammalian_Lamp5_Lhx6_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+ggsave(plot = p7, filename = 'mammalian_Sst_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+ggsave(plot = p8, filename = 'mammalian_Sst_Chodl_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+ggsave(plot = p9, filename = 'mammalian_Pvalb_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+ggsave(plot = p10, filename = 'mammalian_Chandelier_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+
+ggsave(plot = p11, filename = 'conserved_de_human_species_pair.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+ggsave(plot = p12, filename = 'conserved_de_human_species_cuml.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+
+```
 
 
 ```{r}
