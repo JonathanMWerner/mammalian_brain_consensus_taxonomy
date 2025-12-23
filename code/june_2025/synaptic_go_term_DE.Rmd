@@ -514,7 +514,47 @@ dev.off()
 ```
 
 
+Save the present ion channel genes for a supplemental table
 
+
+potassium_genes = unique(c(get_go_genes('GO:0034705'), get_go_genes('GO:0008076')))
+sodium_genes = unique(c(get_go_genes('GO:0034706'), get_go_genes('GO:0001518')))
+calcium_genes = unique(c(get_go_genes('GO:0034704'), get_go_genes('GO:0005891')))
+chloride_genes = get_go_genes('GO:0034707')
+
+```{r}
+
+make_gene_table = function(go_id){
+  current_genes = get_go_genes(go_id)
+  current_term = go_table %>% filter(GOID == go_id) %>% pull(Term)
+  gene_df = data.frame(gene = current_genes, GOID = rep(go_id, length = length(current_genes)), Term = rep(current_term, length = length(current_genes)))
+  return(gene_df)
+}
+
+
+full_ion_df = do.call('rbind', list(make_gene_table('GO:0034705'),
+                      make_gene_table('GO:0008076'),
+                      make_gene_table('GO:0034706'),
+                      make_gene_table('GO:0001518'),
+                      make_gene_table('GO:0034704'),
+                      make_gene_table('GO:0005891'),
+                      make_gene_table('GO:0034707')))
+
+
+#176 non-duplicated genes
+present_ion_df = full_ion_df %>% filter(gene %in% rownames(interneuron.ion_channels))
+
+
+present_ion_df
+
+
+write.csv(present_ion_df, row.names = F, file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/patch_seq/mouse/present_ion_channel_genes_mouse_supp_table.csv')
+
+
+temp = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/data/patch_seq/mouse/present_ion_channel_genes_mouse_supp_table.csv')
+temp
+
+```
 
 
 
