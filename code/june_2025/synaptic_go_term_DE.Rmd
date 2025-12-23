@@ -363,6 +363,17 @@ save(interneuron.ion_channels, file = '/inkwell03/werner/mouse_brain_consensus_t
 
 ```
 
+```{r}
+
+load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/mouse_primate_ionChannels_integrated.Rdata')
+
+interneuron.ion_channels
+
+
+
+table(interneuron.ion_channels$primate_subclass, interneuron.ion_channels$study)
+
+```
 
 
 Visualize heatmaps of some ion channel gene CPMs
@@ -391,12 +402,14 @@ cell_index = interneuron.ion_channels$cell_subclass %in% c('Lamp5', 'Sncg' )
 
 #Subset the data
 go_set_exp_sce = interneuron.ion_channels
-#The smart seq cells and nuclei have an identically named cluster, separate the two
-go_set_exp_sce$cell_cluster[go_set_exp_sce$study == 'zeng_smart_cells' & go_set_exp_sce$cell_cluster == 'Lamp5 Egln3_2'] = 'Lamp5 Egln3_2_2'
+table(go_set_exp_sce$cell_cluster, go_set_exp_sce$study)
+
+#For identically named clusters
+go_set_exp_sce$cell_cluster_study = paste(go_set_exp_sce$cell_cluster, go_set_exp_sce$study, sep = '_')
 
 #Compute the mean CPM per gene for each cluster
 exp_cpm = go_set_exp_sce@assays$integrated@data
-colnames(exp_cpm) = go_set_exp_sce$cell_cluster
+colnames(exp_cpm) = go_set_exp_sce$cell_cluster_study
 
 exp_cpm = reshape2::melt(as.matrix(exp_cpm), varnames = c('Gene','Cluster'), value.name = 'CPM')
 
@@ -408,11 +421,11 @@ mean_exp_cpm_df = as.matrix(mean_exp_cpm_df)
 mean_exp_cpm_df = t(scale(t(mean_exp_cpm_df)))
 
 
-clust_to_subclass_df = go_set_exp_sce[[]] %>% group_by(cell_cluster, cell_subclass, primate_subclass) %>% summarise(n = n())
-#clust_to_subclass_df$cell_subclass[clust_to_subclass_df$cell_subclass == 'Serpinf1'] = 'Vip'
-#clust_to_subclass_df$cell_subclass[clust_to_subclass_df$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+clust_to_subclass_df = go_set_exp_sce[[]] %>% group_by(study, cell_cluster, cell_subclass, primate_subclass) %>% summarise(n = n())
+clust_to_subclass_df$cell_cluster_study = paste(clust_to_subclass_df$cell_cluster, clust_to_subclass_df$study, sep = '_')
 
-index = match(colnames(mean_exp_cpm_df) , clust_to_subclass_df$cell_cluster)
+
+index = match(colnames(mean_exp_cpm_df) , clust_to_subclass_df$cell_cluster_study)
 
 
 column_annot = HeatmapAnnotation(mouse_subclass = clust_to_subclass_df$cell_subclass[index],
@@ -452,12 +465,12 @@ gene_index = rownames(interneuron.ion_channels) %in% mouse_marker_genes
 
 #Subset the data
 go_set_exp_sce = interneuron.ion_channels[gene_index, ]
-#The smart seq cells and nuclei have an identically named cluster, separate the two
-go_set_exp_sce$cell_cluster[go_set_exp_sce$study == 'zeng_smart_cells' & go_set_exp_sce$cell_cluster == 'Lamp5 Egln3_2'] = 'Lamp5 Egln3_2_2'
+#For identically named clusters
+go_set_exp_sce$cell_cluster_study = paste(go_set_exp_sce$cell_cluster, go_set_exp_sce$study, sep = '_')
 
 #Compute the mean CPM per gene for each cluster
 exp_cpm = go_set_exp_sce@assays$integrated@data
-colnames(exp_cpm) = go_set_exp_sce$cell_cluster
+colnames(exp_cpm) = go_set_exp_sce$cell_cluster_study
 
 exp_cpm = reshape2::melt(as.matrix(exp_cpm), varnames = c('Gene','Cluster'), value.name = 'CPM')
 
@@ -469,11 +482,11 @@ mean_exp_cpm_df = as.matrix(mean_exp_cpm_df)
 mean_exp_cpm_df = t(scale(t(mean_exp_cpm_df)))
 
 
-clust_to_subclass_df = go_set_exp_sce[[]] %>% group_by(cell_cluster, cell_subclass, primate_subclass) %>% summarise(n = n())
-#clust_to_subclass_df$cell_subclass[clust_to_subclass_df$cell_subclass == 'Serpinf1'] = 'Vip'
-#clust_to_subclass_df$cell_subclass[clust_to_subclass_df$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+clust_to_subclass_df = go_set_exp_sce[[]] %>% group_by(study, cell_cluster, cell_subclass, primate_subclass) %>% summarise(n = n())
+clust_to_subclass_df$cell_cluster_study = paste(clust_to_subclass_df$cell_cluster, clust_to_subclass_df$study, sep = '_')
 
-index = match(colnames(mean_exp_cpm_df) , clust_to_subclass_df$cell_cluster)
+
+index = match(colnames(mean_exp_cpm_df) , clust_to_subclass_df$cell_cluster_study)
 
 
 column_annot = HeatmapAnnotation(mouse_subclass = clust_to_subclass_df$cell_subclass[index],
