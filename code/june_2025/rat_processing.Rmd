@@ -77,7 +77,7 @@ rownames(aydin_counts) = final_present_1to1s[index,]$`Gene name`
 
 gene_filt = !is.na(rownames(aydin_counts))
 aydin_counts = aydin_counts[gene_filt, ]
-
+dim(aydin_counts)
 
 
 

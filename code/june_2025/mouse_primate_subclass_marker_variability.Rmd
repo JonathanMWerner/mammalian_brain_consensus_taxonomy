@@ -524,8 +524,8 @@ get_pareto_markers(primate_subclass_meta_markers[cross_species_de_index, ], "Snc
 
 p2
 
-ggsave(plot = p2, filename = 'primate_Sncg_Pax6_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
-       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
+#ggsave(plot = p2, filename = 'primate_Sncg_Pax6_pareto_markers.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/meta_markers/', device = 'pdf', 
+#       useDingbats = F, family = 'Helvetica', height = 4, width = 6)
 
 ```
 
