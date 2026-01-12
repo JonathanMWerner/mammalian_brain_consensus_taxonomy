@@ -195,9 +195,9 @@ And just try umap
 ```{r}
 
 
-mouse_patch_umap = umap::umap(scaled_filt_mouse_patch_data)
+#mouse_patch_umap = umap::umap(scaled_filt_mouse_patch_data)
 
-mouse_patch_umap = umap::umap(as.matrix(pca_loadings_df[ , 1:5]))
+mouse_patch_umap = umap::umap(as.matrix(pca_loadings_df[ , 1:10]))
 
 
 umap_df = as.data.frame(mouse_patch_umap$layout)
@@ -210,10 +210,15 @@ umap_df$mouse_subclass = mouse_patch_data$mouse_subclass[index]
 umap_df$primate_subclass = mouse_patch_data$primate_subclass[index]
 
 ggplot(umap_df, aes(x = V1, y = V2, color = mouse_subclass)) + geom_point(size = 2) +
-  scale_color_manual(values = celltype_color_palette) + theme_bw()
+  scale_color_manual(values = celltype_color_palette) + theme_bw() + ylab("UMAP 2") + xlab('UMAP 1') + ggtitle('Mouse CGE ephys UMAP')
 
 ggplot(umap_df, aes(x = V1, y = V2, color = primate_subclass)) + geom_point(size = 2) +
-  scale_color_manual(values = celltype_color_palette) + theme_bw()
+  scale_color_manual(values = celltype_color_palette) + theme_bw() + ylab("UMAP 2") + xlab('UMAP 1') + ggtitle('Mouse CGE ephys UMAP')
+
+ggsave(filename = 'mouse_patchseq_ephys_CGE_umap.pdf',path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', device = 'pdf',
+       useDingbats = F, height = 4, width = 5, family = 'Helvetica')
+
+
 
 ```
 
@@ -630,9 +635,31 @@ dev.off()
 
 
 
+#Plot the distributions of values for the lamp5 vs pax6 for all of the features we pull out as significant
 
-test_lamp5_pax6_pval_df
-pvals
+mouse_lamp5_lamp5_patch_df$label = 'Lamp5'
+mouse_lamp5_pax6_patch_df$label = 'Pax6'
+
+all_lamp5_pax6_df = rbind(mouse_lamp5_lamp5_patch_df,mouse_lamp5_pax6_patch_df )
+
+combined_pvals_lamp5_pax6 = combined_pvals_lamp5_pax6[order(combined_pvals_lamp5_pax6)]
+sig_features = names(combined_pvals_lamp5_pax6[combined_pvals_lamp5_pax6 <= 0.05 & !is.na(combined_pvals_lamp5_pax6)])
+
+#Filter for the significant features and plot
+sig_subset = all_lamp5_pax6_df[ , colnames(all_lamp5_pax6_df) %in% c(sig_features, 'label')]
+
+sig_subset = sig_subset %>% tidyr::pivot_longer(!label, names_to = 'feature', values_to = 'value')
+
+sig_subset$feature = factor(sig_subset$feature, levels = sig_features)
+
+sig_subset
+
+ggplot(sig_subset, aes(x = feature, y = value, color = label)) + geom_boxplot() + facet_wrap(~feature, scales = 'free') +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+ggsave(filename = 'all_sig_lamp5_pax6_ephy_features_boxplots.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
+       useDingbats = F, height = 4, width = 6)
+
 hist(pvals$tau, density = T, col = 'blue')
 hist(test_lamp5_pax6_pval_df$tau, add = T, density = T, col = 'red' )
 
@@ -719,6 +746,34 @@ barplot(-1*log10(plotting_feature_pval+1e-10),
         las = 2, horiz = T, cex.names = .75, main = 'Mouse Vip -> Homologous Pax6',xlab = '-log10(meta p-value)' )
 abline(v = -1*log10(0.05), col = 'red')
 dev.off()
+
+
+#Plot the distributions of values for the Vip vs pax6 for all of the features we pull out as significant
+
+mouse_vip_vip_patch_df$label = 'Vip'
+mouse_vip_pax6_patch_df$label = 'Pax6'
+
+all_Vip_pax6_df = rbind(mouse_vip_vip_patch_df,mouse_vip_pax6_patch_df )
+
+combined_pvals_vip_pax6 = combined_pvals_vip_pax6[order(combined_pvals_vip_pax6)]
+sig_features = names(combined_pvals_vip_pax6[combined_pvals_vip_pax6 <= 0.05 & !is.na(combined_pvals_vip_pax6)])
+
+#Filter for the significant features and plot
+sig_subset = all_Vip_pax6_df[ , colnames(all_Vip_pax6_df) %in% c(sig_features, 'label')]
+
+sig_subset = sig_subset %>% tidyr::pivot_longer(!label, names_to = 'feature', values_to = 'value')
+
+sig_subset$feature = factor(sig_subset$feature, levels = sig_features)
+
+sig_subset
+
+ggplot(sig_subset, aes(x = feature, y = value, color = label)) + geom_boxplot() + facet_wrap(~feature, scales = 'free') +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+ggsave(filename = 'all_sig_Vip_pax6_ephy_features_boxplots.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
+       useDingbats = F, height = 4, width = 6)
+
+
 
 
 ```
