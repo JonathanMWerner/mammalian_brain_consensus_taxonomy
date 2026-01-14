@@ -1,0 +1,572 @@
+
+Checking out the differential expression of specific GO terms across the subclasses
+
+Focus on the Ion channels, as proxies for electrophysiological properties of the subclasses
+
+
+
+GO database
+SynGO database
+KEGG database
+
+
+```{r}
+
+library(dplyr)
+library(tidyr)
+library(SingleCellExperiment)
+library(MetaMarkers)
+library(Seurat)
+library(ggplot2)
+library(org.Hs.eg.db)
+library(GO.db)
+library(ComplexHeatmap)
+
+```
+
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C')
+
+
+```
+
+
+SynGo Terms of interest
+
+synapse adhesion between pre- and post-synapse
+presynaptic modulation of chemical synaptic transmission
+postsynaptic modulation of chemical synaptic transmission
+transmitter-gated ion channel activity involved in regulation of postsynaptic membrane potential 
+ligand-gated ion channel activity involved in regulation of presynaptic membrane potential
+voltage-gated ion channel activity involved in regulation of presynaptic membrane potential 
+
+```{r}
+#synGo_path = '/home/werner/tools/syn_go/SynGO_bulk_download_release_20231201/'
+
+synGo_annots_df = data.table::fread('/home/werner/tools/syn_go/SynGO_bulk_download_release_20231201/syngo_annotations.csv')
+
+synGo_annots_df %>% filter(grepl('presynaptic membrane', synGo_annots_df$go_name)) %>% group_by(go_name) %>% summarise(n = n())
+
+```
+
+
+Go terms of interest
+
+
+```{r}
+
+org.Hs.eg.db #running this will print out the GO database version information
+go_table <- as.data.frame(org.Hs.egGO2ALLEGS) #gene mapping to the direct GO term and that term's children
+go_table$gene_symbol = mapIds(org.Hs.eg.db, go_table$gene_id, "SYMBOL","ENTREZID") #Add gene symbol 
+
+go_table %>% filter(go_id == 'GO:0000009') %>% filter(!duplicated(gene_symbol))
+
+```
+
+```{r}
+
+
+# Get all GO IDs in the database
+all_ids <- keys(GO.db, keytype = "GOID")
+
+# Get their term names (descriptions)
+all_terms <- Term(all_ids)
+
+# Get ontology type (BP, MF, CC)
+all_ont <- Ontology(all_ids)
+
+# Optional: get definitions
+all_defs <- Definition(all_ids)
+
+
+# 2. Map GO terms to genes
+go2gene <- AnnotationDbi::as.list(org.Hs.egGO2ALLEGS)  # GOID -> list of Entrez IDs
+
+# 3. Count how many genes per GO term
+gene_counts <- sapply(all_ids, function(go) {
+  genes <- go2gene[[go]]
+  if (is.null(genes)) return(0)
+  length(unique(genes))
+})
+
+
+
+# Combine into a data.frame
+go_table <- data.frame(
+  GOID = all_ids,
+  Term = all_terms,
+  N_genes = gene_counts,
+  Ontology = all_ont,
+  Definition = all_defs,
+  stringsAsFactors = FALSE
+)
+
+head(go_table, 10)
+
+```
+
+```{r}
+
+go_table %>% filter(grepl('calcium', Term)) %>% arrange(desc(N_genes))
+
+```
+
+
+
+Load up and integrate the data just using the ion channel genes. Can then also compute the CPMs across all the datasets for a summary plot.
+
+
+Get the set of ion channels to use, potassium, sodium, calcium, chloride
+
+GO:0034704	calcium channel complex
+GO:0005891	voltage-gated calcium channel complex
+GO:0034705	potassium channel complex
+GO:0008076	voltage-gated potassium channel complex
+GO:0034706	sodium channel complex
+GO:0001518	voltage-gated sodium channel complex
+GO:0034707	chloride channel complex
+
+```{r}
+
+get_go_genes = function(go_ID){
+  
+  genes <- org.Hs.egGO2ALLEGS[[go_ID]]
+  # Add gene symbols
+  symbols <- mapIds(org.Hs.eg.db,
+                    keys = genes,
+                    column = "SYMBOL",
+                    keytype = "ENTREZID",
+                    multiVals = "first")
+  symbols = unique(symbols)
+  return(symbols)
+
+}
+```
+
+```{r}
+
+go_table %>% filter(grepl('chloride', Term)) %>% arrange(desc(N_genes))
+
+
+ion_channels = unique(c(get_go_genes('GO:0034704'), get_go_genes('GO:0005891'), get_go_genes('GO:0034705'),
+  get_go_genes('GO:0008076'), get_go_genes('GO:0034706'), get_go_genes('GO:0001518'),
+  get_go_genes('GO:0034707')))
+
+length(ion_channels)
+
+```
+
+
+
+```{r}
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba_primate_MN.rds')
+zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba_primate_MN.rds')
+zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba_primate_MN.rds')
+zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba_primate_MN.rds')
+zeng_10xv2_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba_primate_MN.rds')
+zeng_10xv3_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv3_gaba_primate_MN.rds')
+macosko_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba_primate_MN.rds')
+```
+
+filter out the low-orthologous clusters
+
+```{r}
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
+zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
+zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
+zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
+zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
+zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
+macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
+
+gc()
+```
+
+
+Subset to just the CGE cells and the ion channel genes
+
+
+```{r}
+
+cell_index = tasic18$primate_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg','Pax6')
+gene_index = rownames(tasic18) %in% ion_channels
+tasic18 = tasic18[gene_index, cell_index]
+
+
+cell_index = zeng_10x_cells$primate_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg','Pax6')
+gene_index = rownames(zeng_10x_cells) %in% ion_channels
+zeng_10x_cells = zeng_10x_cells[gene_index, cell_index]
+
+cell_index = zeng_10x_nuclei$primate_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg','Pax6')
+gene_index = rownames(zeng_10x_nuclei) %in% ion_channels
+zeng_10x_nuclei = zeng_10x_nuclei[gene_index, cell_index]
+
+
+cell_index = zeng_smart_cells$primate_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg','Pax6')
+gene_index = rownames(zeng_smart_cells) %in% ion_channels
+zeng_smart_cells = zeng_smart_cells[gene_index, cell_index]
+
+cell_index = zeng_smart_nuclei$primate_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg','Pax6')
+gene_index = rownames(zeng_smart_nuclei) %in% ion_channels
+zeng_smart_nuclei = zeng_smart_nuclei[gene_index, cell_index]
+
+
+cell_index = zeng_10xv2_wba$primate_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg','Pax6')
+gene_index = rownames(zeng_10xv2_wba) %in% ion_channels
+zeng_10xv2_wba = zeng_10xv2_wba[gene_index, cell_index]
+
+
+cell_index = zeng_10xv3_wba$primate_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg','Pax6')
+gene_index = rownames(zeng_10xv3_wba) %in% ion_channels
+zeng_10xv3_wba = zeng_10xv3_wba[gene_index, cell_index]
+
+
+cell_index = macosko_wba$primate_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg','Pax6')
+gene_index = rownames(macosko_wba) %in% ion_channels
+macosko_wba = macosko_wba[gene_index, cell_index]
+
+
+dim(tasic18)
+dim(zeng_10x_cells)
+dim(zeng_10x_nuclei)
+dim(zeng_smart_cells)
+dim(zeng_smart_nuclei)
+dim(zeng_10xv2_wba)
+dim(zeng_10xv3_wba)
+dim(macosko_wba)
+
+```
+
+
+Convert to seurat and integrate
+
+
+```{r}
+
+tasic18 = as.Seurat(tasic18, counts = "counts", data = "cpm")
+zeng_10x_cells = as.Seurat(zeng_10x_cells, counts = "counts", data = "cpm")
+zeng_10x_nuclei = as.Seurat(zeng_10x_nuclei, counts = "counts", data = "cpm")
+zeng_smart_cells = as.Seurat(zeng_smart_cells, counts = "counts", data = "cpm")
+zeng_smart_nuclei = as.Seurat(zeng_smart_nuclei, counts = "counts", data = "cpm")
+
+zeng_10xv2_wba = as.Seurat(zeng_10xv2_wba, counts = "counts", data = "cpm")
+zeng_10xv3_wba = as.Seurat(zeng_10xv3_wba, counts = "counts", data = "cpm")
+
+macosko_wba = as.Seurat(macosko_wba, counts = "counts", data = "cpm")
+gc()
+```
+
+FindIntegrationAnchors took 1.5 hours
+
+```{r}
+
+#Make the list of objects
+seurat.list = list('tasic18' = tasic18, 'zeng_10x_cells' = zeng_10x_cells, 'zeng_smart_cells' = zeng_smart_cells ,  
+                   'zeng_10x_nuclei' = zeng_10x_nuclei, 'zeng_smart_nuclei' =  zeng_smart_nuclei,
+                   'zeng_10xv2_wba' = zeng_10xv2_wba, 'zeng_10xv3_wba' = zeng_10xv3_wba , 'macosko_wba' = macosko_wba )
+#Rm individual datasets to save space, doesn't take that long for the above chuncks to rerun
+rm(tasic18, zeng_10x_cells, zeng_smart_cells ,zeng_10x_nuclei, zeng_smart_nuclei, zeng_10xv2_wba, zeng_10xv3_wba ,macosko_wba )
+gc()
+
+
+#integration_features <- SelectIntegrationFeatures(object.list = seurat.list)
+#length(integration_features)
+
+#Integrate on all of the ion channel genes
+integration_features = rownames(seurat.list$tasic18)
+
+start = Sys.time()
+integration_anchors <- FindIntegrationAnchors(object.list = seurat.list, anchor.features = integration_features)
+start - Sys.time()
+
+```
+
+```{r}
+rm(seurat.list)
+gc()
+```
+
+
+Takes awhile and a lot of memory
+```{r}
+start = Sys.time()
+
+#Make a single integrated object
+interneuron.ion_channels <- IntegrateData(anchorset = integration_anchors)
+
+start - Sys.time()
+```
+
+```{r}
+rm(integration_anchors)
+gc()
+```
+
+```{r}
+start = Sys.time()
+
+DefaultAssay(interneuron.ion_channels) <- "integrated"
+# Run the standard workflow for visualization and clustering
+interneuron.ion_channels <- ScaleData(interneuron.ion_channels, verbose = FALSE)
+interneuron.ion_channels <- RunPCA(interneuron.ion_channels, verbose = FALSE)
+interneuron.ion_channels <- RunUMAP(interneuron.ion_channels, reduction = "pca", dims = 1:20)
+
+Sys.time() - start
+
+```
+
+
+```{r}
+
+DimPlot(interneuron.ion_channels, group.by = 'study')
+
+DimPlot(interneuron.ion_channels, group.by = 'cell_subclass', cols = celltype_color_palette) + ggtitle('Ion channel UMAP: Original mouse subclass')
+ggsave(filename = 'mouse_ion_integrated_umap_mouse_labels.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/ion_channel_plots/',
+       device = 'pdf', useDingbats = F, height = 4, width = 6)
+
+
+DimPlot(interneuron.ion_channels, group.by = 'primate_subclass', cols = celltype_color_palette) + ggtitle('Ion channel UMAP: Homologous primate subclass')
+ggsave(filename = 'mouse_ion_integrated_umap_primate_labels.pdf', 
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/ion_channel_plots/',
+       device = 'pdf', useDingbats = F, height = 4, width = 6)
+```
+
+
+```{r}
+
+DimPlot(interneuron.ion_channels, group.by = 'study', reduction = 'pca')
+
+DimPlot(interneuron.ion_channels, group.by = 'cell_subclass', cols = celltype_color_palette, reduction = 'pca') + 
+  ggtitle('Ion channel UMAP: Original mouse subclass')
+
+DimPlot(interneuron.ion_channels, group.by = 'primate_subclass', cols = celltype_color_palette, reduction = 'pca') + 
+  ggtitle('Ion channel UMAP: Homologous primate subclass')
+
+```
+
+
+
+```{r}
+
+save(interneuron.ion_channels, file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/mouse_primate_ionChannels_integrated.Rdata')
+
+```
+
+```{r}
+
+load(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/mouse_primate_ionChannels_integrated.Rdata')
+
+interneuron.ion_channels
+
+
+
+table(interneuron.ion_channels$primate_subclass, interneuron.ion_channels$study)
+
+```
+
+
+Visualize heatmaps of some ion channel gene CPMs
+
+GO:0034704	calcium channel complex
+GO:0005891	voltage-gated calcium channel complex
+GO:0034705	potassium channel complex
+GO:0008076	voltage-gated potassium channel complex
+GO:0034706	sodium channel complex
+GO:0001518	voltage-gated sodium channel complex
+GO:0034707	chloride channel complex
+
+```{r}
+
+potassium_genes = unique(c(get_go_genes('GO:0034705'), get_go_genes('GO:0008076')))
+sodium_genes = unique(c(get_go_genes('GO:0034706'), get_go_genes('GO:0001518')))
+calcium_genes = unique(c(get_go_genes('GO:0034704'), get_go_genes('GO:0005891')))
+chloride_genes = get_go_genes('GO:0034707')
+gene_index = rownames(interneuron.ion_channels) %in% potassium_genes
+
+
+interneuron.ion_channels$cell_subclass[interneuron.ion_channels$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+interneuron.ion_channels$cell_subclass[interneuron.ion_channels$cell_subclass == 'Serpinf1'] = 'Vip'
+
+cell_index = interneuron.ion_channels$cell_subclass %in% c('Lamp5', 'Sncg' )
+
+#Subset the data
+go_set_exp_sce = interneuron.ion_channels
+table(go_set_exp_sce$cell_cluster, go_set_exp_sce$study)
+
+#For identically named clusters
+go_set_exp_sce$cell_cluster_study = paste(go_set_exp_sce$cell_cluster, go_set_exp_sce$study, sep = '_')
+
+#Compute the mean CPM per gene for each cluster
+exp_cpm = go_set_exp_sce@assays$integrated@data
+colnames(exp_cpm) = go_set_exp_sce$cell_cluster_study
+
+exp_cpm = reshape2::melt(as.matrix(exp_cpm), varnames = c('Gene','Cluster'), value.name = 'CPM')
+
+mean_exp_cpm_df = exp_cpm %>% group_by(Cluster, Gene) %>% summarise(mean_CPM = mean(CPM)) %>%
+  pivot_wider(names_from = Cluster, values_from = mean_CPM) %>% tibble::column_to_rownames(var = 'Gene')
+
+#Scale the data
+mean_exp_cpm_df = as.matrix(mean_exp_cpm_df)
+mean_exp_cpm_df = t(scale(t(mean_exp_cpm_df)))
+
+
+clust_to_subclass_df = go_set_exp_sce[[]] %>% group_by(study, cell_cluster, cell_subclass, primate_subclass) %>% summarise(n = n())
+clust_to_subclass_df$cell_cluster_study = paste(clust_to_subclass_df$cell_cluster, clust_to_subclass_df$study, sep = '_')
+
+
+index = match(colnames(mean_exp_cpm_df) , clust_to_subclass_df$cell_cluster_study)
+
+
+column_annot = HeatmapAnnotation(mouse_subclass = clust_to_subclass_df$cell_subclass[index],
+                                 homologous_subclass = clust_to_subclass_df$primate_subclass[index],
+                                 col = list(mouse_subclass = celltype_color_palette,
+                                            homologous_subclass = celltype_color_palette))
+
+
+h1 = Heatmap(mean_exp_cpm_df, name = 'z-scored Mean CPM',
+        show_row_names = F, show_row_dend = F, show_column_names = F,
+        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+        top_annotation = column_annot, 
+        column_title = 'Ion channel GO term genes')
+h1 = draw(h1)
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/ion_channel_plots/all_ion_genes_avg_cpm_heatmap.pdf',
+    useDingbats = F, height = 8, width = 6)
+h1
+dev.off()
+
+```
+
+
+```{r}
+
+
+mouse_subclass_ion_markers = compute_markers(interneuron.ion_channels@assays$integrated@data, interneuron.ion_channels$cell_subclass)
+mouse_marker_genes = mouse_subclass_ion_markers %>% group_by(cell_type) %>% slice_max(auroc, n = 10) %>% pull(gene)
+
+primate_subclass_ion_markers = compute_markers(interneuron.ion_channels@assays$integrated@data, interneuron.ion_channels$primate_subclass)
+primate_marker_genes = primate_subclass_ion_markers %>% group_by(cell_type) %>% slice_max(auroc, n = 10) %>% pull(gene)
+
+
+
+gene_index = rownames(interneuron.ion_channels) %in% mouse_marker_genes
+
+#Subset the data
+go_set_exp_sce = interneuron.ion_channels[gene_index, ]
+#For identically named clusters
+go_set_exp_sce$cell_cluster_study = paste(go_set_exp_sce$cell_cluster, go_set_exp_sce$study, sep = '_')
+
+#Compute the mean CPM per gene for each cluster
+exp_cpm = go_set_exp_sce@assays$integrated@data
+colnames(exp_cpm) = go_set_exp_sce$cell_cluster_study
+
+exp_cpm = reshape2::melt(as.matrix(exp_cpm), varnames = c('Gene','Cluster'), value.name = 'CPM')
+
+mean_exp_cpm_df = exp_cpm %>% group_by(Cluster, Gene) %>% summarise(mean_CPM = mean(CPM)) %>%
+  pivot_wider(names_from = Cluster, values_from = mean_CPM) %>% tibble::column_to_rownames(var = 'Gene')
+
+#Scale the data
+mean_exp_cpm_df = as.matrix(mean_exp_cpm_df)
+mean_exp_cpm_df = t(scale(t(mean_exp_cpm_df)))
+
+
+clust_to_subclass_df = go_set_exp_sce[[]] %>% group_by(study, cell_cluster, cell_subclass, primate_subclass) %>% summarise(n = n())
+clust_to_subclass_df$cell_cluster_study = paste(clust_to_subclass_df$cell_cluster, clust_to_subclass_df$study, sep = '_')
+
+
+index = match(colnames(mean_exp_cpm_df) , clust_to_subclass_df$cell_cluster_study)
+
+
+column_annot = HeatmapAnnotation(mouse_subclass = clust_to_subclass_df$cell_subclass[index],
+                                 homologous_subclass = clust_to_subclass_df$primate_subclass[index],
+                                 col = list(mouse_subclass = celltype_color_palette,
+                                            homologous_subclass = celltype_color_palette))
+
+set.seed(123)
+h2 = Heatmap(mean_exp_cpm_df, name = 'z-scored Mean CPM',
+        show_row_names = T, show_row_dend = F, show_column_names = F,
+        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+        top_annotation = column_annot, row_names_gp = grid::gpar(fontsize = 8),
+        column_title = 'Ion channel GO term genes')
+h2 = draw(h2)
+
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/integrated_interneurons/ion_channel_plots/top_mouse_de_ion_genes_avg_cpm_heatmap.pdf',
+    useDingbats = F, height = 5, width = 7)
+h2
+dev.off()
+
+
+
+```
+
+
+Save the present ion channel genes for a supplemental table
+
+
+potassium_genes = unique(c(get_go_genes('GO:0034705'), get_go_genes('GO:0008076')))
+sodium_genes = unique(c(get_go_genes('GO:0034706'), get_go_genes('GO:0001518')))
+calcium_genes = unique(c(get_go_genes('GO:0034704'), get_go_genes('GO:0005891')))
+chloride_genes = get_go_genes('GO:0034707')
+
+```{r}
+
+make_gene_table = function(go_id){
+  current_genes = get_go_genes(go_id)
+  current_term = go_table %>% filter(GOID == go_id) %>% pull(Term)
+  gene_df = data.frame(gene = current_genes, GOID = rep(go_id, length = length(current_genes)), Term = rep(current_term, length = length(current_genes)))
+  return(gene_df)
+}
+
+
+full_ion_df = do.call('rbind', list(make_gene_table('GO:0034705'),
+                      make_gene_table('GO:0008076'),
+                      make_gene_table('GO:0034706'),
+                      make_gene_table('GO:0001518'),
+                      make_gene_table('GO:0034704'),
+                      make_gene_table('GO:0005891'),
+                      make_gene_table('GO:0034707')))
+
+
+#176 non-duplicated genes
+present_ion_df = full_ion_df %>% filter(gene %in% rownames(interneuron.ion_channels))
+
+
+present_ion_df
+
+
+write.csv(present_ion_df, row.names = F, file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/patch_seq/mouse/present_ion_channel_genes_mouse_supp_table.csv')
+
+
+temp = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/data/patch_seq/mouse/present_ion_channel_genes_mouse_supp_table.csv')
+temp
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

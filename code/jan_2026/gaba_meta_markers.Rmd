@@ -1,0 +1,850 @@
+
+Looking at marker gene expression for the mouse data
+
+Compare marker genes from individual datasets and metamarkers
+
+Comparing the original subclasses to the primate orthologous subclasses
+
+
+
+
+```{r}
+library(SingleCellExperiment)
+library(MetaMarkers)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+```
+
+Checking out some supplemental tables from Bakken 2021: https://pmc.ncbi.nlm.nih.gov/articles/PMC8494640/#Fig9
+This was the original human, marmoset, mouse consensus taxonomies
+These tables are the marker genes used in subclass annotations
+
+```{r}
+#Cluster markers for human
+supp_table_4 = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/other_paper_supps/bakken_2021/Supplementary_Table_4.csv')
+
+#Cluster markers for mouse
+supp_table_5 = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/other_paper_supps/bakken_2021/Supplementary_Table_5.csv')
+supp_table_5
+#Cluster markers for marmoset
+supp_table_6 = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/other_paper_supps/bakken_2021/Supplementary_Table_6.csv')
+
+
+
+
+#Markers across species 
+supp_table_7 = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/other_paper_supps/bakken_2021/Supplementary_Table_7.csv')
+
+table(supp_table_7$cluster)
+supp_table_7 %>% filter(cluster == 'Sncg' )
+
+
+supp_table_8 = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/other_paper_supps/bakken_2021/Supplementary_Table_8.csv')
+supp_table_8
+supp_table_8 %>% filter(gene == 'SNCG')
+
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+zeng_10x_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_cells_gaba_primate_MN.rds')
+zeng_10x_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_10x_nuclei_gaba_primate_MN.rds')
+zeng_smart_cells = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_cells_gaba_primate_MN.rds')
+zeng_smart_nuclei = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_smart_nuclei_gaba_primate_MN.rds')
+zeng_10xv2_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv2_gaba_primate_MN.rds')
+zeng_10xv3_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/zeng_wb_atlas_10xv3_gaba_primate_MN.rds')
+macosko_wba = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/macosko_wb_atlas_gaba_primate_MN.rds')
+```
+
+
+filter out the low-orthologous clusters
+
+```{r}
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+zeng_10x_cells = zeng_10x_cells[ , zeng_10x_cells$orthology == 'high_orthology']
+zeng_10x_nuclei = zeng_10x_nuclei[ , zeng_10x_nuclei$orthology == 'high_orthology']
+zeng_smart_cells = zeng_smart_cells[ , zeng_smart_cells$orthology == 'high_orthology']
+zeng_smart_nuclei = zeng_smart_nuclei[ , zeng_smart_nuclei$orthology == 'high_orthology']
+zeng_10xv2_wba = zeng_10xv2_wba[ , zeng_10xv2_wba$orthology == 'high_orthology']
+zeng_10xv3_wba = zeng_10xv3_wba[ , zeng_10xv3_wba$orthology == 'high_orthology']
+macosko_wba = macosko_wba[ , macosko_wba$orthology == 'high_orthology']
+
+gc()
+```
+
+
+Rename the old Allen institute subclasses
+
+```{r}
+
+zeng_10x_cells$cell_subclass = as.character(zeng_10x_cells$cell_subclass)
+zeng_10x_cells$cell_cluster = as.character(zeng_10x_cells$cell_cluster)
+
+zeng_smart_cells$cell_subclass = as.character(zeng_smart_cells$cell_subclass)
+zeng_smart_cells$cell_cluster = as.character(zeng_smart_cells$cell_cluster)
+
+zeng_smart_nuclei$cell_subclass = as.character(zeng_smart_nuclei$cell_subclass)
+zeng_smart_nuclei$cell_cluster = as.character(zeng_smart_nuclei$cell_cluster)
+
+zeng_10x_nuclei$cell_subclass = as.character(zeng_10x_nuclei$cell_subclass)
+zeng_10x_nuclei$cell_cluster = as.character(zeng_10x_nuclei$cell_cluster)
+
+zeng_10xv2_wba$cell_cluster = as.character(zeng_10xv2_wba$cell_cluster)
+zeng_10xv3_wba$cell_cluster = as.character(zeng_10xv3_wba$cell_cluster)
+
+tasic18$cell_subclass[tasic18$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+tasic18$cell_subclass[tasic18$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+tasic18$cell_subclass[tasic18$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+tasic18$cell_subclass[tasic18$cell_subclass == 'Serpinf1'] = 'Vip'
+
+zeng_10x_cells$cell_subclass[zeng_10x_cells$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_10x_cells$cell_subclass[zeng_10x_cells$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_10x_cells$cell_subclass[zeng_10x_cells$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+zeng_10x_nuclei$cell_subclass[zeng_10x_nuclei$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_10x_nuclei$cell_subclass[zeng_10x_nuclei$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_10x_nuclei$cell_subclass[zeng_10x_nuclei$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+zeng_smart_nuclei$cell_subclass[zeng_smart_nuclei$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_smart_nuclei$cell_subclass[zeng_smart_nuclei$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_smart_nuclei$cell_subclass[zeng_smart_nuclei$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+zeng_smart_cells$cell_subclass[zeng_smart_cells$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+zeng_smart_cells$cell_subclass[zeng_smart_cells$cell_cluster == 'Sst Chodl'] = 'Sst Chodl'
+zeng_smart_cells$cell_subclass[zeng_smart_cells$cell_cluster == 'Pvalb Vipr2'] = 'Chandelier'
+
+
+zeng_10xv2_wba$cell_subclass[zeng_10xv2_wba$cell_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+zeng_10xv3_wba$cell_subclass[zeng_10xv3_wba$cell_subclass == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+```
+
+
+
+
+
+
+dataset specific markers for the original subclasses
+```{r}
+
+markers_tasic18 = compute_markers(assay(tasic18, "cpm"), tasic18$cell_subclass)
+markers_zeng_10x_cells = compute_markers(assay(zeng_10x_cells, "cpm"), zeng_10x_cells$cell_subclass)
+markers_zeng_10x_nuclei = compute_markers(assay(zeng_10x_nuclei, "cpm"), zeng_10x_nuclei$cell_subclass)
+markers_zeng_smart_nuclei = compute_markers(assay(zeng_smart_nuclei, "cpm"), zeng_smart_nuclei$cell_subclass)
+markers_zeng_smart_cells = compute_markers(assay(zeng_smart_cells, "cpm"), zeng_smart_cells$cell_subclass)
+markers_zeng_10xv2_wba = compute_markers(assay(zeng_10xv2_wba, "cpm"), zeng_10xv2_wba$cell_subclass)
+markers_zeng_10xv3_wba = compute_markers(assay(zeng_10xv3_wba, "cpm"), zeng_10xv3_wba$cell_subclass)
+markers_macosko_wba = compute_markers(assay(macosko_wba, "cpm"), macosko_wba$cell_subclass)
+
+
+```
+
+
+
+```{r}
+markers_zeng_10xv3_wba %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = 20)
+
+```
+
+
+```{r}
+
+export_markers(markers_tasic18, "metamarkers/markers_tasic18.csv")
+export_markers(markers_zeng_10x_cells, "metamarkers/markers_zeng_10x_cells.csv")
+export_markers(markers_zeng_10x_nuclei, "metamarkers/markers_zeng_10x_nuclei.csv")
+export_markers(markers_zeng_smart_nuclei, "metamarkers/markers_zeng_smart_nuclei.csv")
+export_markers(markers_zeng_smart_cells, "metamarkers/markers_zeng_smart_cells.csv")
+export_markers(markers_zeng_10xv2_wba, "metamarkers/markers_zeng_10xv2_wba.csv")
+export_markers(markers_zeng_10xv3_wba, "metamarkers/markers_zeng_10xv3_wba.csv")
+export_markers(markers_macosko_wba, "metamarkers/markers_macosko_wba.csv")
+
+```
+
+
+MetaMarkers
+```{r}
+markers = list(
+    tasic18 = read_markers("metamarkers/markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("metamarkers/markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("metamarkers/markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("metamarkers/markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("metamarkers/markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("metamarkers/markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("metamarkers/markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("metamarkers/markers_macosko_wba.csv.gz")
+)
+
+```
+
+
+
+```{r}
+meta_markers = make_meta_markers(markers, detailed_stats = TRUE)
+
+```
+
+```{r}
+
+meta_markers %>% group_by(cell_type) %>% filter(rank <= 20)
+
+```
+
+
+```{r}
+
+export_meta_markers(meta_markers, "metamarkers/meta_markers.csv", names(markers))
+
+```
+
+
+```{r}
+
+meta_markers = read_meta_markers( "metamarkers/meta_markers.csv.gz")
+
+```
+
+
+
+```{r}
+
+#meta_markers$gene = sapply(stringr::str_split(meta_markers$gene, '-', 2), '[[', 2 )
+
+plot_pareto_markers(meta_markers, "Chandelier", min_recurrence = 0)
+plot_pareto_markers(meta_markers, "Pvalb", min_recurrence = 0)
+plot_pareto_markers(meta_markers, "Sst", min_recurrence = 0)
+plot_pareto_markers(meta_markers, "Sst Chodl", min_recurrence = 0)
+
+plot_pareto_markers(meta_markers, "Vip", min_recurrence = 0)
+plot_pareto_markers(meta_markers, "Lamp5", min_recurrence = 0)
+plot_pareto_markers(meta_markers, "Lamp5 Lhx6", min_recurrence = 0)
+plot_pareto_markers(meta_markers, "Sncg", min_recurrence = 0)
+
+
+```
+
+
+
+
+
+################
+Markers using the orthologous Primate subclass labels
+
+
+###############
+
+
+
+dataset specific markers for the primate subclasses
+```{r}
+
+ortho_markers_tasic18 = compute_markers(assay(tasic18, "cpm"), tasic18$primate_subclass)
+ortho_markers_zeng_10x_cells = compute_markers(assay(zeng_10x_cells, "cpm"), zeng_10x_cells$primate_subclass)
+ortho_markers_zeng_10x_nuclei = compute_markers(assay(zeng_10x_nuclei, "cpm"), zeng_10x_nuclei$primate_subclass)
+ortho_markers_zeng_smart_nuclei = compute_markers(assay(zeng_smart_nuclei, "cpm"), zeng_smart_nuclei$primate_subclass)
+ortho_markers_zeng_smart_cells = compute_markers(assay(zeng_smart_cells, "cpm"), zeng_smart_cells$primate_subclass)
+ortho_markers_zeng_10xv2_wba = compute_markers(assay(zeng_10xv2_wba, "cpm"), zeng_10xv2_wba$primate_subclass)
+ortho_markers_zeng_10xv3_wba = compute_markers(assay(zeng_10xv3_wba, "cpm"), zeng_10xv3_wba$primate_subclass)
+ortho_markers_macosko_wba = compute_markers(assay(macosko_wba, "cpm"), macosko_wba$primate_subclass)
+
+
+```
+
+
+
+```{r}
+ortho_markers_macosko_wba %>% group_by(cell_type) %>% arrange(desc(auroc), .by_group = T) %>% slice_max(auroc, n = 20)
+
+```
+
+
+```{r}
+
+export_markers(ortho_markers_tasic18, "metamarkers/ortho_markers_tasic18.csv")
+export_markers(ortho_markers_zeng_10x_cells, "metamarkers/ortho_markers_zeng_10x_cells.csv")
+export_markers(ortho_markers_zeng_10x_nuclei, "metamarkers/ortho_markers_zeng_10x_nuclei.csv")
+export_markers(ortho_markers_zeng_smart_nuclei, "metamarkers/ortho_markers_zeng_smart_nuclei.csv")
+export_markers(ortho_markers_zeng_smart_cells, "metamarkers/ortho_markers_zeng_smart_cells.csv")
+export_markers(ortho_markers_zeng_10xv2_wba, "metamarkers/ortho_markers_zeng_10xv2_wba.csv")
+export_markers(ortho_markers_zeng_10xv3_wba, "metamarkers/ortho_markers_zeng_10xv3_wba.csv")
+export_markers(ortho_markers_macosko_wba, "metamarkers/ortho_markers_macosko_wba.csv")
+
+```
+
+
+Ortho Metamarkers
+
+```{r}
+ortho_markers = list(
+    tasic18 = read_markers("metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("metamarkers/ortho_markers_macosko_wba.csv.gz")
+)
+
+```
+
+
+
+```{r}
+ortho_meta_markers = make_meta_markers(ortho_markers, detailed_stats = TRUE)
+
+```
+
+```{r}
+
+ortho_meta_markers %>% group_by(cell_type) %>% filter(rank <= 20)
+
+```
+
+
+
+```{r}
+
+export_meta_markers(ortho_meta_markers, "metamarkers/ortho_meta_markers.csv", names(ortho_markers))
+
+```
+
+
+
+Also save as a csv table 
+
+```{r}
+
+ortho_meta_markers = read_meta_markers( "metamarkers/ortho_meta_markers.csv.gz")
+
+```
+
+
+
+```{r}
+
+#ortho_meta_markers$gene = sapply(stringr::str_split(ortho_meta_markers$gene, '-', 2), '[[', 2 )
+
+plot_pareto_markers(ortho_meta_markers, "Chandelier", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Pvalb", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Sst", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Sst Chodl", min_recurrence = 0)
+
+plot_pareto_markers(ortho_meta_markers, "Vip", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Lamp5", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Lamp5 Lhx6", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Sncg", min_recurrence = 0)
+plot_pareto_markers(ortho_meta_markers, "Pax6", min_recurrence = 0)
+
+```
+
+
+```{r}
+
+get_pareto_markers(ortho_meta_markers, "Sncg", min_recurrence=1)
+get_pareto_markers(ortho_meta_markers, "Pax6", min_recurrence=1)
+
+
+```
+
+
+```{r}
+
+ortho_meta_markers %>% filter(gene == 'PAX6')
+
+```
+
+
+
+
+
+##########################
+
+And the primate meta-markers
+
+##########################
+
+
+```{r}
+
+human_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_10x_gaba.rds')
+human_ss = readRDS( file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/human_data_ss_gaba.rds')
+
+chimp_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_10x_gaba.rds')
+chimp_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/chimp_data_ss_gaba.rds')
+
+gorilla_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_10x_gaba.rds')
+gorilla_ss = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/gorilla_data_ss_gaba.rds')
+
+macaca_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/macaca_data_10x_gaba.rds')
+
+marmoset_10x = readRDS(file = '/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/primates/marmoset_data_10x_gaba.rds')
+
+```
+
+
+filter down to the 57 homologous celltypes
+
+```{r}
+
+primate_cluster_mappings = data.table::fread('../data/cross_species_mapping_cls86.csv')
+primate_cluster_mappings
+
+```
+
+Add the consensus cluster label and then filter out cells not in a consensus cluster
+```{r}
+
+index = match(human_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+human_10x = human_10x[ ,!is.na(human_10x$consensus_cluster_label)]
+
+index = match(human_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+human_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+human_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+human_ss = human_ss[ ,!is.na(human_ss$consensus_cluster_label)]
+
+
+index = match(chimp_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+chimp_10x = chimp_10x[ ,!is.na(chimp_10x$consensus_cluster_label)]
+
+index = match(chimp_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+chimp_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+chimp_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+chimp_ss = chimp_ss[ ,!is.na(chimp_ss$consensus_cluster_label)]
+
+
+index = match(gorilla_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+gorilla_10x = gorilla_10x[ ,!is.na(gorilla_10x$consensus_cluster_label)]
+
+index = match(gorilla_ss$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+gorilla_ss$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+gorilla_ss$subclass_label = primate_cluster_mappings$subclass_label[index]
+gorilla_ss = gorilla_ss[ ,!is.na(gorilla_ss$consensus_cluster_label)]
+
+
+index = match(macaca_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+macaca_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+macaca_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+macaca_10x = macaca_10x[ ,!is.na(macaca_10x$consensus_cluster_label)]
+
+index = match(marmoset_10x$cross_species_cluster, primate_cluster_mappings$cross_species_cluster)
+marmoset_10x$consensus_cluster_label = primate_cluster_mappings$consensus_cluster_label[index]
+marmoset_10x$subclass_label = primate_cluster_mappings$subclass_label[index]
+marmoset_10x = marmoset_10x[ ,!is.na(marmoset_10x$consensus_cluster_label)]
+
+gc()
+```
+
+
+```{r}
+#Human
+#Change metdata columns to match other datasets
+#human_10x$subclass_label = human_10x$confirmed_subclass
+human_10x$cluster_label = human_10x$consensus_cluster_label
+
+keep_meta = colData(human_10x)[ , c('subclass_label','confirmed_subclass','cluster_label')]
+colData(human_10x)= keep_meta
+
+#Change metadata columns to match other datasets
+#human_ss$subclass_label = human_ss$confirmed_subclass
+human_ss$cluster_label = human_ss$consensus_cluster_label
+
+keep_meta = colData(human_ss)[ , c('subclass_label','confirmed_subclass','cluster_label')]
+colData(human_ss)= keep_meta
+
+
+#Chimp
+#Change metdata columns to match other datasets
+#chimp_10x$subclass_label = chimp_10x$confirmed_subclass
+chimp_10x$cluster_label = chimp_10x$consensus_cluster_label
+
+keep_meta = colData(chimp_10x)[ , c('subclass_label','confirmed_subclass','cluster_label')]
+colData(chimp_10x)= keep_meta
+
+#Change metadata columns to match other datasets
+#chimp_ss$subclass_label = chimp_ss$confirmed_subclass
+chimp_ss$cluster_label = chimp_ss$consensus_cluster_label
+
+keep_meta = colData(chimp_ss)[ , c('subclass_label','confirmed_subclass','cluster_label')]
+colData(chimp_ss)= keep_meta
+
+#gorilla
+#Change metdata columns to match other datasets
+#gorilla_10x$subclass_label = gorilla_10x$confirmed_subclass
+gorilla_10x$cluster_label = gorilla_10x$consensus_cluster_label
+
+keep_meta = colData(gorilla_10x)[ , c('subclass_label','confirmed_subclass','cluster_label')]
+colData(gorilla_10x)= keep_meta
+
+#Change metadata columns to match other datasets
+#gorilla_ss$subclass_label = gorilla_ss$confirmed_subclass
+gorilla_ss$cluster_label = gorilla_ss$consensus_cluster_label
+
+keep_meta = colData(gorilla_ss)[ , c('subclass_label','confirmed_subclass','cluster_label')]
+colData(gorilla_ss)= keep_meta
+
+
+#macaca
+#Change metdata columns to match other datasets
+#macaca_10x$subclass_label = macaca_10x$confirmed_subclass
+macaca_10x$cluster_label = macaca_10x$consensus_cluster_label
+
+keep_meta = colData(macaca_10x)[ , c('subclass_label','confirmed_subclass','cluster_label')]
+colData(macaca_10x)= keep_meta
+
+#marmoset
+#Change metdata columns to match other datasets
+#marmoset_10x$subclass_label = marmoset_10x$confirmed_subclass
+marmoset_10x$cluster_label = marmoset_10x$consensus_cluster_label
+
+keep_meta = colData(marmoset_10x)[ , c('subclass_label','confirmed_subclass','cluster_label')]
+colData(marmoset_10x)= keep_meta
+
+
+```
+
+
+```{r}
+
+
+length(table(human_10x$cluster_label))
+
+length(table(human_ss$cluster_label))
+
+```
+
+Make metamarkers using the supplemental table subclass labels
+
+
+```{r}
+
+
+
+markers_human_10x = compute_markers(assay(human_10x, "cpm"), human_10x$subclass_label)
+markers_human_ss = compute_markers(assay(human_ss, "cpm"), human_ss$subclass_label)
+
+markers_chimp_10x = compute_markers(assay(chimp_10x, "cpm"), chimp_10x$subclass_label)
+markers_chimp_ss = compute_markers(assay(chimp_ss, "cpm"), chimp_ss$subclass_label)
+
+markers_gorilla_10x = compute_markers(assay(gorilla_10x, "cpm"), gorilla_10x$subclass_label)
+markers_gorilla_ss = compute_markers(assay(gorilla_ss, "cpm"), gorilla_ss$subclass_label)
+
+markers_macaca_10x = compute_markers(assay(macaca_10x, "cpm"), macaca_10x$subclass_label)
+
+markers_marmoset_10x = compute_markers(assay(marmoset_10x, "cpm"), marmoset_10x$subclass_label)
+
+
+
+
+```
+
+
+
+```{r}
+
+export_markers(markers_human_10x, "metamarkers/markers_human_10x.csv")
+export_markers(markers_human_ss, "metamarkers/markers_human_ss.csv")
+export_markers(markers_chimp_10x, "metamarkers/markers_chimp_10x.csv")
+export_markers(markers_chimp_ss, "metamarkers/markers_chimp_ss.csv")
+export_markers(markers_gorilla_10x, "metamarkers/markers_gorilla_10x.csv")
+export_markers(markers_gorilla_ss, "metamarkers/markers_gorilla_ss.csv")
+export_markers(markers_macaca_10x, "metamarkers/markers_macaca_10x.csv")
+export_markers(markers_marmoset_10x, "metamarkers/markers_marmoset_10x.csv")
+
+```
+
+
+And then make metamarkers using the confirmed_subclass_labels
+
+
+```{r}
+
+
+
+conf_markers_human_10x = compute_markers(assay(human_10x, "cpm"), human_10x$confirmed_subclass)
+conf_markers_human_ss = compute_markers(assay(human_ss, "cpm"), human_ss$confirmed_subclass)
+
+conf_markers_chimp_10x = compute_markers(assay(chimp_10x, "cpm"), chimp_10x$confirmed_subclass)
+conf_markers_chimp_ss = compute_markers(assay(chimp_ss, "cpm"), chimp_ss$confirmed_subclass)
+
+conf_markers_gorilla_10x = compute_markers(assay(gorilla_10x, "cpm"), gorilla_10x$confirmed_subclass)
+conf_markers_gorilla_ss = compute_markers(assay(gorilla_ss, "cpm"), gorilla_ss$confirmed_subclass)
+
+conf_markers_macaca_10x = compute_markers(assay(macaca_10x, "cpm"), macaca_10x$confirmed_subclass)
+
+conf_markers_marmoset_10x = compute_markers(assay(marmoset_10x, "cpm"), marmoset_10x$confirmed_subclass)
+
+
+
+
+```
+
+
+
+```{r}
+
+export_markers(conf_markers_human_10x, "metamarkers/conf_markers_human_10x.csv")
+export_markers(conf_markers_human_ss, "metamarkers/conf_markers_human_ss.csv")
+export_markers(conf_markers_chimp_10x, "metamarkers/conf_markers_chimp_10x.csv")
+export_markers(conf_markers_chimp_ss, "metamarkers/conf_markers_chimp_ss.csv")
+export_markers(conf_markers_gorilla_10x, "metamarkers/conf_markers_gorilla_10x.csv")
+export_markers(conf_markers_gorilla_ss, "metamarkers/conf_markers_gorilla_ss.csv")
+export_markers(conf_markers_macaca_10x, "metamarkers/conf_markers_macaca_10x.csv")
+export_markers(conf_markers_marmoset_10x, "metamarkers/conf_markers_marmoset_10x.csv")
+
+```
+
+
+
+Primate Metamarkers
+
+```{r}
+primate_subclass_markers = list(
+    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
+)
+
+```
+
+
+
+```{r}
+primate_subclass_meta_markers = make_meta_markers(primate_subclass_markers, detailed_stats = TRUE)
+
+```
+
+```{r}
+
+primate_subclass_meta_markers %>% group_by(cell_type) %>% filter(rank <= 20)
+
+```
+
+
+```{r}
+
+export_meta_markers(primate_subclass_meta_markers, "metamarkers/primate_meta_markers.csv", names(primate_subclass_markers))
+
+```
+
+
+```{r}
+
+primate_subclass_meta_markers = read_meta_markers( "metamarkers/primate_subclass_meta_markers.csv.gz")
+
+```
+
+
+
+```{r}
+
+plot_pareto_markers(primate_subclass_meta_markers, "Chandelier", min_recurrence = 0)
+plot_pareto_markers(primate_subclass_meta_markers, "Pvalb", min_recurrence = 0)
+plot_pareto_markers(primate_subclass_meta_markers, "Sst", min_recurrence = 0)
+plot_pareto_markers(primate_subclass_meta_markers, "Sst Chodl", min_recurrence = 0)
+
+plot_pareto_markers(primate_subclass_meta_markers, "Vip", min_recurrence = 0)
+plot_pareto_markers(primate_subclass_meta_markers, "Lamp5", min_recurrence = 0)
+plot_pareto_markers(primate_subclass_meta_markers, "Lamp5_Lhx6", min_recurrence = 0)
+plot_pareto_markers(primate_subclass_meta_markers, "Sncg", min_recurrence = 0)
+plot_pareto_markers(primate_subclass_meta_markers, "Pax6", min_recurrence = 0)
+
+```
+
+
+
+
+```{r}
+primate_subclass_meta_markers %>% filter(gene == 'SNCG')
+primate_subclass_meta_markers %>% filter(gene == 'PAX6')
+primate_subclass_meta_markers %>% filter(gene == 'TRPS1')
+```
+
+
+
+```{r}
+
+meta_markers %>% filter(cell_type == 'Pvalb', rank <= 20) 
+
+```
+
+
+```{r}
+
+ortho_meta_markers %>% filter(cell_type == 'Pvalb', rank <= 20) 
+
+```
+
+
+```{r}
+
+primate_meta_markers %>% filter(cell_type == 'Pvalb', rank <= 20) 
+
+```
+
+
+And do a cross-mammal metamarkers
+
+```{r}
+mammal_subclass_markers = list(
+    human_10x = read_markers("../metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("../metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("../metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("../metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("../metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("../metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("../metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("../metamarkers/markers_marmoset_10x.csv.gz"),
+    tasic18 = read_markers("../metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("../metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("../metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("../metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("../metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("../metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("../metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("../metamarkers/ortho_markers_macosko_wba.csv.gz")
+)
+
+mammal_subclass_markers$human_10x$cell_type[mammal_subclass_markers$human_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+mammal_subclass_markers$human_ss$cell_type[mammal_subclass_markers$human_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+mammal_subclass_markers$chimp_10x$cell_type[mammal_subclass_markers$chimp_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+mammal_subclass_markers$chimp_ss$cell_type[mammal_subclass_markers$chimp_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+mammal_subclass_markers$gorilla_10x$cell_type[mammal_subclass_markers$gorilla_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+mammal_subclass_markers$gorilla_ss$cell_type[mammal_subclass_markers$gorilla_ss$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+mammal_subclass_markers$macaca_10x$cell_type[mammal_subclass_markers$macaca_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+mammal_subclass_markers$marmoset_10x$cell_type[mammal_subclass_markers$marmoset_10x$cell_type == 'Lamp5_Lhx6'] = 'Lamp5 Lhx6'
+
+
+
+mammal_subclass_meta_markers = make_meta_markers(mammal_subclass_markers, detailed_stats = TRUE)
+
+export_meta_markers(mammal_subclass_meta_markers, "../metamarkers/mammal_meta_markers.csv", names(mammal_subclass_markers))
+
+
+mammal_subclass_meta_markers %>% filter(rank <= 10)
+
+```
+
+
+
+
+
+
+
+
+
+```{r}
+
+
+
+cluster_markers_human_10x = compute_markers(assay(human_10x, "cpm"), human_10x$cluster_label)
+cluster_markers_human_ss = compute_markers(assay(human_ss, "cpm"), human_ss$cluster_label)
+
+cluster_markers_chimp_10x = compute_markers(assay(chimp_10x, "cpm"), chimp_10x$cluster_label)
+cluster_markers_chimp_ss = compute_markers(assay(chimp_ss, "cpm"), chimp_ss$cluster_label)
+
+cluster_markers_gorilla_10x = compute_markers(assay(gorilla_10x, "cpm"), gorilla_10x$cluster_label)
+cluster_markers_gorilla_ss = compute_markers(assay(gorilla_ss, "cpm"), gorilla_ss$cluster_label)
+
+cluster_markers_macaca_10x = compute_markers(assay(macaca_10x, "cpm"), macaca_10x$cluster_label)
+
+cluster_markers_marmoset_10x = compute_markers(assay(marmoset_10x, "cpm"), marmoset_10x$cluster_label)
+
+
+
+
+```
+
+
+
+```{r}
+
+export_markers(cluster_markers_human_10x, "metamarkers/cluster_markers_human_10x.csv")
+export_markers(cluster_markers_human_ss, "metamarkers/cluster_markers_human_ss.csv")
+export_markers(cluster_markers_chimp_10x, "metamarkers/cluster_markers_chimp_10x.csv")
+export_markers(cluster_markers_chimp_ss, "metamarkers/cluster_markers_chimp_ss.csv")
+export_markers(cluster_markers_gorilla_10x, "metamarkers/cluster_markers_gorilla_10x.csv")
+export_markers(cluster_markers_gorilla_ss, "metamarkers/cluster_markers_gorilla_ss.csv")
+export_markers(cluster_markers_macaca_10x, "metamarkers/cluster_markers_macaca_10x.csv")
+export_markers(cluster_markers_marmoset_10x, "metamarkers/cluster_markers_marmoset_10x.csv")
+
+```
+
+
+Primate Metamarkers
+
+```{r}
+primate_cluster_markers = list(
+    human_10x = read_markers("metamarkers/cluster_markers_human_10x.csv.gz"),
+    human_ss = read_markers("metamarkers/cluster_markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("metamarkers/cluster_markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("metamarkers/cluster_markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("metamarkers/cluster_markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("metamarkers/cluster_markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("metamarkers/cluster_markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("metamarkers/cluster_markers_marmoset_10x.csv.gz")
+)
+
+```
+
+
+
+```{r}
+primate_cluster_meta_markers = make_meta_markers(primate_cluster_markers, detailed_stats = TRUE)
+
+```
+
+```{r}
+
+primate_cluster_meta_markers %>% group_by(cell_type) %>% filter(rank <= 10)
+
+```
+
+
+```{r}
+
+export_meta_markers(primate_cluster_meta_markers, "metamarkers/primate_cluster_meta_markers.csv", names(primate_cluster_markers))
+
+```
+
+
+```{r}
+
+primate_cluster_meta_markers = read_meta_markers( "metamarkers/primate_cluster_meta_markers.csv.gz")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

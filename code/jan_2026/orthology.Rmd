@@ -1,0 +1,277 @@
+
+
+Setting up the one-to-one orthologs between all the species
+
+As well as the overlap with the actual gene annotations we have across all the datasets
+
+```{r}
+library(dplyr)
+library(data.table)
+
+```
+
+
+```{r}
+
+human_orthologs = fread('/home/werner/projects/mouse_brain_consensus_taxonomy/data/human_chimp_gorilla_macaca_marmoset_mouse_orthologs.csv.gz')
+
+human_orthologs
+```
+
+
+```{r}
+
+only_1to1s = human_orthologs %>% filter(`Chimpanzee homology type` == 'ortholog_one2one' & `Gorilla homology type` == 'ortholog_one2one' & 
+                             `Macaque homology type` == 'ortholog_one2one' & 
+                               `Mouse homology type` == 'ortholog_one2one' & `White-tufted-ear marmoset homology type` == 'ortholog_one2one', 
+                             !duplicated(`Gene stable ID`))
+
+only_1to1s
+
+
+#There are some missing gene names for the orthologs, missing for 1 or 2 species. But theyre present in the actual datasets.
+just_gene_names = only_1to1s %>% dplyr::select(c(`Gene name`, `Chimpanzee gene name`, `Gorilla gene name`, 
+                                                 `Macaque gene name`, `White-tufted-ear marmoset gene name`, `Mouse gene name`))
+colSums(just_gene_names == '')
+#Pass on the human gene name for the missing gene names.
+missing_index = only_1to1s$`Chimpanzee gene name` == ''
+only_1to1s$`Chimpanzee gene name`[missing_index] = only_1to1s$`Gene name`[missing_index]
+missing_index = only_1to1s$`Gorilla gene name` == ''
+only_1to1s$`Gorilla gene name`[missing_index] = only_1to1s$`Gene name`[missing_index]
+missing_index = only_1to1s$`Macaque gene name` == ''
+only_1to1s$`Macaque gene name`[missing_index] = only_1to1s$`Gene name`[missing_index]
+missing_index = only_1to1s$`White-tufted-ear marmoset gene name` == ''
+only_1to1s$`White-tufted-ear marmoset gene name`[missing_index] = only_1to1s$`Gene name`[missing_index]
+#And now only 2 gene that is missing a gene name in the primates, fine
+just_gene_names = only_1to1s %>% dplyr::select(c(`Gene name`, `Chimpanzee gene name`, `Gorilla gene name`, 
+                                                 `Macaque gene name`, `White-tufted-ear marmoset gene name`, `Mouse gene name`))
+colSums(just_gene_names == '')
+
+
+just_gene_names %>% filter(`Gene name` == '')
+
+
+
+```
+
+
+
+```{r}
+
+human_data = readRDS(file = '/inkwell03/werner/sc_data/primate_MTG/human_raw_UMI_expression_matrix.RDS')
+human_genes = rownames(human_data)
+
+chimp_data = readRDS(file = '/inkwell03/werner/sc_data/primate_MTG/chimp_raw_UMI_expression_matrix.RDS')
+chimp_genes = rownames(chimp_data)
+
+gorilla_data = readRDS(file = '/inkwell03/werner/sc_data/primate_MTG/gorilla_raw_UMI_expression_matrix.RDS')
+gorilla_genes = rownames(gorilla_data)
+
+macaca_data = readRDS(file = '/inkwell03/werner/sc_data/primate_MTG/rhesus_raw_UMI_expression_matrix.RDS')
+macaca_genes = rownames(macaca_data)
+
+marmoset_data = readRDS(file = '/inkwell03/werner/sc_data/primate_MTG/marmoset_raw_UMI_expression_matrix.RDS')
+marmoset_genes = rownames(marmoset_data)
+
+
+
+table(human_genes %in% only_1to1s$`Gene name`)
+table(chimp_genes %in% only_1to1s$`Chimpanzee gene name`)
+table(gorilla_genes %in% only_1to1s$`Gorilla gene name`)
+table(macaca_genes %in% only_1to1s$`Macaque gene name`)
+table(marmoset_genes %in% only_1to1s$`White-tufted-ear marmoset gene name`)
+
+table(grepl('PAX6', only_1to1s$`Gorilla gene name`))
+
+```
+
+
+Mouse data
+
+
+```{r}
+tasic18 = readRDS(file = '/vault/werner/rotation/jonathan/data/tasic18.rds')
+tasic18_genes = rownames(tasic18)
+
+
+zeng_10x_cells = readRDS("/vault/werner/rotation/jonathan/data/zeng_10x_cells/zeng_10x_cells.rds")
+zeng_10x_cells_genes = rownames(zeng_10x_cells)
+zeng_10x_nuclei = readRDS("/vault/werner/rotation/jonathan/data/zeng_10x_nuclei/zeng_10x_nuclei.rds")
+zeng_10x_nuclei_genes = rownames(zeng_10x_nuclei)
+zeng_smart_cells = readRDS("/vault/werner/rotation/jonathan/data/zeng_smart_cells/zeng_smart_cells.rds")
+zeng_smart_cells_genes = rownames(zeng_smart_cells)
+zeng_smart_nuclei = readRDS("/vault/werner/rotation/jonathan/data/zeng_smart_nuclei/zeng_smart_nuclei.rds")
+zeng_smart_nuclei_genes = rownames(zeng_smart_nuclei)
+
+zeng_wb_atlas = zellkonverter::readH5AD(file = '/vault/lfrench/whole_mouse_brain/processed/zeng/subsets/AIT21.0.merged.with_multiome.MGE_and_CGE.h5ad', 
+                                        verbose = F)
+zeng_wb_atlas_genes = rownames(zeng_wb_atlas)
+
+
+head(tasic18_genes)
+head(zeng_10x_cells_genes)
+head(zeng_10x_nuclei_genes)
+head(zeng_smart_cells_genes)
+head(zeng_smart_nuclei_genes)
+
+head(zeng_wb_atlas_genes)
+
+```
+
+```{r}
+
+macosko_wb_atlas = readRDS(file ='/vault/lfrench/whole_mouse_brain/processed/macosko/subsets/Macosko_Mouse_Atlas_Single_Nuclei.Use_Backed.MGE_and_CGE.h5ad.rds')
+
+macosko_wb_atlas
+
+table(as.character(colData(macosko_wb_atlas)$cell.type))
+
+macosko_wb_atlas_genes = rowData(macosko_wb_atlas)$gene_name
+
+```
+
+```{r}
+library(org.Mm.eg.db)
+gene_map <- select(org.Mm.eg.db, keys(org.Mm.eg.db), c("SYMBOL", "ENSEMBL"), "ENTREZID")
+gene_map
+```
+
+
+```{r}
+
+#Get the genes and map to ENSEMBL_SYMBOL names
+tasic18_genes = rownames(tasic18)
+index = match(tasic18_genes, gene_map$SYMBOL)
+tasic18_genes = paste(gene_map[index, 'ENSEMBL' ], gene_map[index, 'SYMBOL'], sep = '_')
+rowData(tasic18)$full_gene_id = tasic18_genes
+tasic18_genes[tasic18_genes == 'NA_NA'] = NA
+tasic18_genes = tasic18_genes[!is.na(tasic18_genes)]
+
+#10X datasets are already ensembl genes
+zeng_10x_cells_genes = rownames(zeng_10x_cells)
+index = match(zeng_10x_cells_genes, gene_map$ENSEMBL)
+zeng_10x_cells_genes = paste(gene_map[index, 'ENSEMBL' ], gene_map[index, 'SYMBOL'], sep = '_')
+rowData(zeng_10x_cells)$full_gene_id = zeng_10x_cells_genes
+zeng_10x_cells_genes[zeng_10x_cells_genes == 'NA_NA'] = NA
+zeng_10x_cells_genes = zeng_10x_cells_genes[!is.na(zeng_10x_cells_genes)]
+
+zeng_10x_nuclei_genes = rownames(zeng_10x_nuclei)
+index = match(zeng_10x_nuclei_genes, gene_map$ENSEMBL)
+zeng_10x_nuclei_genes = paste(gene_map[index, 'ENSEMBL' ], gene_map[index, 'SYMBOL'], sep = '_')
+rowData(zeng_10x_nuclei)$full_gene_id = zeng_10x_nuclei_genes
+zeng_10x_nuclei_genes[zeng_10x_nuclei_genes == 'NA_NA'] = NA
+zeng_10x_nuclei_genes = zeng_10x_nuclei_genes[!is.na(zeng_10x_nuclei_genes)]
+
+#Back to gene symbols
+zeng_smart_cells_genes = rownames(zeng_smart_cells)
+index = match(zeng_smart_cells_genes, gene_map$SYMBOL)
+zeng_smart_cells_genes = paste(gene_map[index, 'ENSEMBL' ], gene_map[index, 'SYMBOL'], sep = '_')
+rowData(zeng_smart_cells)$full_gene_id = zeng_smart_cells_genes
+zeng_smart_cells_genes[zeng_smart_cells_genes == 'NA_NA'] = NA
+zeng_smart_cells_genes = zeng_smart_cells_genes[!is.na(zeng_smart_cells_genes)]
+
+zeng_smart_nuclei_genes = rownames(zeng_smart_nuclei)
+index = match(zeng_smart_nuclei_genes, gene_map$SYMBOL)
+zeng_smart_nuclei_genes = paste(gene_map[index, 'ENSEMBL' ], gene_map[index, 'SYMBOL'], sep = '_')
+rowData(zeng_smart_nuclei)$full_gene_id = zeng_smart_nuclei_genes
+zeng_smart_nuclei_genes[zeng_smart_nuclei_genes == 'NA_NA'] = NA
+zeng_smart_nuclei_genes = zeng_smart_nuclei_genes[!is.na(zeng_smart_nuclei_genes)]
+
+
+#Zeng whole brain datasets
+zeng_wb_genes = rownames(zeng_wb_atlas)
+index = match(zeng_wb_genes, gene_map$ENSEMBL)
+zeng_wb_genes = paste(gene_map[index, 'ENSEMBL' ], gene_map[index, 'SYMBOL'], sep = '_')
+rowData(zeng_wb_atlas)$full_gene_id = zeng_wb_genes
+zeng_wb_genes[zeng_wb_genes == 'NA_NA'] = NA
+zeng_wb_genes = zeng_wb_genes[!is.na(zeng_wb_genes)]
+
+
+#Macosko whole brain atlas
+macosko_wb_atlas_genes = paste(rownames(macosko_wb_atlas), rowData(macosko_wb_atlas)$gene_name, sep = '_' )
+rowData(macosko_wb_atlas)$full_gene_id = macosko_wb_atlas_genes
+
+
+shared_mouse_genes = Reduce(intersect, list(tasic18_genes, zeng_10x_cells_genes, zeng_10x_nuclei_genes, zeng_smart_cells_genes, zeng_smart_nuclei_genes, 
+                                      zeng_wb_genes, macosko_wb_atlas_genes))
+length(shared_mouse_genes)
+
+
+```
+
+```{r}
+
+all_mouse_orthologs = paste(only_1to1s$`Mouse gene stable ID`, only_1to1s$`Mouse gene name`, sep = '_')
+present_mouse_orthologs = shared_mouse_genes[shared_mouse_genes %in% all_mouse_orthologs]
+length(present_mouse_orthologs)
+
+present_mouse_orthologs = sapply(stringr::str_split(present_mouse_orthologs, '_', 2), '[[', 2)
+
+
+```
+
+
+
+And finally get the list of all shared and present 1-1-orthologs
+
+
+```{r}
+
+final_present_1to1s = only_1to1s %>% filter(`Gene name` %in% human_genes &
+                        `Chimpanzee gene name` %in% chimp_genes &
+                        `Gorilla gene name` %in% gorilla_genes &
+                        `Macaque gene name` %in% macaca_genes &
+                        `White-tufted-ear marmoset gene name` %in% marmoset_genes &
+                        `Mouse gene name` %in% present_mouse_orthologs ) 
+
+
+```
+
+```{r}
+final_present_1to1s %>% filter(grepl('SNCG', `Gene name`))
+
+
+```
+One duplicated gene name in gorilla, it's GMPR2 in all the other species
+```{r}
+final_present_1to1s %>% filter(duplicated(`Gorilla gene name`))
+final_present_1to1s$`Gorilla gene name`[final_present_1to1s$`Gene name` == 'GMPR2'] = 'GMPR2'
+
+final_present_1to1s %>% filter(duplicated(`Gorilla gene name`))
+```
+
+
+
+```{r}
+
+saveRDS(final_present_1to1s, file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/final_present_1to1s.rds')
+
+```
+
+
+
+```{r}
+
+
+final_present_1to1s = readRDS(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/final_present_1to1s.rds')
+final_present_1to1s 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

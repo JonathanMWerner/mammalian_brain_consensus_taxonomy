@@ -1,0 +1,1001 @@
+
+
+Exploring some human and mouse published patch-seq data
+
+At least for some mouse data, the cells are already mapped to the Tasic18 clusters, can assign them to the homologous primate subclasses.
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(SingleCellExperiment)
+library(ggExtra)
+library(ComplexHeatmap)
+
+```
+
+```{r}
+celltype_color_palette = c("Chandelier"='#F641A8', 
+                           "Pvalb"='#D93137', 
+                           "Sst"='#FF9900', 
+                           "Sst Chodl"='gold', 
+                           "Lamp5"='#DA808C',
+                           "Sncg"='#DF70FF',
+                           "Vip"='#A45FBF', 
+                           "Lamp5 Lhx6"='#935F50',
+                           "Pax6"='#71238C')
+
+
+```
+
+
+```{r}
+
+tasic18 = readRDS('/inkwell03/werner/mouse_brain_consensus_taxonomy/datasets/ortho_filt/mouse/tasic18_gaba_primate_MN.rds')
+tasic18 = tasic18[ , tasic18$orthology == 'high_orthology']
+
+tasic_metadata = as.data.frame(colData(tasic18))
+
+table(tasic_metadata$orthology)
+
+
+
+tasic_clust_to_subclass_df = tasic_metadata %>% group_by(cell_cluster, cell_subclass, primate_subclass, orthology) %>% summarise(n = n()) %>% arrange(orthology)
+
+
+clust_to_primate_subclass = c(tasic_clust_to_subclass_df$primate_subclass)
+names(clust_to_primate_subclass) = tasic_clust_to_subclass_df$cell_cluster
+clust_to_primate_subclass
+
+clust_to_mouse_subclass = c(tasic_clust_to_subclass_df$cell_subclass)
+names(clust_to_mouse_subclass) = tasic_clust_to_subclass_df$cell_cluster
+clust_to_mouse_subclass
+
+
+```
+
+
+
+
+
+Tasic18 pax6 clusters
+c('Lamp5 Fam19a1 Pax6','Lamp5 Krt73','Serpinf1 Clrn1','Sncg Slc17a8')
+
+Tasic18 sncg cluster
+c('Vip Igfbp6 Pltp')
+
+
+```{r}
+
+mouse_file_path = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/patch_seq/mouse/'
+
+#Has cell IDs and their cluster annotation
+mouse_patch_meta = data.table::fread(paste0(mouse_file_path, '20200625_patchseq_metadata_mouse.csv'))
+
+table(mouse_patch_meta$corresponding_AIT2.3.1_alias)
+
+
+mouse_patch_meta %>% filter(corresponding_AIT2.3.1_alias %in% c('Lamp5 Fam19a1 Pax6','Lamp5 Krt73','Serpinf1 Clrn1','Sncg Slc17a8') )
+
+#Add the mouse and primate subclass labels to the clusters
+mouse_patch_meta$primate_subclass = clust_to_primate_subclass[mouse_patch_meta$corresponding_AIT2.3.1_alias]
+mouse_patch_meta$mouse_subclass = clust_to_mouse_subclass[mouse_patch_meta$corresponding_AIT2.3.1_alias]
+
+
+```
+
+
+
+Add the cluster annotations from the metadata and then add the mouse subclass and homologous subclass annotations from the Tasic data
+
+
+
+```{r}
+
+mouse_patch_data = data.table::fread(paste0(mouse_file_path, 'ephys_features_gouwens_w_QC.csv'))
+
+index = match(mouse_patch_data$cell_specimen_id,mouse_patch_meta$cell_specimen_id )
+table(mouse_patch_data$cell_specimen_id == mouse_patch_meta$cell_specimen_id[index] )
+
+mouse_patch_data$cell_cluster = mouse_patch_meta$corresponding_AIT2.3.1_alias[index]
+mouse_patch_data$mouse_subclass = mouse_patch_meta$mouse_subclass[index]
+mouse_patch_data$primate_subclass = mouse_patch_meta$primate_subclass[index]
+
+
+
+
+
+```
+
+
+```{r}
+
+ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip','Sncg','Lamp5')), 
+       aes(x = qc_initial_access_resistance_mohm , y = input_resistance, color = mouse_subclass )) + 
+  geom_point(alpha = .5) +
+  scale_color_manual(values = celltype_color_palette) 
+
+
+ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip','Sncg','Lamp5')), 
+       aes(x = rheo_fast_trough_t , y = input_resistance, color = primate_subclass )) + 
+  geom_point(alpha = .5) +
+  scale_color_manual(values = celltype_color_palette) 
+
+table(mouse_patch_data$mouse_subclass)
+table(mouse_patch_data$primate_subclass)
+```
+
+
+Trying PCA just to see 
+Filtering out the variables that have mostly NAs
+filt_vars = c('file_id','file_name','cell_cluster','mouse_subclass','primate_subclass','qc_blowout_mv','rheo_slow_trough_t','rheo_adp_v','rheo_slow_trough_v',
+'hero_adapt','hero_first_isi','hero_isi_cv','hearo_mean_isi')
+
+```{r}
+
+#Denote the Lamp5 Lhx6 as a subclass in the original mouse annotations
+mouse_patch_data$mouse_subclass[mouse_patch_data$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+#Denote the Serpin mouse subclass as Vip
+mouse_patch_data$mouse_subclass[mouse_patch_data$mouse_subclass == 'Serpinf1'] = 'Vip'
+
+
+
+filt_vars = c('file_id','file_name','cell_cluster','mouse_subclass','primate_subclass','qc_blowout_mv','rheo_slow_trough_t','rheo_adp_v','rheo_slow_trough_v',
+'hero_adapt','hero_first_isi','hero_isi_cv','hero_mean_isi', 'qc_recording_date')
+
+filt_mouse_patch_data = mouse_patch_data %>% filter(mouse_subclass %in% c('Vip','Lamp5','Sncg', 'Lamp5 Lhx6')) %>% select(-filt_vars)
+
+#Filter out cells with NA values
+row_filt = rowSums(is.na(filt_mouse_patch_data)) == 0 
+filt_mouse_patch_data = filt_mouse_patch_data[row_filt, ]
+
+
+filt_mouse_patch_data = as.matrix(filt_mouse_patch_data %>% tibble::column_to_rownames(var = 'cell_specimen_id'))
+
+
+scaled_filt_mouse_patch_data = scale(filt_mouse_patch_data)
+
+
+
+data.pca <- princomp(scaled_filt_mouse_patch_data)
+summary(data.pca)
+
+pca_loadings_df = as.data.frame(data.pca$scores)
+
+
+index = match(rownames(pca_loadings_df), mouse_patch_data$cell_specimen_id )
+table(rownames(pca_loadings_df) == mouse_patch_data$cell_specimen_id[index] )
+
+pca_loadings_df$cell_cluster = mouse_patch_data$cell_cluster[index]
+pca_loadings_df$mouse_subclass = mouse_patch_data$mouse_subclass[index]
+pca_loadings_df$primate_subclass = mouse_patch_data$primate_subclass[index]
+
+
+pca_loadings_df
+
+```
+
+
+Generally very subtle differences across the ephys differences for the different subtypes, largely looks like a Lamp5 vs Vip spectrum, Sncg and Pax6 are inbetween, but very continuous.
+
+
+```{r}
+
+ggplot(pca_loadings_df, aes(x = Comp.1, y = Comp.2, color = mouse_subclass)) + geom_point(alpha = .75) +
+  scale_color_manual(values = celltype_color_palette)
+
+
+ggplot(pca_loadings_df, aes(x = Comp.1, y = Comp.2, color = primate_subclass)) + geom_point(alpha = .75) +
+  scale_color_manual(values = celltype_color_palette)
+
+```
+
+And just try umap
+
+```{r}
+
+
+#mouse_patch_umap = umap::umap(scaled_filt_mouse_patch_data)
+
+mouse_patch_umap = umap::umap(as.matrix(pca_loadings_df[ , 1:10]))
+
+
+umap_df = as.data.frame(mouse_patch_umap$layout)
+
+index = match(rownames(umap_df), mouse_patch_data$cell_specimen_id )
+table(rownames(umap_df) == mouse_patch_data$cell_specimen_id[index] )
+
+umap_df$cell_cluster = mouse_patch_data$cell_cluster[index]
+umap_df$mouse_subclass = mouse_patch_data$mouse_subclass[index]
+umap_df$primate_subclass = mouse_patch_data$primate_subclass[index]
+
+ggplot(umap_df, aes(x = V1, y = V2, color = mouse_subclass)) + geom_point(size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw() + ylab("UMAP 2") + xlab('UMAP 1') + ggtitle('Mouse CGE ephys UMAP')
+
+ggplot(umap_df, aes(x = V1, y = V2, color = primate_subclass)) + geom_point(size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw() + ylab("UMAP 2") + xlab('UMAP 1') + ggtitle('Mouse CGE ephys UMAP')
+
+ggsave(filename = 'mouse_patchseq_ephys_CGE_umap.pdf',path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', device = 'pdf',
+       useDingbats = F, height = 4, width = 5, family = 'Helvetica')
+
+
+
+```
+
+
+
+
+
+
+PUlling together a standard variance decomposition approach to compare across the different annotations.
+Starting simply with a one-way ANOVA, univariate decomposition
+
+The goal is to compare the variance explained by the original annotations to the variance explained by the homologous annotations.
+Use ANOVA decomposition to get the coefficient of determination for labelsA (mouse subclasses) and then labelsB (homologous subclasses). 
+Can get a p-value for each coefficient/feature and can also compare the distribution of coefficients across all the features for the two labels.
+
+Since the homologous labels have 1 more annotation, need to use either adjustedR^2 or omega^2 as the coefficient. Empirical p-values will also be useful due to the varying sample size of each annotation group.
+
+Z-score the ephys features to start, since all in different units.
+
+Don't necessarily have to z-score the genes, since all CPM (may try logCPM), but if I want to compare the omegas across the modalities, will need to zscore anyhow.
+
+
+Code is from chatGPT, double checking implementation and output
+
+```{r}
+
+library(parallel)
+
+# ---------- omega^2 estimator ----------
+omega2 <- function(y, grp) {
+  grp <- factor(grp)
+  n <- length(y)
+  k <- nlevels(grp)
+  if (k < 2) return(0)
+  grand_mean <- mean(y)
+  group_means <- tapply(y, grp, mean)
+  n_k <- as.numeric(table(grp))
+  ss_b <- sum(n_k * (group_means - grand_mean)^2)
+  ss_t <- sum((y - grand_mean)^2)
+  ms_w <- (ss_t - ss_b) / (n - k)
+  num <- ss_b - (k - 1) * ms_w
+  denom <- ss_t + ms_w
+  if (denom <= 0 || num <= 0) return(0)
+  num / denom
+}
+
+# ---------- permutation test per feature ----------
+omega_perm_test <- function(y, grp, n_perm = 1000) {
+  obs <- omega2(y, grp)
+  # permute while preserving group sizes
+  n_k <- table(grp)
+  perm_fun <- function() {
+    shuffled <- sample(y)
+    shuffled_grp <- rep(names(n_k), n_k)
+    omega2(shuffled, shuffled_grp)
+  }
+  perms <- replicate(n_perm, perm_fun())
+  pval <- (1 + sum(perms >= obs)) / (1 + n_perm)
+  list(obs = obs, pval = pval)
+}
+
+# ---------- wrapper across many features ----------
+run_omega_perm <- function(mat, grp, n_perm = 1000, n_cores = 4) {
+  stopifnot(is.matrix(mat))
+  cl <- makeCluster(n_cores)
+  clusterExport(cl, c("omega2", "omega_perm_test", "grp", "n_perm"), envir = environment())
+  res <- parApply(cl, mat, 1, function(y) omega_perm_test(y, grp, n_perm))
+  stopCluster(cl)
+  
+  # Convert list output to data.frame
+  obs <- sapply(res, function(x) x$obs)
+  pval <- sapply(res, function(x) x$pval)
+  data.frame(feature = rownames(mat), omega2 = obs, pval = pval)
+}
+
+# ---------- example usage ----------
+# expr: matrix of features (genes/ephys vars) x samples (cells)
+# labels_A and labels_B: factor vectors of length ncol(expr)
+
+#res_A <- run_omega_perm(expr, labels_A, n_perm = 1000, n_cores = 8)
+#res_B <- run_omega_perm(expr, labels_B, n_perm = 1000, n_cores = 8)
+
+# Add FDR correction
+#res_A$padj <- p.adjust(res_A$pval, method = "BH")
+#res_B$padj <- p.adjust(res_B$pval, method = "BH")
+
+```
+
+
+
+
+
+```{r}
+#Rows are cells, columns are ephys features
+filt_mouse_patch_data 
+
+scaled_filt_mouse_patch_data = scale(filt_mouse_patch_data)
+
+#Get the two different annotations
+index = match(rownames(filt_mouse_patch_data ), mouse_patch_data$cell_specimen_id )
+mouse_subclass = mouse_patch_data$mouse_subclass[index]
+primate_subclass = mouse_patch_data$primate_subclass[index]
+
+table(mouse_subclass, primate_subclass)
+table(primate_subclass)
+
+
+```
+
+```{r}
+
+# ---------- example usage ----------
+# expr: matrix of features (genes/ephys vars) x samples (cells)
+# labels_A and labels_B: factor vectors of length ncol(expr)
+
+ephys_feature_mat = t(scaled_filt_mouse_patch_data )
+
+res_mouse <- run_omega_perm(ephys_feature_mat, mouse_subclass, n_perm = 1000, n_cores = 8)
+res_primate <- run_omega_perm(ephys_feature_mat, primate_subclass, n_perm = 1000, n_cores = 8)
+
+# Add FDR correction
+res_mouse$padj <- p.adjust(res_mouse$pval, method = "BH")
+res_primate$padj <- p.adjust(res_primate$pval, method = "BH")
+
+par(pty= 's')
+plot(res_mouse$omega2, res_primate$omega2, main = 'Electrophysiology features', 
+     ylab = 'Variance explained by homologous subclasses', 
+     xlab = 'Variance explained by original subclasses', xlim = c(0,1), ylim = c(0,1) )
+abline(a = 0, b = 1, col = 'red', lty = 'dashed')
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/omega2_ephys_features.pdf', useDingbats = F, height = 4, width = 4)
+par(pty= 's')
+plot(res_mouse$omega2, res_primate$omega2, main = 'Electrophysiology features', 
+     ylab = 'Variance explained by homologous subclasses', 
+     xlab = 'Variance explained by original subclasses', xlim = c(0,1), ylim = c(0,1) )
+abline(a = 0, b = 1, col = 'red', lty = 'dashed')
+dev.off()
+
+
+
+combined_res = res_mouse
+combined_res$primate_omega2 = res_primate$omega2
+combined_res$primate_pval = res_primate$pval
+combined_res$primate_padj = res_primate$padj
+
+combined_res = combined_res %>% mutate(omega_diff = abs(omega2 - primate_omega2)) %>% arrange(desc(omega_diff))
+combined_res %>% arrange(desc(primate_omega2))
+
+```
+
+
+```{r}
+
+combined_res %>% arrange(desc(primate_omega2))
+
+plotting_omega_df = combined_res %>% select(feature, omega2, primate_omega2) %>% tidyr::pivot_longer(!feature, names_to = 'annotation', values_to = 'omega-squared')
+
+ggplot(plotting_omega_df, aes(x = annotation, y = `omega-squared`)) + geom_boxplot() +
+  theme_bw() + ylim(0,1) + ggtitle('Electrophysiological feature variance')
+
+
+wilcox.test(combined_res$omega2, combined_res$primate_omega2, paired = T, alternative = 'less')
+
+
+```
+
+
+
+good features for separability
+tau
+rheo_width
+rheobase_i
+qc_input_resistance_mohm
+
+
+
+```{r}
+
+library(ggExtra)
+
+```
+
+
+```{r}
+
+p_mouse = ggplot(filter(mouse_patch_data, primate_subclass %in% c('Vip','Sncg','Lamp5', 'Lamp5 Lhx6','Pax6')), 
+       aes(x = rheo_peak_t, y = sag, color = mouse_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+p_primate = ggplot(filter(mouse_patch_data, primate_subclass %in% c('Vip','Sncg','Lamp5', 'Lamp5 Lhx6','Pax6')), 
+       aes(x = rheo_peak_t , y = sag, color = primate_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+```
+
+The features with the biggest differn
+
+```{r}
+
+p_mouse = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Lamp5', 'Sncg')), 
+       aes(x = sag, y = rheo_width, color = mouse_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+p_primate = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Lamp5', 'Sncg')), 
+       aes(x = sag , y = rheo_width, color = primate_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+
+
+p_mouse = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip')), 
+       aes(x = sag, y = rheo_width, color = mouse_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+p_primate = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip')), 
+       aes(x = sag , y = rheo_width, color = primate_subclass )) + 
+  geom_point( size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+
+
+p_mouse = ggplot(filter(mouse_patch_data, primate_subclass %in% c('Pax6')), 
+       aes(x = sag, y = rheo_width, color = mouse_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+p_primate = ggplot(filter(mouse_patch_data, primate_subclass %in% c('Pax6')), 
+       aes(x = sag , y = rheo_width, color = primate_subclass )) + 
+  geom_point(alpha = .75, size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+
+
+
+```
+
+
+
+```{r}
+
+
+ephys_correlation_mat = cor(ephys_feature_mat, method = 'spearman')
+ephys_dist_mat = as.dist(1- ephys_correlation_mat)
+
+index = match(colnames(ephys_correlation_mat), mouse_patch_data$cell_specimen_id)
+
+corr_mouse_subclass = mouse_patch_data$mouse_subclass[index]
+corr_primate_subclass = mouse_patch_data$primate_subclass[index]
+
+top_annot = HeatmapAnnotation(mouse_subclass = corr_mouse_subclass, homologous_subclass = corr_primate_subclass,
+                              col = list(mouse_subclass = celltype_color_palette, homologous_subclass = celltype_color_palette))
+
+
+
+corr_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+Heatmap(ephys_correlation_mat , name = 'spearman', col = corr_cols,
+        clustering_distance_rows = ephys_dist_mat, use_raster = T,
+        clustering_distance_columns = ephys_dist_mat,
+        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+        show_row_names = F, show_column_names = F,
+        top_annotation = top_annot, column_title = 'Cell similarity over electrophysiology features')
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/cell_siml_of_ephys_features.pdf', 
+    useDingbats = F, height = 4, width = 6, family = 'sans')
+Heatmap(ephys_correlation_mat , name = 'spearman', use_raster = T,col = corr_cols, 
+        clustering_distance_rows = ephys_dist_mat,
+        clustering_distance_columns = ephys_dist_mat,
+        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+        show_row_names = F, show_column_names = F,
+        top_annotation = top_annot, column_title = 'Cell similarity over electrophysiology features')
+
+dev.off()
+
+
+```
+
+
+Globally it's a bit difficult to see any signal other than the large Lamp5 and Vip difference.
+For a targeted analysis, focus on just the Lamp5s and the subset we are claiming are homologous to Pax6. (And Vip and Pax6)
+
+Using the Lamp5 clusters that stay Lamp5 across species, compute empirical p-values for each cell for each ephys feature
+Are the cells we're claiming are homologous Pax6 cells consistent outliers in ephys features to the Lamp5 cells? Which features?
+Can combine p-values for an overall statement, or keep it at the feature level
+
+```{r}
+
+
+mouse_lamp5_lamp5_patch_df = mouse_patch_data %>% filter(mouse_subclass == 'Lamp5' & primate_subclass == 'Lamp5') %>%
+  select(-c(rheo_adp_v, qc_blowout_mv, qc_recording_date, file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
+  tibble::column_to_rownames(var = 'cell_specimen_id')
+
+mouse_lamp5_pax6_patch_df = mouse_patch_data %>% filter(mouse_subclass == 'Lamp5' & primate_subclass == 'Pax6') %>%
+  select(-c(rheo_adp_v, qc_blowout_mv, qc_recording_date, file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
+  tibble::column_to_rownames(var = 'cell_specimen_id')
+
+
+#Getting the pvalues of the ephys features for all the Lamp5 cells
+
+# Rank-based empirical two-sided p-values
+pvals <- apply(mouse_lamp5_lamp5_patch_df, 2, function(col) {
+  # rank of each value in its column
+  #Dropping NA values
+  ranks <- rank(col, ties.method = "average", na.last = NA)
+  N = length(ranks)
+  # convert ranks to one-sided p-values
+  p_lower <- ranks / N 
+  p_upper <-  1 - (ranks - 1) / N
+  # two-sided empirical p-value
+  p_two <- 2 * pmin(p_lower, p_upper)
+  #Cap at 1, for the cases of median values in odd numbered sample sizes
+  pmin(p_two, 1)
+})
+
+
+
+for(i in 1:length(pvals)){
+  
+  hist(pvals[[i]],breaks = 20, main = i)
+  
+}
+
+
+#And now a function to get the empirical pvalues of test samples
+empirical_pvals_rank <- function(test_mat, ref_mat) {
+  stopifnot(ncol(test_mat) == ncol(ref_mat))
+  
+  N <- nrow(ref_mat)
+
+  pvals <- sapply(seq_len(ncol(ref_mat)), function(j) {
+    ref_col <- ref_mat[, j]
+    test_col <- test_mat[, j]
+    
+    # Rank reference distribution
+    sorted_ref <- sort(ref_col)
+
+    # For each test value, find how many ref values are <= that value
+    ranks_lower <- findInterval(test_col, sorted_ref)
+    p_lower <- ranks_lower / N
+
+    # upper tail: how many are >=
+    ranks_upper <- N - ranks_lower + 1
+    p_upper <- ranks_upper / N
+
+    # two-sided p-values
+    p_two <- 2 * pmin(p_lower, p_upper)
+    pmin(p_two, 1)  # cap at 1
+  })
+
+  df= as.data.frame(pvals)
+  colnames(df) = colnames(ref_mat)
+  return(df)
+}
+
+test_lamp5_pax6_pval_df = empirical_pvals_rank(mouse_lamp5_pax6_patch_df, mouse_lamp5_lamp5_patch_df)
+
+
+#And combine for a single p-value per feature
+
+# df_pvals: rows = samples, columns = features
+fisher_combine <- function(pvals) {
+  # Ensure no zero
+  pvals <- pmax(pvals, 1e-300)
+  k <- length(pvals)
+  stat <- -2 * sum(log(pvals))
+  p_combined <- pchisq(stat, df = 2 * k, lower.tail = FALSE)
+  return(p_combined)
+}
+
+# Apply to each column (feature)
+combined_pvals_lamp5_pax6 <- apply(test_lamp5_pax6_pval_df, 2, fisher_combine)
+combined_pvals_lamp5_pax6 <- p.adjust(combined_pvals_lamp5_pax6, method = 'BH')
+combined_pvals_lamp5_pax6
+
+plotting_feature_pval = combined_pvals_lamp5_pax6[!is.na(combined_pvals_lamp5_pax6)]
+plotting_feature_pval = plotting_feature_pval[order(plotting_feature_pval, decreasing = T)]
+
+par(mar = c(4, 10, 2, 1))
+barplot(-1*log10(plotting_feature_pval+1e-10), 
+        names.arg = names(plotting_feature_pval),
+        las = 2, horiz = T, cex.names = .75, 
+        main = 'Mouse Lamp5 -> Homologous Pax6', xlab = '-log10(meta p-value)' )
+abline(v = -1*log10(0.05), col = 'red')
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/lamp5_to_pax6_sig_features_barplot.pdf', 
+    useDingbats = F, family = 'sans', height = 6, width = 7)
+par(mar = c(4, 10, 2, 1))
+barplot(-1*log10(plotting_feature_pval+1e-10), 
+        names.arg = names(plotting_feature_pval),
+        las = 2, horiz = T, cex.names = .75, 
+        main = 'Mouse Lamp5 -> Homologous Pax6', xlab = '-log10(meta p-value)' )
+abline(v = -1*log10(0.05), col = 'red')
+dev.off()
+
+
+
+#Plot the distributions of values for the lamp5 vs pax6 for all of the features we pull out as significant
+
+mouse_lamp5_lamp5_patch_df$label = 'Lamp5'
+mouse_lamp5_pax6_patch_df$label = 'Pax6'
+
+all_lamp5_pax6_df = rbind(mouse_lamp5_lamp5_patch_df,mouse_lamp5_pax6_patch_df )
+
+combined_pvals_lamp5_pax6 = combined_pvals_lamp5_pax6[order(combined_pvals_lamp5_pax6)]
+sig_features = names(combined_pvals_lamp5_pax6[combined_pvals_lamp5_pax6 <= 0.05 & !is.na(combined_pvals_lamp5_pax6)])
+
+#Filter for the significant features and plot
+sig_subset = all_lamp5_pax6_df[ , colnames(all_lamp5_pax6_df) %in% c(sig_features, 'label')]
+
+sig_subset = sig_subset %>% tidyr::pivot_longer(!label, names_to = 'feature', values_to = 'value')
+
+sig_subset$feature = factor(sig_subset$feature, levels = sig_features)
+
+sig_subset
+
+ggplot(sig_subset, aes(x = feature, y = value, color = label)) + geom_boxplot() + facet_wrap(~feature, scales = 'free') +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+ggsave(filename = 'all_sig_lamp5_pax6_ephy_features_boxplots.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
+       useDingbats = F, height = 4, width = 6)
+
+hist(pvals$tau, density = T, col = 'blue')
+hist(test_lamp5_pax6_pval_df$tau, add = T, density = T, col = 'red' )
+
+
+pval_df = data.frame(pvals = c(pvals$tau, test_lamp5_pax6_pval_df$tau ), 
+                     labels = c(rep('Lamp5', length = length(pvals$tau)), rep('Pax6', length = length(test_lamp5_pax6_pval_df$tau)) ) )
+
+ggplot(pval_df, aes(x = pvals, fill = labels)) +
+  geom_histogram(alpha = 0.5, position = "identity", bins = 10) +
+  labs(title = "Tau", x = "P-values", y = "Frequency") +
+  theme_minimal()
+
+
+```
+
+
+```{r}
+
+p_mouse = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Lamp5')), 
+       aes(x = rheo_width, y = tau, color = mouse_subclass )) + 
+  geom_point(alpha = .75, size = 2, show.legend = F) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+ggsave(filename = 'taue_and_rheo_width_lamp5_scatter.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
+       useDingbats = F, height = 4, width = 6)
+
+
+p_primate = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Lamp5')), 
+       aes(x = rheo_width, y =tau , color = primate_subclass )) + 
+  geom_point(alpha = .75, size = 2, show.legend = F) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+ggsave(filename = 'taue_and_rheo_width_lamp5_pax6_scatter.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
+       useDingbats = F, height = 4, width = 6)
+
+```
+
+
+```{r}
+
+
+mouse_vip_vip_patch_df = mouse_patch_data %>% filter(mouse_subclass == 'Vip' & primate_subclass == 'Vip') %>%
+  select(-c(rheo_adp_v, qc_blowout_mv, qc_recording_date, file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
+  tibble::column_to_rownames(var = 'cell_specimen_id')
+
+mouse_vip_pax6_patch_df = mouse_patch_data %>% filter(mouse_subclass == 'Vip' & primate_subclass == 'Pax6') %>%
+  select(-c(rheo_adp_v, qc_blowout_mv, qc_recording_date, file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
+  tibble::column_to_rownames(var = 'cell_specimen_id')
+
+
+
+
+test_vip_pax6_pval_df = empirical_pvals_rank(mouse_vip_pax6_patch_df, mouse_vip_vip_patch_df)
+
+
+#And combine for a single p-value per feature
+
+# Apply to each column (feature)
+combined_pvals_vip_pax6 <- apply(test_vip_pax6_pval_df, 2, fisher_combine)
+combined_pvals_vip_pax6 <- p.adjust(combined_pvals_vip_pax6, method = 'BH')
+combined_pvals_vip_pax6
+
+plotting_feature_pval = combined_pvals_vip_pax6[!is.na(combined_pvals_vip_pax6)]
+plotting_feature_pval = plotting_feature_pval[order(plotting_feature_pval, decreasing = T)]
+
+par(mar = c(4, 10, 2, 1))
+barplot(-1*log10(plotting_feature_pval+1e-10), 
+        names.arg = names(plotting_feature_pval),
+        las = 2, horiz = T, cex.names = .75, main = 'Mouse Vip -> Homologous Pax6')
+abline(v = -1*log10(0.05), col = 'red')
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/vip_to_pax6_sig_features_barplot.pdf', 
+    useDingbats = F, family = 'sans', height = 6, width = 7)
+par(mar = c(4, 10, 2, 1))
+barplot(-1*log10(plotting_feature_pval+1e-10), 
+        names.arg = names(plotting_feature_pval),
+        las = 2, horiz = T, cex.names = .75, main = 'Mouse Vip -> Homologous Pax6',xlab = '-log10(meta p-value)' )
+abline(v = -1*log10(0.05), col = 'red')
+dev.off()
+
+
+#Plot the distributions of values for the Vip vs pax6 for all of the features we pull out as significant
+
+mouse_vip_vip_patch_df$label = 'Vip'
+mouse_vip_pax6_patch_df$label = 'Pax6'
+
+all_Vip_pax6_df = rbind(mouse_vip_vip_patch_df,mouse_vip_pax6_patch_df )
+
+combined_pvals_vip_pax6 = combined_pvals_vip_pax6[order(combined_pvals_vip_pax6)]
+sig_features = names(combined_pvals_vip_pax6[combined_pvals_vip_pax6 <= 0.05 & !is.na(combined_pvals_vip_pax6)])
+
+#Filter for the significant features and plot
+sig_subset = all_Vip_pax6_df[ , colnames(all_Vip_pax6_df) %in% c(sig_features, 'label')]
+
+sig_subset = sig_subset %>% tidyr::pivot_longer(!label, names_to = 'feature', values_to = 'value')
+
+sig_subset$feature = factor(sig_subset$feature, levels = sig_features)
+
+sig_subset
+
+ggplot(sig_subset, aes(x = feature, y = value, color = label)) + geom_boxplot() + facet_wrap(~feature, scales = 'free') +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+ggsave(filename = 'all_sig_Vip_pax6_ephy_features_boxplots.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
+       useDingbats = F, height = 4, width = 6)
+
+
+
+
+```
+
+
+```{r}
+
+p_mouse = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip') & primate_subclass != 'Sncg'), 
+       aes(x = rheo_width, y = tau, color = mouse_subclass )) + 
+  geom_point(alpha = .75, size = 2, show.legend = F) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_mouse, type="density",  groupColour = TRUE, groupFill = TRUE)
+
+ggsave(filename = 'taue_and_rheo_width_vip_scatter.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
+       useDingbats = F, height = 4, width = 6)
+
+
+p_primate = ggplot(filter(mouse_patch_data, mouse_subclass %in% c('Vip') & primate_subclass != 'Sncg'), 
+       aes(y = tau, x =rheo_width , color = primate_subclass )) + 
+  geom_point(alpha = .75, size = 2, show.legend = F) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggMarginal(p_primate, type="density",  groupColour = TRUE, groupFill = TRUE)
+ggsave(filename = 'taue_and_rheo_width_vip_pax6_scatter.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
+       useDingbats = F, height = 4, width = 6)
+```
+
+
+Are there morphological data features?
+
+```{r}
+
+
+
+mouse_patch_meta 
+```
+
+
+
+
+
+
+And do the same univariate decomp with the tasic expression data
+Only use highly variable genes
+
+
+```{r}
+
+tasic18$cell_subclass[tasic18$cell_cluster == 'Lamp5 Lhx6'] = 'Lamp5 Lhx6'
+tasic18$cell_subclass[tasic18$cell_subclass == 'Serpinf1'] = 'Vip'
+
+cell_filt = tasic18$cell_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg')
+tasic18_cge = tasic18[ , cell_filt]
+
+table(tasic18_cge$cell_subclass)
+table(tasic18_cge$primate_subclass)
+
+
+
+
+#Get highly variable genes
+logcounts(tasic18_cge) = log1p(cpm(tasic18_cge))
+stats = scran::modelGeneVar(tasic18_cge)
+dataset_hvg = scran::getTopHVGs(stats, n = 2000)
+
+#Get the logcounts of the Hvgs
+gene_filt = rownames(tasic18_cge) %in% dataset_hvg
+feature_exp = logcounts(tasic18_cge)[gene_filt, ]
+scale_feature_exp = t(scale(t(feature_exp)))
+
+#And the subclass annotations
+exp_mouse_subclass = tasic18_cge$cell_subclass
+exp_primate_subclass = tasic18_cge$primate_subclass
+
+table(exp_mouse_subclass)
+table(exp_primate_subclass)
+```
+
+
+```{r}
+res_exp_mouse <- run_omega_perm(scale_feature_exp, exp_mouse_subclass, n_perm = 1000, n_cores = 8)
+res_exp_primate <- run_omega_perm(scale_feature_exp, exp_primate_subclass, n_perm = 1000, n_cores = 8)
+
+# Add FDR correction
+res_exp_mouse$padj <- p.adjust(res_exp_mouse$pval, method = "BH")
+res_exp_primate$padj <- p.adjust(res_exp_primate$pval, method = "BH")
+
+par(pty= 's')
+plot(res_exp_mouse$omega2, res_exp_primate$omega2, main = 'Transcriptomic features', 
+     ylab = 'Variance explained by homologous subclasses', 
+     xlab = 'Variance explained by original subclasses', xlim = c(0,1), ylim = c(0,1) )
+abline(a = 0, b = 1, col = 'red', lty = 'dashed')
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/omega2_transcriptomic_features.pdf', 
+    useDingbats = F, height = 4, width = 4, family = 'sans')
+par(pty= 's')
+plot(res_exp_mouse$omega2, res_exp_primate$omega2, main = 'Transcriptomic features', 
+     ylab = 'Variance explained by homologous subclasses', 
+     xlab = 'Variance explained by original subclasses', xlim = c(0,1), ylim = c(0,1) )
+abline(a = 0, b = 1, col = 'red', lty = 'dashed')
+dev.off()
+
+
+combined_res_exp = res_exp_mouse
+combined_res_exp$primate_omega2 = res_exp_primate$omega2
+combined_res_exp$primate_pval = res_exp_primate$pval
+combined_res_exp$primate_padj = res_exp_primate$padj
+
+combined_res_exp = combined_res_exp %>% mutate(omega_diff = primate_omega2 - omega2) %>% arrange(desc(omega_diff))
+
+
+combined_res_exp %>% arrange(desc(primate_omega2))
+
+```
+
+
+```{r}
+
+plotting_omega_df = combined_res_exp %>% select(feature, omega2, primate_omega2) %>% tidyr::pivot_longer(!feature, names_to = 'annotation', values_to = 'omega-squared')
+
+ggplot(plotting_omega_df, aes(x = annotation, y = `omega-squared`)) + geom_boxplot() +
+  theme_bw() + ylim(0,1) + ggtitle('Transcriptomic feature variance')
+
+
+hist(combined_res_exp$omega_diff, breaks = seq(-.3, .8, .01))
+
+
+wilcox.test(combined_res_exp$omega2, combined_res_exp$primate_omega2, paired = T, alternative = 'two.sided')
+#wilcox.test(combined_res_exp$omega2, combined_res_exp$primate_omega2, paired = T, alternative = 'greater')
+wilcox.test(combined_res_exp$omega2, combined_res_exp$primate_omega2, paired = T, alternative = 'less')
+```
+
+VIP
+LAMP5
+MPPED1
+NXPH1
+PTPRM
+CPLX3
+SYNPR
+
+
+```{r}
+
+
+
+current_metadata = as.data.frame(colData(tasic18_cge))
+
+
+current_metadata$gene_1_exp = feature_exp['VIP' ,]
+current_metadata$gene_2_exp = feature_exp['LAMP5' ,]
+
+ggplot(current_metadata, aes(x = gene_1_exp, y = gene_2_exp, color = cell_subclass)) +
+  geom_point() + scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+ggplot(current_metadata, aes(x = gene_1_exp, y = gene_2_exp, color = primate_subclass)) +
+  geom_point() + scale_color_manual(values = celltype_color_palette) + theme_bw()
+
+
+
+```
+
+
+And same correlation heatmap, using the top 24 hvg genes
+
+```{r}
+
+top_hvg = scran::getTopHVGs(stats, n = 25)
+top_hvg
+
+exp_cor_mat = cor(scale_feature_exp[top_hvg, ], method = 'spearman')
+dist_exp_cor_mat = as.dist(1- exp_cor_mat)
+
+
+current_metadata = as.data.frame(colData(tasic18_cge))
+
+index = match(colnames(exp_cor_mat), rownames(current_metadata))
+exp_mouse_subclass = current_metadata$cell_subclass[index]
+exp_primate_subclass = current_metadata$primate_subclass[index]
+
+
+top_annot_exp = HeatmapAnnotation(mouse_subclass = exp_mouse_subclass, homologous_subclass = exp_primate_subclass,
+                                   col = list(mouse_subclass = celltype_color_palette, homologous_subclass = celltype_color_palette))
+
+corr_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+Heatmap(exp_cor_mat , name = 'spearman',use_raster = F, col = corr_cols,
+        clustering_distance_rows = dist_exp_cor_mat,
+        clustering_distance_columns = dist_exp_cor_mat,
+        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+        show_row_names = F, show_column_names = F,
+        top_annotation = top_annot_exp, column_title = 'Cell similarity over transcriptomic features (top 25 hvgs)')
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/cell_siml_of_trans_features.pdf', 
+    useDingbats = F, height = 4, width = 6, family = 'sans')
+Heatmap(exp_cor_mat , name = 'spearman', use_raster = F, col = corr_cols,
+        clustering_distance_rows = dist_exp_cor_mat,
+        clustering_distance_columns = dist_exp_cor_mat,
+        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+        show_row_names = F, show_column_names = F,
+        top_annotation = top_annot_exp, column_title = 'Cell similarity over transcriptomic features (top 25 hvgs)')
+dev.off()
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/raster_cell_siml_of_trans_features.pdf', useDingbats = F, 
+    height = 4, width = 6, family = 'sans')
+Heatmap(exp_cor_mat , name = 'spearman', use_raster = T, col = corr_cols,
+        clustering_distance_rows = dist_exp_cor_mat,
+        clustering_distance_columns = dist_exp_cor_mat,
+        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+        show_row_names = F, show_column_names = F,
+        top_annotation = top_annot_exp, column_title = 'Cell similarity over transcriptomic features (top 25 hvgs)')
+dev.off()
+
+```
+
+
+
+
+
+
+
