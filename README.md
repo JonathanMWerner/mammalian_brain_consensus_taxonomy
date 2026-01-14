@@ -33,3 +33,5 @@ non_allen_primate_metaNeighbor.Rmd – Primate and mouse MetaNeighbor assessment
 tree_shrew_processing.Rmd – All initial processing of the tree-shrew dataset (filtering, identification of CGE and MGE cells, integration, de novo clustering, and subclass labeling) and all MetaNeighbor and marker enrichment assessments. Plots for Figure 6A tree-shrew plots, and Supp. Fig. 11 A-K
 
 rat_processing.Rmd - All initial processing of the rat datasets, identification of CGE and MGE cells, de novo clustering, and subclass labeling. Plots for Supp. Fig. 12 A-J. 
+
+ortho_paralog_scripts directory contains the code used to compare shared orthologous or paralogous markers between species. Plots for Figure 6 D, E, and Supp. Fig. 11 L and Supp. Table 6.
