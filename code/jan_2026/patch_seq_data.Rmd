@@ -127,7 +127,7 @@ table(mouse_patch_data$primate_subclass)
 
 
 Trying PCA just to see 
-Filtering out the variables that have mostly NAs
+Filtering out the variables that have mostly NAs and the QC filters
 filt_vars = c('file_id','file_name','cell_cluster','mouse_subclass','primate_subclass','qc_blowout_mv','rheo_slow_trough_t','rheo_adp_v','rheo_slow_trough_v',
 'hero_adapt','hero_first_isi','hero_isi_cv','hearo_mean_isi')
 
@@ -140,8 +140,10 @@ mouse_patch_data$mouse_subclass[mouse_patch_data$mouse_subclass == 'Serpinf1'] =
 
 
 
-filt_vars = c('file_id','file_name','cell_cluster','mouse_subclass','primate_subclass','qc_blowout_mv','rheo_slow_trough_t','rheo_adp_v','rheo_slow_trough_v',
-'hero_adapt','hero_first_isi','hero_isi_cv','hero_mean_isi', 'qc_recording_date')
+filt_vars = c('file_id','file_name','cell_cluster','mouse_subclass','primate_subclass','qc_blowout_mv','qc_electrode_0_pa','qc_seal_gohm',
+              'qc_input_resistance_mohm','qc_initial_access_resistance_mohm','qc_input_access_resistance_ratio',
+              'rheo_slow_trough_t','rheo_adp_v','rheo_slow_trough_v',
+              'hero_adapt','hero_first_isi','hero_isi_cv','hero_mean_isi', 'qc_recording_date')
 
 filt_mouse_patch_data = mouse_patch_data %>% filter(mouse_subclass %in% c('Vip','Lamp5','Sncg', 'Lamp5 Lhx6')) %>% select(-filt_vars)
 
@@ -193,7 +195,6 @@ ggplot(pca_loadings_df, aes(x = Comp.1, y = Comp.2, color = primate_subclass)) +
 And just try umap
 
 ```{r}
-
 
 #mouse_patch_umap = umap::umap(scaled_filt_mouse_patch_data)
 
@@ -513,6 +514,18 @@ Heatmap(ephys_correlation_mat , name = 'spearman', use_raster = T,col = corr_col
 
 dev.off()
 
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/cell_siml_of_ephys_features_nonRaster.pdf', 
+    useDingbats = F, height = 4, width = 6, family = 'sans')
+Heatmap(ephys_correlation_mat , name = 'spearman', use_raster =F,col = corr_cols, 
+        clustering_distance_rows = ephys_dist_mat,
+        clustering_distance_columns = ephys_dist_mat,
+        clustering_method_rows = 'ward.D2', clustering_method_columns = 'ward.D2',
+        show_row_names = F, show_column_names = F,
+        top_annotation = top_annot, column_title = 'Cell similarity over electrophysiology features')
+
+dev.off()
+
+
 
 ```
 
@@ -524,15 +537,24 @@ Using the Lamp5 clusters that stay Lamp5 across species, compute empirical p-val
 Are the cells we're claiming are homologous Pax6 cells consistent outliers in ephys features to the Lamp5 cells? Which features?
 Can combine p-values for an overall statement, or keep it at the feature level
 
+Also do this for all newly labeled Pax6 cells versus all other CGE cell-types
+
 ```{r}
 
+#Filtering out the QC variables and the variables with vast majority NAs
 
 mouse_lamp5_lamp5_patch_df = mouse_patch_data %>% filter(mouse_subclass == 'Lamp5' & primate_subclass == 'Lamp5') %>%
-  select(-c(rheo_adp_v, qc_blowout_mv, qc_recording_date, file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
+  select(-c(rheo_adp_v, rheo_slow_trough_t, rheo_slow_trough_v, 
+            qc_blowout_mv, qc_recording_date, qc_electrode_0_pa, qc_seal_gohm, qc_input_resistance_mohm, qc_initial_access_resistance_mohm, 
+            qc_input_access_resistance_ratio,   
+            file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
   tibble::column_to_rownames(var = 'cell_specimen_id')
 
 mouse_lamp5_pax6_patch_df = mouse_patch_data %>% filter(mouse_subclass == 'Lamp5' & primate_subclass == 'Pax6') %>%
-  select(-c(rheo_adp_v, qc_blowout_mv, qc_recording_date, file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
+  select(-c(rheo_adp_v, rheo_slow_trough_t, rheo_slow_trough_v, 
+            qc_blowout_mv, qc_recording_date, qc_electrode_0_pa, qc_seal_gohm, qc_input_resistance_mohm, qc_initial_access_resistance_mohm, 
+            qc_input_access_resistance_ratio,   
+            file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
   tibble::column_to_rownames(var = 'cell_specimen_id')
 
 
@@ -708,11 +730,17 @@ ggsave(filename = 'taue_and_rheo_width_lamp5_pax6_scatter.pdf', path = '/home/we
 
 
 mouse_vip_vip_patch_df = mouse_patch_data %>% filter(mouse_subclass == 'Vip' & primate_subclass == 'Vip') %>%
-  select(-c(rheo_adp_v, qc_blowout_mv, qc_recording_date, file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
+  select(-c(rheo_adp_v, rheo_slow_trough_t, rheo_slow_trough_v, 
+            qc_blowout_mv, qc_recording_date, qc_electrode_0_pa, qc_seal_gohm, qc_input_resistance_mohm, qc_initial_access_resistance_mohm, 
+            qc_input_access_resistance_ratio,   
+            file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
   tibble::column_to_rownames(var = 'cell_specimen_id')
 
 mouse_vip_pax6_patch_df = mouse_patch_data %>% filter(mouse_subclass == 'Vip' & primate_subclass == 'Pax6') %>%
-  select(-c(rheo_adp_v, qc_blowout_mv, qc_recording_date, file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
+  select(-c(rheo_adp_v, rheo_slow_trough_t, rheo_slow_trough_v, 
+            qc_blowout_mv, qc_recording_date, qc_electrode_0_pa, qc_seal_gohm, qc_input_resistance_mohm, qc_initial_access_resistance_mohm, 
+            qc_input_access_resistance_ratio,   
+            file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
   tibble::column_to_rownames(var = 'cell_specimen_id')
 
 
@@ -805,13 +833,355 @@ ggsave(filename = 'taue_and_rheo_width_vip_pax6_scatter.pdf', path = '/home/wern
 ```
 
 
-Are there morphological data features?
+And now all the pax6 cells
+
+
+
+```{r}
+
+ table(mouse_patch_data$primate_subclass)
+
+
+mouse_cge_patch_df = mouse_patch_data %>% filter( primate_subclass %in% c('Vip','Sncg','Lamp5', 'Lamp5 Lhx6')) %>%
+  select(-c(rheo_adp_v, rheo_slow_trough_t, rheo_slow_trough_v, 
+            qc_blowout_mv, qc_recording_date, qc_electrode_0_pa, qc_seal_gohm, qc_input_resistance_mohm, qc_initial_access_resistance_mohm, 
+            qc_input_access_resistance_ratio,   
+            file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
+  tibble::column_to_rownames(var = 'cell_specimen_id')
+
+mouse_mge_patch_df = mouse_patch_data %>% filter( primate_subclass %in% c('Pvalb','Chandelier','Sst', 'Sst Chodl')) %>%
+  select(-c(rheo_adp_v, rheo_slow_trough_t, rheo_slow_trough_v, 
+            qc_blowout_mv, qc_recording_date, qc_electrode_0_pa, qc_seal_gohm, qc_input_resistance_mohm, qc_initial_access_resistance_mohm, 
+            qc_input_access_resistance_ratio,   
+            file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
+  tibble::column_to_rownames(var = 'cell_specimen_id')
+
+
+mouse_pax6_patch_df = mouse_patch_data %>% filter(primate_subclass == 'Pax6') %>%
+  select(-c(rheo_adp_v, rheo_slow_trough_t, rheo_slow_trough_v, 
+            qc_blowout_mv, qc_recording_date, qc_electrode_0_pa, qc_seal_gohm, qc_input_resistance_mohm, qc_initial_access_resistance_mohm, 
+            qc_input_access_resistance_ratio,   
+            file_id, file_name, cell_cluster, mouse_subclass, primate_subclass)) %>%
+  tibble::column_to_rownames(var = 'cell_specimen_id')
+
+
+
+
+test_cge_pax6_pval_df = empirical_pvals_rank(mouse_pax6_patch_df, mouse_cge_patch_df)
+
+test_mge_pax6_pval_df = empirical_pvals_rank(mouse_pax6_patch_df, mouse_mge_patch_df)
+
+
+
+#And combine for a single p-value per feature
+
+# Apply to each column (feature)
+combined_pvals_pax6 <- apply(test_cge_pax6_pval_df, 2, fisher_combine)
+combined_pvals_pax6 <- p.adjust(combined_pvals_pax6, method = 'BH')
+combined_pvals_pax6
+
+plotting_feature_pval = combined_pvals_pax6[!is.na(combined_pvals_pax6)]
+plotting_feature_pval = plotting_feature_pval[order(plotting_feature_pval, decreasing = T)]
+
+par(mar = c(4, 10, 2, 1))
+barplot(-1*log10(plotting_feature_pval+1e-10), 
+        names.arg = names(plotting_feature_pval),
+        las = 2, horiz = T, cex.names = .75, main = 'All CGE vs Homologous Pax6')
+abline(v = -1*log10(0.05), col = 'red')
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/CGE_vs_pax6_sig_features_barplot.pdf', 
+    useDingbats = F, family = 'sans', height = 6, width = 7)
+par(mar = c(4, 10, 2, 1))
+barplot(-1*log10(plotting_feature_pval+1e-10), 
+        names.arg = names(plotting_feature_pval),
+        las = 2, horiz = T, cex.names = .75, main = 'All CGE vs Homologous Pax6',xlab = '-log10(meta p-value)' )
+abline(v = -1*log10(0.05), col = 'red')
+dev.off()
+
+
+#Plot the distributions of values for the Vip vs pax6 for all of the features we pull out as significant
+
+mouse_cge_patch_df$label = 'non-Pax6 CGE'
+mouse_pax6_patch_df$label = 'Pax6'
+
+all_cge_pax6_df = rbind(mouse_cge_patch_df,mouse_pax6_patch_df )
+
+combined_pvals_pax6 = combined_pvals_pax6[order(combined_pvals_pax6)]
+sig_features = names(combined_pvals_pax6[combined_pvals_pax6 <= 0.05 & !is.na(combined_pvals_pax6)])
+
+#Filter for the significant features and plot
+sig_subset = all_cge_pax6_df[ , colnames(all_cge_pax6_df) %in% c(sig_features, 'label')]
+
+sig_subset = sig_subset %>% tidyr::pivot_longer(!label, names_to = 'feature', values_to = 'value')
+
+sig_subset$feature = factor(sig_subset$feature, levels = sig_features)
+
+sig_subset
+
+ggplot(sig_subset, aes(x = feature, y = value, color = label)) + geom_boxplot() + facet_wrap(~feature, scales = 'free') +
+  scale_color_manual(values = c('Pax6' = celltype_color_palette[['Pax6']], 'non-Pax6 CGE' = 'grey20')) + theme_bw()
+ggsave(filename = 'all_sig_CGE_pax6_ephy_features_boxplots.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
+       useDingbats = F, height = 4, width = 6)
+
+#and check out the MGEs too
+#And combine for a single p-value per feature
+
+# Apply to each column (feature)
+combined_pvals_pax6 <- apply(test_mge_pax6_pval_df, 2, fisher_combine)
+combined_pvals_pax6 <- p.adjust(combined_pvals_pax6, method = 'BH')
+combined_pvals_pax6
+
+plotting_feature_pval = combined_pvals_pax6[!is.na(combined_pvals_pax6)]
+plotting_feature_pval = plotting_feature_pval[order(plotting_feature_pval, decreasing = T)]
+
+par(mar = c(4, 10, 2, 1))
+barplot(-1*log10(plotting_feature_pval+1e-10), 
+        names.arg = names(plotting_feature_pval),
+        las = 2, horiz = T, cex.names = .75, main = 'All mge vs Homologous Pax6')
+abline(v = -1*log10(0.05), col = 'red')
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/mge_vs_pax6_sig_features_barplot.pdf', 
+    useDingbats = F, family = 'sans', height = 6, width = 7)
+par(mar = c(4, 10, 2, 1))
+barplot(-1*log10(plotting_feature_pval+1e-10), 
+        names.arg = names(plotting_feature_pval),
+        las = 2, horiz = T, cex.names = .75, main = 'All mge vs Homologous Pax6',xlab = '-log10(meta p-value)' )
+abline(v = -1*log10(0.05), col = 'red')
+dev.off()
+
+
+#Plot the distributions of values for the Vip vs pax6 for all of the features we pull out as significant
+
+mouse_mge_patch_df$label = 'MGE'
+mouse_pax6_patch_df$label = 'Pax6'
+
+all_mge_pax6_df = rbind(mouse_mge_patch_df,mouse_pax6_patch_df )
+
+combined_pvals_pax6 = combined_pvals_pax6[order(combined_pvals_pax6)]
+sig_features = names(combined_pvals_pax6[combined_pvals_pax6 <= 0.05 & !is.na(combined_pvals_pax6)])
+
+#Filter for the significant features and plot
+sig_subset = all_mge_pax6_df[ , colnames(all_mge_pax6_df) %in% c(sig_features, 'label')]
+
+sig_subset = sig_subset %>% tidyr::pivot_longer(!label, names_to = 'feature', values_to = 'value')
+
+sig_subset$feature = factor(sig_subset$feature, levels = sig_features)
+
+sig_subset
+
+ggplot(sig_subset, aes(x = feature, y = value, color = label)) + geom_boxplot() + facet_wrap(~feature, scales = 'free') +
+  scale_color_manual(values = c('Pax6' = celltype_color_palette[['Pax6']], 'MGE' = 'grey20')) + theme_bw()
+ggsave(filename = 'all_sig_MGE_pax6_ephy_features_boxplots.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
+       useDingbats = F, height = 4, width = 6)
+
+
+
+
+
+
+```
+
+
+
+
+
+Try out a UMAP with the human CGE ephys data Shreejoy pointed us towards
 
 ```{r}
 
 
+mouse_patch_data
 
-mouse_patch_meta 
+human_patch_data = data.table::fread('/home/werner/projects/mouse_brain_consensus_taxonomy/data/patch_seq/human/stripathy_human_int/patchseq_all_features.csv')
+human_patch_data
+
+table(human_patch_data$revised_subclass_label)
+table(human_patch_data$subclass_scANVI)
+
+
+cell_type_filt = human_patch_data$subclass_scANVI %in% c('Lamp5','Lamp5_Lhx6','Pax6','Sncg','Vip')
+
+colnames(human_patch_data)[ c(35:50, 63:131)]
+
+```
+
+```{r}
+
+human_to_mouse_label = c('v_baseline' = 'v_baseline', 'rheobase_i' = 'rheobase_i', 'fi_fit_slope' = 'fi_fit_slope', 'adapt_hero' = 'hero_adapt',
+                         'sag' = 'sag', 'vm_for_sag' = 'vm_for_sag', 'input_resistance' = 'input_resistance', 'tau' = 'tau', 'avg_rate_hero' = 'hero_avg_rate',
+                         'isi_cv_hero' = 'hero_isi_cv', 'latency_hero' = 'hero_latency', 'mean_isi_hero' = 'hero_mean_isi', 
+                         'median_isi_hero' = 'hero_median_isi', 'threshold_v_rheo' = 'rheo_threshold_v',  'width_rheo' = 'rheo_width', 
+                         'upstroke_downstroke_ratio_rheo' = 'rheo_upstroke_downstroke_ratio', 'subclass_scANVI' = 'primate_subclass')
+
+
+filt_human_patch_data = human_patch_data %>% 
+  filter(subclass_scANVI %in% c('Lamp5','Lamp5_Lhx6','Pax6','Sncg','Vip')) %>% 
+  select(c(names(human_to_mouse_label)))
+
+
+
+colnames(filt_human_patch_data) = human_to_mouse_label[colnames(filt_human_patch_data)]
+
+#Now filter the mouse to match
+index = which(colnames(mouse_patch_data) %in% colnames(filt_human_patch_data))
+filt_mouse_patch_data = mouse_patch_data[ , ..index]
+
+filt_mouse_patch_data  = filt_mouse_patch_data %>% filter(primate_subclass %in% c('Lamp5','Lamp5 Lhx6','Vip','Sncg','Pax6'))
+
+#Align the columns
+index = match(colnames(filt_mouse_patch_data), colnames(filt_human_patch_data))
+filt_human_patch_data = filt_human_patch_data[ , ..index]
+
+#Filter out human cells with no data
+filt_human_patch_data = filt_human_patch_data[ rowSums(is.na(filt_human_patch_data)) != 16, ]
+
+
+
+filt_human_patch_data$species = 'Human'
+filt_mouse_patch_data$species = 'Mouse'
+
+cross_species_ephys_df = rbind(filt_human_patch_data, filt_mouse_patch_data)
+cross_species_ephys_df$row_index = 1:nrow(cross_species_ephys_df)
+
+```
+
+Final cell count 
+Human Mouse 
+  337   735 
+
+
+```{r}
+
+cross_species_ephys_mat = as.matrix(cross_species_ephys_df %>% select(-c(primate_subclass, species)) %>% tibble::column_to_rownames(var = 'row_index'))
+
+#Filter out cells with NA values
+row_filt = rowSums(is.na(cross_species_ephys_mat)) == 0 
+cross_species_ephys_mat = cross_species_ephys_mat[row_filt, ]
+
+length(as.numeric(rownames(cross_species_ephys_mat)))
+scaled_cross_species_ephys_mat = scale(cross_species_ephys_mat)
+
+data.pca <- princomp(scaled_cross_species_ephys_mat)
+summary(data.pca)
+
+pca_loadings_df = as.data.frame(data.pca$scores)
+
+pca_loadings_df$primate_subclass = cross_species_ephys_df$primate_subclass[as.numeric(rownames(cross_species_ephys_mat))]
+pca_loadings_df$species = cross_species_ephys_df$species[as.numeric(rownames(cross_species_ephys_mat))]
+
+
+pca_loadings_df
+
+
+ggplot(pca_loadings_df, aes(x = Comp.1, y = Comp.2, color = species)) + geom_point(alpha = .75)
+
+
+ggplot(pca_loadings_df, aes(x = Comp.1, y = Comp.2, color = primate_subclass)) + geom_point(alpha = .75) +
+  scale_color_manual(values = celltype_color_palette)
+
+
+#mouse_patch_umap = umap::umap(scaled_filt_mouse_patch_data)
+
+mouse_patch_umap = umap::umap(as.matrix(pca_loadings_df[ , 1:10]))
+
+
+umap_df = as.data.frame(mouse_patch_umap$layout)
+
+umap_df$primate_subclass = cross_species_ephys_df$primate_subclass[as.numeric(rownames(cross_species_ephys_mat))]
+umap_df$species = cross_species_ephys_df$species[as.numeric(rownames(cross_species_ephys_mat))]
+
+ggplot(umap_df, aes(x = V1, y = V2, color = species)) + geom_point(size = 2) +
+  theme_bw() + ylab("UMAP 2") + xlab('UMAP 1') + ggtitle('Human/Mouse CGE ephys UMAP')
+
+ggsave(filename = 'by_species_human_mouse_patchseq_ephys_CGE_umap.pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', device = 'pdf',
+       useDingbats = F, height = 4, width = 5, family = 'Helvetica')
+
+
+
+ggplot(umap_df, aes(x = V1, y = V2, color = primate_subclass)) + geom_point(size = 2) +
+  scale_color_manual(values = celltype_color_palette) + theme_bw() + ylab("UMAP 2") + xlab('UMAP 1') + ggtitle('Human/Mouse CGE ephys UMAP')
+
+ggsave(filename = 'by_subclass_human_mouse_patchseq_ephys_CGE_umap.pdf',
+       path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', device = 'pdf',
+       useDingbats = F, height = 4, width = 5, family = 'Helvetica')
+
+
+```
+
+```{r}
+
+human_cge_patch_df = cross_species_ephys_df %>% filter( primate_subclass %in% c('Vip','Sncg','Lamp5', 'Lamp5_Lhx6') & species == 'Human') %>%
+  select(-c( species, primate_subclass)) %>% as.data.frame()
+
+human_pax6_patch_df = cross_species_ephys_df %>% filter( primate_subclass %in% c('Pax6') & species == 'Human') %>%
+  select(-c( species, primate_subclass)) %>% as.data.frame()
+
+
+
+test_cge_pax6_pval_df = empirical_pvals_rank(human_pax6_patch_df, human_cge_patch_df)
+
+
+#And combine for a single p-value per feature
+
+# Apply to each column (feature)
+combined_pvals_pax6 <- apply(test_cge_pax6_pval_df, 2, fisher_combine)
+combined_pvals_pax6 <- p.adjust(combined_pvals_pax6, method = 'BH')
+combined_pvals_pax6
+
+plotting_feature_pval = combined_pvals_pax6[!is.na(combined_pvals_pax6)]
+plotting_feature_pval = plotting_feature_pval[order(plotting_feature_pval, decreasing = T)]
+
+par(mar = c(4, 10, 2, 1))
+barplot(-1*log10(plotting_feature_pval+1e-10), 
+        names.arg = names(plotting_feature_pval),
+        las = 2, horiz = T, cex.names = .75, main = 'All Human CGE vs Human Pax6')
+abline(v = -1*log10(0.05), col = 'red')
+
+
+pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/human_CGE_vs_pax6_sig_features_barplot.pdf', 
+    useDingbats = F, family = 'sans', height = 6, width = 7)
+par(mar = c(4, 10, 2, 1))
+barplot(-1*log10(plotting_feature_pval+1e-10), 
+        names.arg = names(plotting_feature_pval),
+        las = 2, horiz = T, cex.names = .75, main = 'All Human CGE vs Human Pax6',xlab = '-log10(meta p-value)' )
+abline(v = -1*log10(0.05), col = 'red')
+dev.off()
+
+
+#Plot the distributions of values for the Vip vs pax6 for all of the features we pull out as significant
+
+human_cge_patch_df$label = 'non-Pax6 CGE'
+human_pax6_patch_df$label = 'Pax6'
+
+all_cge_pax6_df = rbind(human_cge_patch_df,human_pax6_patch_df )
+
+combined_pvals_pax6 = combined_pvals_pax6[order(combined_pvals_pax6)]
+sig_features = names(combined_pvals_pax6[combined_pvals_pax6 <= 0.05 & !is.na(combined_pvals_pax6)])
+
+#Filter for the significant features and plot
+sig_subset = all_cge_pax6_df[ , colnames(all_cge_pax6_df) %in% c(sig_features, 'label')]
+
+sig_subset = sig_subset %>% tidyr::pivot_longer(!label, names_to = 'feature', values_to = 'value')
+
+sig_subset$feature = factor(sig_subset$feature, levels = sig_features)
+
+sig_subset
+
+ggplot(sig_subset, aes(x = feature, y = value, color = label)) + geom_boxplot() + facet_wrap(~feature, scales = 'free') +
+  scale_color_manual(values = c('Pax6' = celltype_color_palette[['Pax6']], 'non-Pax6 CGE' = 'grey20')) + theme_bw()
+ggsave(filename = 'human_all_sig_CGE_pax6_ephy_features_boxplots.pdf', path = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/mouse_patchSeq/', 
+       device = 'pdf', family = 'Helvetica',
+       useDingbats = F, height = 4, width = 6)
+
+
+
+
+
 ```
 
 
