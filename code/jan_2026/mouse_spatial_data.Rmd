@@ -1119,7 +1119,7 @@ dev.off()
 ```{r}
 #finer resolution for inhibitory
 Zeng_calls_direct %>% filter(grepl(" GABA", class_label)) %>% group_by(parcellation_division) %>% summarize(n=n(), n_supertypes = length(unique(supertype_label)))
-GABA_supertypes <- Zeng_calls_direct %>% filter(grepl(" GABA", class_label)) %>% pull(supertype_label) %>% unique()
+GABA_supertypes <- Zeng_calls_direct %>% filter(grepl(" GABA", class_label) & !grepl('OB-', supertype_label)) %>% pull(supertype_label) %>% unique()
 print(length(GABA_supertypes))
 GABA_filtered_profiles <- all_profiles_supertype %>% filter(target_level %in% GABA_supertypes)
 print(length(GABA_filtered_profiles %>% pull(target_level)%>% unique()))
@@ -1144,7 +1144,7 @@ dev.off()
 
 ```{r}
 #finer resolution for inhibitory
-Glut_supertypes <- Zeng_calls_direct %>% filter(grepl(" Glut", class_label)) %>% pull(supertype_label) %>% unique()
+Glut_supertypes <- Zeng_calls_direct %>% filter(grepl(" Glut", class_label) & !grepl("ENT", supertype_label)) %>% pull(supertype_label) %>% unique()
 ht <- make_neighborhood_profile_heatmap(
   all_profiles = all_profiles_supertype %>% filter(target_level %in% Glut_supertypes),
   Zeng_calls_direct = Zeng_calls_direct,
