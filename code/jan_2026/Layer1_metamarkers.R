@@ -211,3 +211,7 @@ meta_markers %<>% left_join(gene_lookup)
 meta_markers %<>% dplyr::select(cell_type, gene_symbol, everything()) %>% dplyr::select(-transcript_identifier)
 
 meta_markers
+
+export_meta_markers(meta_markers, 
+                    "/home/werner/projects/mouse_brain_consensus_taxonomy/data/L1_mouse_meta_markers.csv",
+                    names(markers))
