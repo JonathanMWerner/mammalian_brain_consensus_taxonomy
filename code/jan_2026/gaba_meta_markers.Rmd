@@ -48,8 +48,14 @@ supp_table_8 %>% filter(gene == 'SNCG')
 
 ```
 
+Checking out the layer 1 metamarkers
 
+```{r}
+l1_meta_markers = read_meta_markers(filename = '/home/werner/projects/mouse_brain_consensus_taxonomy/data/L1_mouse_meta_markers.csv.gz')
 
+l1_meta_markers 
+
+```
 
 
 
