@@ -258,7 +258,8 @@ all_regions[!all_regions %in% lamp5_lhx6_regions]
 
 ```
 
-Do a heatmap instead
+Do a heatmap instead 
+Supp. Fig. 7 B
 
 ```{r}
 
@@ -457,7 +458,12 @@ ggsave(plot = p1, filename = 'mouse_Sncg_Pax6_pareto_markers.pdf', path = '/home
        useDingbats = F, family = 'Helvetica', height = 4, width = 6)
 
 ```
+Save source data for plot
+```{r}
 
+save(mouse_subclass_meta_markers, file = '../../source_data/data_for_plots/mouse_meta_markers.Rdata')
+
+```
 
 
 
@@ -529,6 +535,14 @@ ggsave(plot = p2, filename = 'primate_Sncg_Pax6_pareto_markers.pdf', path = '/ho
 
 ```
 
+Save source data for plot
+```{r}
+
+save(primate_subclass_meta_markers , file = '../../source_data/data_for_plots/primate_subclass_meta_markers.Rdata')
+
+```
+
+
 ```{r}
 
 all_species_markers = c(all_mouse_markers, all_primate_markers)
@@ -560,6 +574,14 @@ ggsave(plot = p3, filename = 'mammalian_Sncg_Pax6_pareto_markers.pdf', path = '/
        useDingbats = F, family = 'Helvetica', height = 4, width = 6)
 
 ```
+
+Save source data for plot
+```{r}
+
+save(mammal_subclass_meta_markers , file = '../../source_data/data_for_plots/mammal_subclass_meta_markers.Rdata')
+
+```
+
 
 ```{r}
 
@@ -870,6 +892,8 @@ mouse_vip_enrich_dot_plot = ggplot(plotting_df, aes(x = study_primate_subclass, 
                      panel.grid.minor = element_blank(),axis.text.x=element_blank())
 
 mouse_vip_enrich_dot_plot
+#save source data 
+save(plotting_df, file = '../../source_data/data_for_plots/mouse_Vip_dot_plot_primate_enrich.Rdata')
 
 
 plotting_df = ct_enrichment_mouse_df %>% filter(primate_markers == 'all|Pax6')
@@ -892,6 +916,8 @@ mouse_pax6_enrich_dot_plot = ggplot(plotting_df, aes(x = study_primate_subclass,
                      panel.grid.minor = element_blank(),axis.text.x=element_blank())
 
 mouse_pax6_enrich_dot_plot
+#save source data 
+save(plotting_df, file = '../../source_data/data_for_plots/mouse_Pax6_dot_plot_primate_enrich.Rdata')
 
 plotting_df = ct_enrichment_mouse_df %>% filter(primate_markers == 'all|Sncg')
 
@@ -911,6 +937,9 @@ mouse_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = study_primate_subclass,
   theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
                      panel.grid.major = element_blank(),
                      panel.grid.minor = element_blank(),axis.text.x=element_blank())
+
+#save source data 
+save(plotting_df, file = '../../source_data/data_for_plots/mouse_Sncg_dot_plot_primate_enrich.Rdata')
 
 mouse_sncg_enrich_dot_plot
 mouse_pax6_enrich_dot_plot
@@ -966,6 +995,10 @@ mouse_mouse_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = study_primate_sub
                      panel.grid.minor = element_blank(),axis.text.x=element_blank())
 
 mouse_mouse_sncg_enrich_dot_plot
+
+#save source data 
+save(plotting_df, file = '../../source_data/data_for_plots/mouse_Sncg_dot_plot_mouse_enrich.Rdata')
+
 ggsave(plot = mouse_mouse_sncg_enrich_dot_plot, filename = 'dot_mouse_sncg_mean_mouse_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
        useDingbats = F, height = 2, width = 6)
 
@@ -1094,14 +1127,14 @@ And the primate markers
 
 ```{r}
 all_primate_markers = list(
-    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
-    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
-    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
-    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
-    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
-    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
-    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
-    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz")
+    human_10x = read_markers("../metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("../metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("../metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("../metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("../metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("../metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("../metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("../metamarkers/markers_marmoset_10x.csv.gz")
 )
 
 
@@ -1212,6 +1245,10 @@ ggsave(plot = p1, filename = 'namesake_gene_de.pdf', path = '../graphs/mouse_pri
 
 ```
 
+#save source data
+```{r}
+save(mouse_name_sake_genes, file = '../../source_data/data_for_plots/namesake_marker_de.Rdata')
+```
 
 ######################################
 

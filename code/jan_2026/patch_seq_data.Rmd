@@ -371,6 +371,13 @@ combined_res %>% arrange(desc(primate_omega2))
 
 ```
 
+#save source data
+```{r}
+save(res_mouse, res_primate , file = '../../source_data/data_for_plots/omega_ephys_scatter.Rdata')
+```
+
+
+
 
 ```{r}
 
@@ -528,6 +535,16 @@ dev.off()
 
 
 ```
+
+
+
+#save source data
+```{r}
+save(mouse_patch_data, ephys_correlation_mat , file = '../../source_data/data_for_plots/mouse_ephys_corr_heatmap.Rdata')
+```
+
+
+
 
 
 Globally it's a bit difficult to see any signal other than the large Lamp5 and Vip difference.
@@ -925,6 +942,21 @@ ggsave(filename = 'all_sig_CGE_pax6_ephy_features_boxplots.pdf', path = '/home/w
        device = 'pdf', family = 'Helvetica',
        useDingbats = F, height = 4, width = 6)
 
+
+```
+
+save source data
+
+```{r}
+
+save(plotting_feature_pval,sig_subset,  file = '../../source_data/data_for_plots/cge_pax6_distinguishing_features.Rdata')
+
+```
+
+
+
+```{r}
+
 #and check out the MGEs too
 #And combine for a single p-value per feature
 
@@ -986,7 +1018,13 @@ ggsave(filename = 'all_sig_MGE_pax6_ephy_features_boxplots.pdf', path = '/home/w
 ```
 
 
+save source data
 
+```{r}
+
+save(sig_subset,  file = '../../source_data/data_for_plots/mge_pax6_distinguishing_features.Rdata')
+
+```
 
 
 Try out a UMAP with the human CGE ephys data Shreejoy pointed us towards
@@ -1264,6 +1302,19 @@ combined_res_exp %>% arrange(desc(primate_omega2))
 ```
 
 
+
+save source data
+
+```{r}
+
+save(res_exp_mouse, res_exp_primate,  file = '../../source_data/data_for_plots/omega_expression_scatter.Rdata')
+
+```
+
+
+
+
+
 ```{r}
 
 plotting_omega_df = combined_res_exp %>% select(feature, omega2, primate_omega2) %>% tidyr::pivot_longer(!feature, names_to = 'annotation', values_to = 'omega-squared')
@@ -1364,7 +1415,13 @@ dev.off()
 ```
 
 
+save source data
 
+```{r}
+
+save(exp_cor_mat, current_metadata,  file = '../../source_data/data_for_plots/exp_corr_heatmap.Rdata')
+
+```
 
 
 

@@ -2365,6 +2365,9 @@ primate_subclass_meta_markers %>% filter(gene == 'CCK')
 
 ```
 
+Figure 2 B and E
+
+
 ```{r}
 
 DefaultAssay(object = interneuron.combined) = 'integrated'

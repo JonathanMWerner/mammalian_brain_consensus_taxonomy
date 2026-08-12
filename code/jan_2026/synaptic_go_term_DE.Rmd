@@ -514,6 +514,16 @@ dev.off()
 ```
 
 
+#save source data
+```{r}
+save(clust_to_subclass_df,mean_exp_cpm_df , file = '../../source_data/data_for_plots/main_ion_channel_heatmap.Rdata')
+```
+
+
+
+
+
+
 Save the present ion channel genes for a supplemental table
 
 

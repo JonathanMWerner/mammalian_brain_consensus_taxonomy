@@ -239,7 +239,12 @@ Zeng_calls_direct %<>% inner_join(cluster_annotations)
 
 ```
 
+save source data
 
+```{r}
+save(MGE_supertypes, CGE_supertypes, Zeng_calls_direct, file = '../../source_data/data_for_plots/spatial_annotations.Rdata')
+
+```
 
 
 
@@ -375,6 +380,13 @@ substructure_compare %>% filter(cell_subclass != primate_subclass) %>% arrange(-
 
 ```
 
+save source data
+
+```{r}
+
+save(split_counts, substructure_counts,  file = '../../source_data/data_for_plots/spatial_layer_source_data.Rdata')
+
+```
 
 
 
@@ -671,6 +683,7 @@ dev.off()
 
 ```
 
+
 ########################
 #########################
 
@@ -932,10 +945,11 @@ no_signal_celltypes = all_profiles %>% group_by(target_level, target_subtype) %>
 
 ```
 
+save source data
 
 ```{r}
 
-all_profiles %>% filter(!target_level %in% no_signal_celltypes)
+save(all_profiles_supertype, file = '../../source_data/data_for_plots/spatial_neighborhood.Rdata' )
 
 ```
 
@@ -1143,7 +1157,7 @@ dev.off()
 ```
 
 ```{r}
-#finer resolution for inhibitory
+#finer resolution for excitatory
 Glut_supertypes <- Zeng_calls_direct %>% filter(grepl(" Glut", class_label) & !grepl("ENT", supertype_label)) %>% pull(supertype_label) %>% unique()
 ht <- make_neighborhood_profile_heatmap(
   all_profiles = all_profiles_supertype %>% filter(target_level %in% Glut_supertypes),

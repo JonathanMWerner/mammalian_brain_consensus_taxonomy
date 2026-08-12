@@ -140,14 +140,14 @@ gc()
 
 ```{r}
 cluster_markers = list(
-    tasic18 = read_markers("metamarkers/clust_markers_tasic18.csv.gz"),
-    zeng_10x_cells = read_markers("metamarkers/clust_markers_zeng_10x_cells.csv.gz"),
-    zeng_10x_nuclei = read_markers("metamarkers/clust_markers_zeng_10x_nuclei.csv.gz"),
-    zeng_smart_nuclei = read_markers("metamarkers/clust_markers_zeng_smart_nuclei.csv.gz"),
-    zeng_smart_cells = read_markers("metamarkers/clust_markers_zeng_smart_cells.csv.gz"),
-    zeng_10xv2_wba = read_markers("metamarkers/clust_markers_zeng_10xv2_wba.csv.gz"),
-    zeng_10xv3_wba = read_markers("metamarkers/clust_markers_zeng_10xv3_wba.csv.gz"),
-    macosko_wba = read_markers("metamarkers/clust_markers_macosko_wba.csv.gz")
+    tasic18 = read_markers("../metamarkers/clust_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("../metamarkers/clust_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("../metamarkers/clust_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("../metamarkers/clust_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("../metamarkers/clust_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("../metamarkers/clust_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("../metamarkers/clust_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("../metamarkers/clust_markers_macosko_wba.csv.gz")
 )
 
 ```
@@ -491,7 +491,10 @@ dev.off()
 
 ```
 
-
+#save source data
+```{r}
+save(centroid_corr, dataset_subclasses, file = '../../source_data/data_for_plots/integrated_mouse_taxonomy.Rdata')
+```
 
 
 
@@ -508,7 +511,7 @@ library(ggsankey)
 
 ```{r}
 
-sankey_interneuron_df = interneuron.combined[[]] %>% rename(original_subclass = cell_subclass, orthologous_subclass = primate_subclass) %>%
+sankey_interneuron_df = interneuron.combined[[]] %>% dplyr::rename(original_subclass = cell_subclass, orthologous_subclass = primate_subclass) %>%
   ggsankey::make_long(original_subclass,orthologous_subclass)
 
 ```
@@ -538,6 +541,10 @@ ggsave(filename = 'gaba_original_to_orthologous_subclass_sankey.pdf', path = '/h
 
 ```
 
+#save source data
+```{r}
+save(sankey_interneuron_df, file = '../../source_data/data_for_plots/subclass_sankey.Rdata')
+```
 
 
 
