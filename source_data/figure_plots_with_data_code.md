@@ -44,6 +44,27 @@ All data for these plots is provided at:
     ##   suppressPackageStartupMessages(library(ComplexHeatmap))
     ## ========================================
 
+    ## ========================================
+    ## circlize version 0.4.17
+    ## CRAN page: https://cran.r-project.org/package=circlize
+    ## Github page: https://github.com/jokergoo/circlize
+    ## Documentation: https://jokergoo.github.io/circlize_book/book/
+    ## 
+    ## If you use it in published research, please cite:
+    ## Gu, Z. circlize implements and enhances circular visualization
+    ##   in R. Bioinformatics 2014.
+    ## 
+    ## This message can be suppressed by:
+    ##   suppressPackageStartupMessages(library(circlize))
+    ## ========================================
+
+    ## 
+    ## Attaching package: 'magrittr'
+
+    ## The following object is masked from 'package:tidyr':
+    ## 
+    ##     extract
+
 ## Figure 1C
 
 ``` r
@@ -486,6 +507,341 @@ ggplot(sig_subset, aes(x = feature, y = value, color = label)) + geom_boxplot() 
     ## (`stat_boxplot()`).
 
 ![](figure_plots_with_data_code_files/figure-gfm/mge_pax6_ephy-1.png)<!-- -->
+
+## Figure 4 A and B and C
+
+``` r
+load(file = 'data_for_plots/spatial_neighborhood.Rdata')
+load(file = 'data_for_plots/spatial_annotations.Rdata')
+load(file = 'data_for_plots/spatial_layer_source_data.Rdata')
+
+#heatmap function
+make_neighborhood_profile_heatmap <- function(
+  all_profiles,
+  Zeng_calls_direct,
+  split_counts,
+  celltype_color_palette,
+  number_of_neighbors_profiled = 100,
+  draw_heatmap = TRUE
+) {
+  CGE_supertypes <- Zeng_calls_direct %>%
+    filter(class_label == "CTX-CGE GABA") %>%
+    pull(supertype_label) %>%
+    unique()
+
+  MGE_supertypes <- Zeng_calls_direct %>%
+    filter(class_label == "CTX-MGE GABA") %>%
+    pull(supertype_label) %>%
+    unique()
+
+  mat_wide <- all_profiles %>%
+    # filter(!target_level %in% no_signal_celltypes & target_subtype %in% CGE_supertypes) %>%
+    select(target_subtype, target_level, mean_prop) %>%
+    group_by(target_subtype, target_level) %>%
+    summarise(prop = sum(mean_prop, na.rm = TRUE), .groups = "drop") %>%
+    pivot_wider(
+      names_from  = target_level,
+      values_from = prop,
+      values_fill = 0
+    )
+
+  mat_wide <- mat_wide %>%
+    select(target_subtype, where(~ is.numeric(.x) && sum(.x, na.rm = TRUE) != 0))
+
+  # Row metadata aligned to the original matrix row order
+  row_meta <- all_profiles %>%
+    distinct(target_subtype, cell_subclass, primate_subclass) %>%
+    slice(match(mat_wide$target_subtype, target_subtype))
+
+  row_meta$GE_origin <- "MGE"
+  row_meta$GE_origin[row_meta$cell_subclass %in% c("Lamp5", "Vip", "Sncg")] <- "CGE"
+
+  mat <- mat_wide %>%
+    select(-target_subtype) %>%
+    as.matrix()
+
+  rownames(mat) <- mat_wide$target_subtype
+
+  # Switch rows and columns
+  mat <- t(mat)
+
+  # ---- 2) Colors for annotations ----
+  subclass_levels <- sort(unique(row_meta$cell_subclass))
+  primate_levels  <- sort(unique(row_meta$primate_subclass))
+  shared_levels   <- sort(unique(c(subclass_levels, primate_levels)))
+
+  shared_cols <- setNames(
+    colorRampPalette(brewer.pal(12, "Set3"))(length(shared_levels)),
+    shared_levels
+  )
+
+  subclass_cols <- shared_cols[subclass_levels]
+  primate_cols  <- shared_cols[primate_levels]
+
+  # ---- 3) Optional marking bar ----
+  markers <- split_counts %>%
+    pull(cell_cluster) %>%
+    unique()
+
+  zeng_switch_vec <- factor(
+    ifelse(colnames(mat) %in% markers, "marked", "other"),
+    levels = c("other", "marked")
+  )
+
+  zengswitch_cols <- c(other = "white", marked = "black")
+
+  col_anno <- HeatmapAnnotation(
+    `Ganglionic Eminence` = row_meta$GE_origin,
+    `Mouse subclass` = row_meta$cell_subclass,
+    `Homologous subclass` = row_meta$primate_subclass,
+    `Subclass switch` = zeng_switch_vec,
+    col = list(
+      `Ganglionic Eminence` = c("CGE" = "darkviolet", "MGE" = "gold"),
+      `Mouse subclass` = celltype_color_palette,
+      `Homologous subclass` = celltype_color_palette,
+      `Subclass switch` = zengswitch_cols
+    ),
+    show_legend = c(
+      `Ganglionic Eminence` = TRUE,
+      `Mouse subclass` = TRUE,
+      `Homologous subclass` = TRUE,
+      `Subclass switch` = FALSE
+    ),
+    annotation_height = unit.c(
+      unit(4, "mm"),
+      unit(4, "mm"),
+      unit(4, "mm"),
+      unit(2, "mm")
+    ),
+    show_annotation_name = TRUE,
+    annotation_name_side = "left",
+    annotation_name_gp = gpar(fontface = "bold")
+  )
+
+  # ---- 4) Heatmap color scale ----
+  mx <- max(mat, na.rm = TRUE)
+  if (!is.finite(mx) || mx <= 0) mx <- 1
+
+  col_fun <- colorRamp2(c(0, mx), c("white", "red"))
+
+  # ---- 5) Clustering ----
+  row_dend <- hclust(dist(mat), method = "ward.D2")
+  col_dend <- rev(as.dendrogram(hclust(dist(t(mat)), method = "ward.D2")))
+
+  # ---- 6) Make heatmap ----
+  ht <- Heatmap(
+    mat,
+    name = "Proportion",
+    col = col_fun,
+    top_annotation = col_anno,
+    row_title = NULL,
+    column_title = paste0(
+      "Cell-type neighborhood profile for nearest ",
+      number_of_neighbors_profiled,
+      " cells"
+    ),
+    cluster_rows = row_dend,
+    cluster_columns = col_dend,
+    row_names_gp = gpar(fontsize = 8),
+    column_names_gp = gpar(fontsize = 8),
+    row_dend_side = "right",
+    row_names_side = "left"
+  )
+
+  if (draw_heatmap) {
+    ht <- draw(
+      ht,
+      heatmap_legend_side = "right",
+      annotation_legend_side = "right"
+    )
+  }
+  print(dim(mat))
+  return(ht)
+}
+
+number_of_neighbors_profiled <- 100
+
+#finer resolution for inhibitory
+Zeng_calls_direct %>% filter(grepl(" GABA", class_label)) %>% group_by(parcellation_division) %>% summarize(n=n(), n_supertypes = length(unique(supertype_label)))
+```
+
+    ## # A tibble: 26 × 3
+    ##    parcellation_division      n n_supertypes
+    ##    <chr>                  <int>        <int>
+    ##  1 AQ                       138           20
+    ##  2 CB                    106985           86
+    ##  3 CTXsp                  10104          156
+    ##  4 HPF                    24563          135
+    ##  5 HY                     38797          253
+    ##  6 Isocortex              84830          141
+    ##  7 MB                     48018          189
+    ##  8 MY                     19829          101
+    ##  9 OLF                    82186          197
+    ## 10 P                      18871          165
+    ## # ℹ 16 more rows
+
+``` r
+GABA_supertypes <- Zeng_calls_direct %>% filter(grepl(" GABA", class_label) & !grepl('OB-', supertype_label)) %>% pull(supertype_label) %>% unique()
+print(length(GABA_supertypes))
+```
+
+    ## [1] 551
+
+``` r
+GABA_filtered_profiles <- all_profiles_supertype %>% filter(target_level %in% GABA_supertypes)
+print(length(GABA_filtered_profiles %>% pull(target_level)%>% unique()))
+```
+
+    ## [1] 45
+
+``` r
+ht <- make_neighborhood_profile_heatmap(
+  all_profiles = GABA_filtered_profiles,
+  Zeng_calls_direct = Zeng_calls_direct,
+  split_counts = split_counts,
+  celltype_color_palette = celltype_color_palette,
+  number_of_neighbors_profiled = number_of_neighbors_profiled
+)
+```
+
+![](figure_plots_with_data_code_files/figure-gfm/spatial_neighborhood-1.png)<!-- -->
+
+    ## [1] 45 37
+
+``` r
+#finer resolution for excitatory
+Glut_supertypes <- Zeng_calls_direct %>% filter(grepl(" Glut", class_label) & !grepl("ENT", supertype_label)) %>% pull(supertype_label) %>% unique()
+ht <- make_neighborhood_profile_heatmap(
+  all_profiles = all_profiles_supertype %>% filter(target_level %in% Glut_supertypes),
+  Zeng_calls_direct = Zeng_calls_direct,
+  split_counts = split_counts,
+  celltype_color_palette = celltype_color_palette,
+  number_of_neighbors_profiled = number_of_neighbors_profiled
+)
+```
+
+![](figure_plots_with_data_code_files/figure-gfm/spatial_neighborhood-2.png)<!-- -->
+
+    ## [1] 57 37
+
+``` r
+#heat map for layers specifically
+
+# ---- 1) Build matrix for ComplexHeatmap ----
+mat_wide <- substructure_counts %>%
+  select(supertype_label, target_parcellation, prop_supertype_in_parcellation) %>%
+  group_by(supertype_label, target_parcellation) %>%
+  summarise(prop = sum(prop_supertype_in_parcellation), .groups = "drop") %>%
+  pivot_wider(
+    names_from  = target_parcellation,
+    values_from = prop,
+    values_fill = 0
+  )
+
+# Row metadata aligned to the matrix row order
+row_meta <- substructure_counts %>%
+  distinct(supertype_label, cell_subclass, primate_subclass) %>%
+  slice(match(mat_wide$supertype_label, supertype_label))
+
+
+row_meta %<>% left_join(tibble(
+  supertype_label = c(CGE_supertypes, MGE_supertypes),
+  GE_origin = c(rep("CGE", length(CGE_supertypes)),
+                rep("MGE", length(MGE_supertypes)))
+))
+```
+
+    ## Joining with `by = join_by(supertype_label)`
+
+``` r
+mat <- mat_wide %>% select(-supertype_label) %>% as.matrix()
+rownames(mat) <- mat_wide$supertype_label
+
+# ---- Column order (explicit) ----
+parcellation_order <- c("1", "2/3", "4", "5", "6a", "6b", 'Hippocampus')
+col_order <- intersect(parcellation_order, colnames(mat))
+mat <- mat[, col_order, drop = FALSE]
+
+
+
+# ---- 3) Marking bar for specific rows ----
+markers <- split_counts %>% pull(cell_cluster) %>% unique()
+zeng_switch_vec <- factor(
+  ifelse(rownames(mat) %in% markers, "marked", "other"),
+  levels = c("other", "marked")
+)
+zengswitch_cols <- c(other = "white", marked = "black")
+
+row_meta %>% pull(primate_subclass) %>% unique()
+```
+
+    ## [1] "Lamp5"      "Pax6"       "Lamp5 Lhx6" "Pvalb"      "Chandelier"
+    ## [6] "Sst Chodl"  "Sst"        "Sncg"       "Vip"
+
+``` r
+row_anno <- rowAnnotation(
+  origin    = row_meta$GE_origin,
+  mouse_subclass    = row_meta$cell_subclass,
+  primate_subclass = row_meta$primate_subclass,
+  SpeciesSwitch       = zeng_switch_vec,
+  col = list(
+    mouse_subclass    = celltype_color_palette,
+    primate_subclass = celltype_color_palette,
+    SpeciesSwitch       = zengswitch_cols,
+    origin = c('CGE' = 'darkviolet', 'MGE' = 'gold')
+  ),
+  annotation_width = unit.c(unit(4, "mm"), unit(4, "mm"), unit(2, "mm")),
+  show_annotation_name = TRUE,
+  annotation_name_gp = gpar(fontface = "bold")
+)
+
+# ---- 4) Heatmap color scale (robust to outliers) ----
+mx <- as.numeric(quantile(mat, 0.99, na.rm = TRUE))
+if (!is.finite(mx) || mx <= 0) {
+  mx <- max(mat, na.rm = TRUE)
+  if (!is.finite(mx) || mx <= 0) mx <- 1
+}
+col_fun <- colorRamp2(c(0, mx), c("white", "red"))
+
+########Order based on primate subclass:
+primate_order <- c(
+  "Lamp5 Lhx6", "Lamp5", "Vip", "Sncg", "Pax6",
+  "Sst", "Sst Chodl", "Pvalb", "Chandelier"
+)
+
+# Build an ordered key; NAs or unseen labels go last
+primate_key <- factor(row_meta$primate_subclass,
+                      levels = primate_order, ordered = TRUE)
+
+# Order rows primarily by primate_subclass, then (optionally) by cell_subclass and rowname
+row_order <- order(primate_key, row_meta$cell_subclass, rownames(mat), na.last = TRUE)
+
+
+# ---- 5) Clustering ----
+row_dend <- hclust(dist(mat), method = "ward.D2")  # keep row clustering
+
+# ---- 6) Draw heatmap ----
+ht <- Heatmap(
+  mat,
+  name             = "Proportion",
+  col              = col_fun,
+  left_annotation  = row_anno,
+  cluster_columns  = FALSE,             
+  column_order     = col_order,        
+  row_title        = "supertype_label",
+
+  split = primate_key,
+  cluster_rows = TRUE,
+  column_names_rot = 90,
+  column_names_centered = T,
+  row_names_gp     = gpar(fontsize = 11),
+  column_names_gp  = gpar(fontsize = 11)
+)
+
+ht = draw(ht, heatmap_legend_side = "right", annotation_legend_side = "right")
+```
+
+![](figure_plots_with_data_code_files/figure-gfm/spatial_neighborhood-3.png)<!-- -->
 
 ## Figure 6A mouse panels
 
