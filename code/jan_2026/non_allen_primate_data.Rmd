@@ -381,6 +381,17 @@ ggsave(filename = 'caglayan_pax6_sncg_vip_lamp5_MGE_CGE_DE_scatter.pdf', path = 
 
 ```
 
+
+
+save source data
+```{r}
+
+save( marker_gene_df, file = '../../source_data/data_for_plots/caglayan_namesake_fc.Rdata')
+```
+
+
+
+
 Just cluster the data taxonomically like the allen, see what it looks like.
 Show the VIP values across the centroids, is there a consistent  out group to VIP that expresses the orthologous SNCG markers?
 CXCL14?
@@ -388,22 +399,22 @@ CXCL14?
 
 ```{r}
 all_species_markers = list(
-    human_10x = read_markers("metamarkers/markers_human_10x.csv.gz"),
-    human_ss = read_markers("metamarkers/markers_human_ss.csv.gz"),
-    chimp_10x = read_markers("metamarkers/markers_chimp_10x.csv.gz"),
-    chimp_ss = read_markers("metamarkers/markers_chimp_ss.csv.gz"),
-    gorilla_10x = read_markers("metamarkers/markers_gorilla_10x.csv.gz"),
-    gorilla_ss = read_markers("metamarkers/markers_gorilla_ss.csv.gz"),
-    macaca_10x = read_markers("metamarkers/markers_macaca_10x.csv.gz"),
-    marmoset_10x= read_markers("metamarkers/markers_marmoset_10x.csv.gz"),
-    tasic18 = read_markers("metamarkers/ortho_markers_tasic18.csv.gz"),
-    zeng_10x_cells = read_markers("metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
-    zeng_10x_nuclei = read_markers("metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
-    zeng_smart_nuclei = read_markers("metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
-    zeng_smart_cells = read_markers("metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
-    zeng_10xv2_wba = read_markers("metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
-    zeng_10xv3_wba = read_markers("metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
-    macosko_wba = read_markers("metamarkers/ortho_markers_macosko_wba.csv.gz")
+    human_10x = read_markers("../metamarkers/markers_human_10x.csv.gz"),
+    human_ss = read_markers("../metamarkers/markers_human_ss.csv.gz"),
+    chimp_10x = read_markers("../metamarkers/markers_chimp_10x.csv.gz"),
+    chimp_ss = read_markers("../metamarkers/markers_chimp_ss.csv.gz"),
+    gorilla_10x = read_markers("../metamarkers/markers_gorilla_10x.csv.gz"),
+    gorilla_ss = read_markers("../metamarkers/markers_gorilla_ss.csv.gz"),
+    macaca_10x = read_markers("../metamarkers/markers_macaca_10x.csv.gz"),
+    marmoset_10x= read_markers("../metamarkers/markers_marmoset_10x.csv.gz"),
+    tasic18 = read_markers("../metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("../metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("../metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("../metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("../metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("../metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("../metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("../metamarkers/ortho_markers_macosko_wba.csv.gz")
 )
 
 
@@ -519,14 +530,14 @@ orthologous mouse markers
 
 ```{r}
 all_mouse_markers = list(
-    tasic18 = read_markers("metamarkers/ortho_markers_tasic18.csv.gz"),
-    zeng_10x_cells = read_markers("metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
-    zeng_10x_nuclei = read_markers("metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
-    zeng_smart_nuclei = read_markers("metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
-    zeng_smart_cells = read_markers("metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
-    zeng_10xv2_wba = read_markers("metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
-    zeng_10xv3_wba = read_markers("metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
-    macosko_wba = read_markers("metamarkers/ortho_markers_macosko_wba.csv.gz")
+    tasic18 = read_markers("../metamarkers/ortho_markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("../metamarkers/ortho_markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("../metamarkers/ortho_markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("../metamarkers/ortho_markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("../metamarkers/ortho_markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("../metamarkers/ortho_markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("../metamarkers/ortho_markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("../metamarkers/ortho_markers_macosko_wba.csv.gz")
 )
 
 
@@ -542,14 +553,14 @@ And the original mouse markers
 MetaMarkers
 ```{r}
 orig_mouse_markers = list(
-    tasic18 = read_markers("metamarkers/markers_tasic18.csv.gz"),
-    zeng_10x_cells = read_markers("metamarkers/markers_zeng_10x_cells.csv.gz"),
-    zeng_10x_nuclei = read_markers("metamarkers/markers_zeng_10x_nuclei.csv.gz"),
-    zeng_smart_nuclei = read_markers("metamarkers/markers_zeng_smart_nuclei.csv.gz"),
-    zeng_smart_cells = read_markers("metamarkers/markers_zeng_smart_cells.csv.gz"),
-    zeng_10xv2_wba = read_markers("metamarkers/markers_zeng_10xv2_wba.csv.gz"),
-    zeng_10xv3_wba = read_markers("metamarkers/markers_zeng_10xv3_wba.csv.gz"),
-    macosko_wba = read_markers("metamarkers/markers_macosko_wba.csv.gz")
+    tasic18 = read_markers("../metamarkers/markers_tasic18.csv.gz"),
+    zeng_10x_cells = read_markers("../metamarkers/markers_zeng_10x_cells.csv.gz"),
+    zeng_10x_nuclei = read_markers("../metamarkers/markers_zeng_10x_nuclei.csv.gz"),
+    zeng_smart_nuclei = read_markers("../metamarkers/markers_zeng_smart_nuclei.csv.gz"),
+    zeng_smart_cells = read_markers("../metamarkers/markers_zeng_smart_cells.csv.gz"),
+    zeng_10xv2_wba = read_markers("../metamarkers/markers_zeng_10xv2_wba.csv.gz"),
+    zeng_10xv3_wba = read_markers("../metamarkers/markers_zeng_10xv3_wba.csv.gz"),
+    macosko_wba = read_markers("../metamarkers/markers_macosko_wba.csv.gz")
 )
 
 
@@ -720,7 +731,7 @@ get_hierarch_clust = function(sce_obj, cluster_markers, num_markers, plot_title,
                                     column_title = plot_title,
                                     top_annotation = column_annotation)
   cent_hm = ComplexHeatmap::draw(cent_hm)
-  return(cent_hm)
+  return(list(cent_hm, centroid_corr, hclust_avg, column_annotation))
 }
 
 
@@ -764,13 +775,16 @@ colData(caglayan_inhib_copy) = get_enrich_exp_meta(primate_subclass_meta_markers
 caglayan_hierarch_plot = get_hierarch_clust(caglayan_inhib_copy, cluster_markers = caglayan_integ_inhib_markers , 
                                             num_markers = 50,plot_title = 'Caglayan Primate clusters: Allen primate MetaMarkers', 
                                             centroid_clust_name = 'seurat_clusters', want_scale = T)
-caglayan_hierarch_plot
+caglayan_hierarch_plot[[1]]
 
 pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/caglayan_cross_primate_primate_MM_cluster_tax_heat.pdf',
     useDingbats = F, height = 8, width = 8)
-caglayan_hierarch_plot
+caglayan_hierarch_plot[[1]]
 dev.off()
 
+
+#save source data
+save(caglayan_hierarch_plot, file = '../../source_data/data_for_plots/caglayan_primate_cluster_tax_data.Rdata')
 
 #Enrichment of Mouse marker expression
 colData(caglayan_inhib_copy) = get_enrich_exp_meta(mouse_subclass_meta_markers, num_mouse_markers, caglayan_inhib_copy)
@@ -779,13 +793,15 @@ colData(caglayan_inhib_copy) = get_enrich_exp_meta(mouse_subclass_meta_markers, 
 caglayan_hierarch_plot = get_hierarch_clust(caglayan_inhib_copy, cluster_markers = caglayan_integ_inhib_markers , 
                                             num_markers = 50,plot_title = 'Caglayan Primate clusters: Mouse MetaMarkers', 
                                             centroid_clust_name = 'seurat_clusters', want_scale = T)
-caglayan_hierarch_plot
+caglayan_hierarch_plot[[1]]
 
 pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/caglayan_cross_primate_mouse_MM_cluster_tax_heat.pdf',
     useDingbats = F, height = 8, width = 8)
-caglayan_hierarch_plot
+caglayan_hierarch_plot[[1]]
 dev.off()
 
+#save source data
+save(caglayan_hierarch_plot, file = '../../source_data/data_for_plots/caglayan_mouse_cluster_tax_data.Rdata')
 
 ```
 
@@ -994,8 +1010,11 @@ ggsave(filename = 'sesten_pax6_sncg_vip_lamp5_MGE_CGE_DE_scatter.pdf', path = '.
 ```
 
 
+save source data
+```{r}
 
-
+save( marker_gene_df, file = '../../source_data/data_for_plots/sestan_namesake_fc.Rdata')
+```
 
 
 
@@ -1290,7 +1309,7 @@ saveRDS(sesten_gaba_data, file = '/inkwell03/werner/sc_data/primate_ma_sestan/se
 
 sesten_gaba_data = readRDS('/inkwell03/werner/sc_data/primate_ma_sestan/sestan_integrated_gaba.rds')
 length(rownames(sesten_gaba_data))
-table(rownames(sesten_gaba_data) %in% final_present_1to1s$`Gene name`)
+#table(rownames(sesten_gaba_data) %in% final_present_1to1s$`Gene name`)
 
 DefaultAssay(sesten_gaba_data) <- "RNA"
 
@@ -1328,12 +1347,15 @@ colData(sesten_gaba_data) = get_enrich_exp_meta(primate_subclass_meta_markers, n
 sesten_hierarch_plot = get_hierarch_clust(sesten_gaba_data, cluster_markers = sesten_integ_inhib_markers  , 
                                             num_markers = 50,plot_title = 'Sestan Primate clusters: Allen primate MetaMarkers', 
                                             centroid_clust_name = 'seurat_clusters', want_scale = T)
-sesten_hierarch_plot 
+sesten_hierarch_plot[[1]] 
 
 pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/sesten_cross_primate_primate_MM_cluster_tax_heat.pdf',
     useDingbats = F, height = 8, width = 8)
-sesten_hierarch_plot 
+sesten_hierarch_plot[[1]] 
 dev.off()
+
+#save source data
+save(sesten_hierarch_plot, file = '../../source_data/data_for_plots/sesten_primate_cluster_tax_data.Rdata')
 
 
 #Enrichment of Mouse marker expression
@@ -1343,15 +1365,16 @@ colData(sesten_gaba_data) = get_enrich_exp_meta(mouse_subclass_meta_markers, num
 sesten_hierarch_plot = get_hierarch_clust(sesten_gaba_data, cluster_markers = sesten_integ_inhib_markers  , 
                                             num_markers = 50,plot_title = 'Sestan Primate clusters: Mouse MetaMarkers', 
                                             centroid_clust_name = 'seurat_clusters', want_scale = T)
-sesten_hierarch_plot 
+sesten_hierarch_plot[[1]] 
 
 
 pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_allen_data/sesten_cross_primate_mouse_MM_cluster_tax_heat.pdf',
     useDingbats = F, height = 8, width = 8)
-sesten_hierarch_plot 
+sesten_hierarch_plot[[1]] 
 dev.off()
 
-
+#save source data
+save(sesten_hierarch_plot, file = '../../source_data/data_for_plots/sesten_mouse_cluster_tax_data.Rdata')
 
 ```
 
@@ -1397,6 +1420,10 @@ pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_alle
     useDingbats = F, height = 4, width = 8)
 hm
 dev.off()
+
+#save source data
+save(confuse_mat_sestan,row_order, col_order , file = '../../source_data/data_for_plots/sesten_primate_confuse_mat.Rdata')
+
 
 
 #Mouse subclass markers
@@ -1452,6 +1479,10 @@ pdf(file = '/home/werner/projects/mouse_brain_consensus_taxonomy/graphs/non_alle
     useDingbats = F, height = 4, width = 8)
 hm
 dev.off()
+
+
+#save source data
+save(confuse_mat_caglayan,row_order, col_order , file = '../../source_data/data_for_plots/caglayan_primate_confuse_mat.Rdata')
 
 
 #Mouse subclass markers
@@ -1540,18 +1571,22 @@ ct_enrichment_primate_df = ct_enrichment_primate_df %>% group_by(de_novo_cluster
 #Get the Sncg and Vip clusters
 sestan_primate_vip_sncg_df = ct_enrichment_primate_df %>% 
   filter(de_novo_cluster %in% c(16, 20, 4, 9, 10, 12, 17, 19) & primate_markers %in% c('all|Vip','all|Sncg')) %>%
-  tidyr::pivot_wider(names_from = primate_markers, values_from = mean_enrichment)
+  tidyr::pivot_wider(names_from = primate_markers, values_from = c(mean_enrichment, sd_enrichment))
 
 sestan_primate_vip_sncg_df$subclass = rep('Vip', length = nrow(sestan_primate_vip_sncg_df))
 sestan_primate_vip_sncg_df$subclass[sestan_primate_vip_sncg_df$de_novo_cluster %in% c(16, 20)] = 'Sncg'
 
-p_yale_primate = ggplot(sestan_primate_vip_sncg_df, aes(x = `all|Vip`, y = `all|Sncg`, color = subclass, label = de_novo_cluster)) + 
+p_yale_primate = ggplot(sestan_primate_vip_sncg_df, aes(x = `mean_enrichment_all|Vip`, y = `mean_enrichment_all|Sncg`, color = subclass, label = de_novo_cluster)) + 
   geom_point(size = 4, show.legend = F) +
   geom_label_repel(min.segment.length = 0, show.legend = F, force_pull = .1, box.padding = .5) +
   geom_abline(intercept = 0, slope = 1, linetype = 'dashed', color = 'black') +
   scale_color_manual(values = celltype_color_palette) +
   ylab('Primate Sncg marker enrichment') + xlab('Primate Vip marker enrichment') + ggtitle('Yale cross-primate data') +
   theme_bw() + theme(aspect.ratio = 1)
+
+#save source data
+save(sestan_primate_vip_sncg_df, file = '../../source_data/data_for_plots/sestan_primate_vip_sncg.Rdata')
+
 
 
 #Get the mouse enrichments, summarise by the mean enrichment per de novo cluster
@@ -1578,6 +1613,8 @@ p_yale_mouse = ggplot(sestan_mouse_vip_sncg_df, aes(x = `all|Vip`, y = `all|Sncg
   ylab('Mouse Sncg marker enrichment') + xlab('Mouse Vip marker enrichment') + ggtitle('Yale cross-primate data') +
   theme_bw() + theme(aspect.ratio = 1)
 
+#save source data
+save(sestan_mouse_vip_sncg_df, file = '../../source_data/data_for_plots/sestan_mouse_vip_sncg.Rdata')
 
 
 p_yale_primate
@@ -1633,6 +1670,11 @@ yale_vip_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mean
                      panel.grid.minor = element_blank())
 
 
+#save source data
+save(plotting_df, file = '../../source_data/data_for_plots/sestan_primate_vip_enrich_dot.Rdata')
+
+
+
 plotting_df = ct_enrichment_primate_df %>% filter(primate_markers == 'all|Pax6')
 
 order_vec = plotting_df %>% arrange(match(mapped_primate_subclass, c('Sst','Sst Chodl','Pvalb','Chandelier','Lamp5 Lhx6','Lamp5','Vip','Pax6','Sncg'))) %>%
@@ -1651,6 +1693,10 @@ yale_pax6_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mea
   theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
                      panel.grid.major = element_blank(),
                      panel.grid.minor = element_blank())
+
+#save source data
+save(plotting_df, file = '../../source_data/data_for_plots/sestan_primate_pax6_enrich_dot.Rdata')
+
 
 
 plotting_df = ct_enrichment_primate_df %>% filter(primate_markers == 'all|Sncg')
@@ -1672,6 +1718,10 @@ yale_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mea
                      panel.grid.major = element_blank(),
                      panel.grid.minor = element_blank())
   
+#save source data
+save(plotting_df, file = '../../source_data/data_for_plots/sestan_primate_sncg_enrich_dot.Rdata')
+
+
 yale_sncg_enrich_dot_plot
 yale_pax6_enrich_dot_plot
 yale_vip_enrich_dot_plot
@@ -1734,6 +1784,10 @@ yale_mouse_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y
                      panel.grid.major = element_blank(),
                      panel.grid.minor = element_blank())
   
+
+#save source data
+save(plotting_df, file = '../../source_data/data_for_plots/sestan_mouse_sncg_enrich_dot.Rdata')
+
 yale_mouse_sncg_enrich_dot_plot
 ggsave(plot = yale_mouse_sncg_enrich_dot_plot, filename = 'dot_sestan_sncg_mean_mouse_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
        useDingbats = F, height = 2, width = 4)
@@ -1767,18 +1821,23 @@ ct_enrichment_primate_df = ct_enrichment_primate_df %>% group_by(de_novo_cluster
 #Get the Sncg and Vip clusters
 caglayan_primate_vip_sncg_df = ct_enrichment_primate_df %>% 
   filter(de_novo_cluster %in% c(19, 5, 7, 11, 13, 17, 18, 20, 26) & primate_markers %in% c('all|Vip','all|Sncg')) %>%
-  tidyr::pivot_wider(names_from = primate_markers, values_from = mean_enrichment)
+  tidyr::pivot_wider(names_from = primate_markers, values_from = c(mean_enrichment, sd_enrichment))
 
 caglayan_primate_vip_sncg_df$subclass = rep('Vip', length = nrow(caglayan_primate_vip_sncg_df))
 caglayan_primate_vip_sncg_df$subclass[caglayan_primate_vip_sncg_df$de_novo_cluster %in% c(19)] = 'Sncg'
 
-p_texas_primate = ggplot(caglayan_primate_vip_sncg_df, aes(x = `all|Vip`, y = `all|Sncg`, color = subclass, label = de_novo_cluster)) + 
+p_texas_primate = ggplot(caglayan_primate_vip_sncg_df, aes(x = `mean_enrichment_all|Vip`, y = `mean_enrichment_all|Sncg`, color = subclass, label = de_novo_cluster)) + 
   geom_point(size = 4, show.legend = F) +
   geom_label_repel(min.segment.length = 0, show.legend = F, force_pull = .1, box.padding = .5) +
   geom_abline(intercept = 0, slope = 1, linetype = 'dashed', color = 'black') +
   scale_color_manual(values = celltype_color_palette) +
   ylab('Primate Sncg marker enrichment') + xlab('Primate Vip marker enrichment') + ggtitle('UT Southwestern cross-primate data') +
   theme_bw() + theme(aspect.ratio = 1)
+
+#save source data
+save(caglayan_primate_vip_sncg_df, file = '../../source_data/data_for_plots/caglayan_primate_vip_sncg.Rdata')
+
+
 
 
 #Get the mouse enrichments, summarise by the mean enrichment per de novo cluster
@@ -1804,6 +1863,9 @@ p_texas_mouse = ggplot(caglayan_mouse_vip_sncg_df, aes(x = `all|Vip`, y = `all|S
   scale_color_manual(values = celltype_color_palette) +
   ylab('Mouse Sncg marker enrichment') + xlab('Mouse Vip marker enrichment') + ggtitle('UT Southwestern cross-primate data') +
   theme_bw() + theme(aspect.ratio = 1)
+
+#save source data
+save(caglayan_mouse_vip_sncg_df, file = '../../source_data/data_for_plots/caglayan_mouse_vip_sncg.Rdata')
 
 
 
@@ -1858,6 +1920,10 @@ texas_vip_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mea
                      panel.grid.major = element_blank(),
                      panel.grid.minor = element_blank())
 
+#save source data
+save(plotting_df, file = '../../source_data/data_for_plots/caglayan_primate_vip_enrich_dot.Rdata')
+
+
 
 plotting_df = ct_enrichment_primate_df %>% filter(primate_markers == 'all|Pax6')
 
@@ -1877,6 +1943,10 @@ texas_pax6_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = me
   theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
                      panel.grid.major = element_blank(),
                      panel.grid.minor = element_blank())
+
+#save source data
+save(plotting_df, file = '../../source_data/data_for_plots/caglayan_primate_pax6_enrich_dot.Rdata')
+
 
 
 plotting_df = ct_enrichment_primate_df %>% filter(primate_markers == 'all|Sncg')
@@ -1898,6 +1968,11 @@ texas_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = me
                      panel.grid.major = element_blank(),
                      panel.grid.minor = element_blank())
   
+#save source data
+save(plotting_df, file = '../../source_data/data_for_plots/caglayan_primate_sncg_enrich_dot.Rdata')
+
+
+
 texas_sncg_enrich_dot_plot
 texas_pax6_enrich_dot_plot
 texas_vip_enrich_dot_plot
@@ -1960,6 +2035,10 @@ texas_mouse_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, 
                      panel.grid.major = element_blank(),
                      panel.grid.minor = element_blank())
   
+#save source data
+save(plotting_df, file = '../../source_data/data_for_plots/caglayan_mouse_sncg_enrich_dot.Rdata')
+
+
 texas_mouse_sncg_enrich_dot_plot
 ggsave(plot = texas_mouse_sncg_enrich_dot_plot, filename = 'dot_caglayan_sncg_mean_mouse_enrich.pdf', path = '../graphs/non_allen_data/', device = 'pdf',
        useDingbats = F, height = 2, width = 4)
