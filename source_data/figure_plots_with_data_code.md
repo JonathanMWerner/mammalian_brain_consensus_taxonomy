@@ -1293,3 +1293,77 @@ mouse_mouse_sncg_enrich_dot_plot
 ```
 
 ![](figure_plots_with_data_code_files/figure-gfm/mouse_primate_enrich_dot_plots-4.png)<!-- -->
+
+## FIgure 6A Tree shrew panels
+
+``` r
+load(file = 'data_for_plots/treeShrew_primate_vip_enrich_dot.Rdata')
+
+ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Vip enrichment') + xlab('Tree Shrew de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+```
+
+![](figure_plots_with_data_code_files/figure-gfm/treeshrew_primate_enrich_dot_plots-1.png)<!-- -->
+
+``` r
+load(file = 'data_for_plots/treeShrew_primate_pax6_enrich_dot.Rdata')
+
+ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Pax6 enrichment') + xlab('Tree Shrew de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+```
+
+![](figure_plots_with_data_code_files/figure-gfm/treeshrew_primate_enrich_dot_plots-2.png)<!-- -->
+
+``` r
+load(file = 'data_for_plots/treeShrew_primate_sncg_enrich_dot.Rdata')
+
+ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Sncg enrichment') + xlab('Tree Shrew de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+```
+
+![](figure_plots_with_data_code_files/figure-gfm/treeshrew_primate_enrich_dot_plots-3.png)<!-- -->
+
+``` r
+load(file = 'data_for_plots/treeShrew_mouse_sncg_enrich_dot.Rdata')
+
+ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Mouse Sncg enrichment') + xlab('Tree Shrew de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+```
+
+![](figure_plots_with_data_code_files/figure-gfm/treeshrew_primate_enrich_dot_plots-4.png)<!-- -->
