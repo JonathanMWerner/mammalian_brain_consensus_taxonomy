@@ -70,6 +70,32 @@ ggplot(mouse_name_sake_genes, aes(x = primate_auroc, y = mouse_auroc, color = ce
 ## Figure 1D
 
 ```{r non_allen_MGE_CGE_FC}
+load(file = 'data_for_plots/sestan_namesake_fc.Rdata')
+
+ggplot(marker_gene_df  , aes(x = log2_FC_CGE, y = species , color = gene, shape = species)) + geom_point(size = 5,alpha = .5) +
+  xlab('log2(FC) CGE/MGE') + ylab('Species') +
+  scale_color_manual(values = c('SNCG' = celltype_color_palette[['Sncg']], 
+                                'PAX6' = celltype_color_palette[['Pax6']],
+                                'LAMP5' = celltype_color_palette[['Lamp5']],
+                                'VIP' = celltype_color_palette[['Vip']])) + 
+  geom_hline(yintercept = 0, linetype = 'dashed', color = 'red') +
+  geom_vline(xintercept = 0, linetype = 'dashed', color = 'red') +
+  scale_shape_manual(values = c('human' = 'square', 'chimp' = 'triangle', 'macaque' = 'circle', 'marmoset' = 'cross')) +
+  theme_bw() + ggtitle('Sestan cross-primate data')
+
+load(file = 'data_for_plots/caglayan_namesake_fc.Rdata')
+
+
+ggplot(marker_gene_df  , aes(x = log2_FC_CGE, y = species , color = gene, shape = species)) + geom_point(size = 5,alpha = .5) +
+  xlab('log2(FC) CGE/MGE') + ylab('Species') +
+  scale_color_manual(values = c('SNCG' = celltype_color_palette[['Sncg']], 
+                                'PAX6' = celltype_color_palette[['Pax6']],
+                                'LAMP5' = celltype_color_palette[['Lamp5']],
+                                'VIP' = celltype_color_palette[['Vip']])) + 
+  geom_hline(yintercept = 0, linetype = 'dashed', color = 'red') +
+  geom_vline(xintercept = 0, linetype = 'dashed', color = 'red') +
+  theme_bw() + ggtitle('Caglayan cross-primate data')
+
 
 
 ```
@@ -773,6 +799,303 @@ ht = draw(ht, heatmap_legend_side = "right", annotation_legend_side = "right")
 
 
 
+## Figure 5A and E
+
+```{r non_allen_marker_tax}
+
+
+#Panel 5A
+
+load(file = 'data_for_plots/sesten_primate_cluster_tax_data.Rdata')
+
+centroid_corr = sesten_hierarch_plot[[2]]
+hclust_avg = sesten_hierarch_plot[[3]]
+column_annotation = sesten_hierarch_plot[[4]]
+
+corr_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+cent_hm = ComplexHeatmap::Heatmap(centroid_corr, col = corr_cols, name = 'spearman' ,
+                                  cluster_columns = hclust_avg,
+                                  cluster_rows = hclust_avg,
+                                  column_title = 'Sestan Primate clusters: Allen primate MetaMarkers',
+                                  top_annotation = column_annotation)
+cent_hm = ComplexHeatmap::draw(cent_hm)
+
+
+load(file = 'data_for_plots/sesten_mouse_cluster_tax_data.Rdata')
+
+centroid_corr = sesten_hierarch_plot[[2]]
+hclust_avg = sesten_hierarch_plot[[3]]
+column_annotation = sesten_hierarch_plot[[4]]
+
+corr_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+cent_hm = ComplexHeatmap::Heatmap(centroid_corr, col = corr_cols, name = 'spearman' ,
+                                  cluster_columns = hclust_avg,
+                                  cluster_rows = hclust_avg,
+                                  column_title = 'Sestan Primate clusters: Mouse MetaMarkers',
+                                  top_annotation = column_annotation)
+cent_hm = ComplexHeatmap::draw(cent_hm)
+
+
+
+#Panel 5E
+
+load(file = 'data_for_plots/caglayan_primate_cluster_tax_data.Rdata')
+
+centroid_corr = caglayan_hierarch_plot[[2]]
+hclust_avg = caglayan_hierarch_plot[[3]]
+column_annotation = caglayan_hierarch_plot[[4]]
+
+corr_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+cent_hm = ComplexHeatmap::Heatmap(centroid_corr, col = corr_cols, name = 'spearman' ,
+                                  cluster_columns = hclust_avg,
+                                  cluster_rows = hclust_avg,
+                                  column_title = 'Caglayan Primate clusters: Allen primate MetaMarkers',
+                                  top_annotation = column_annotation)
+cent_hm = ComplexHeatmap::draw(cent_hm)
+
+
+load(file = 'data_for_plots/caglayan_mouse_cluster_tax_data.Rdata')
+
+centroid_corr = caglayan_hierarch_plot[[2]]
+hclust_avg = caglayan_hierarch_plot[[3]]
+column_annotation = caglayan_hierarch_plot[[4]]
+
+corr_cols <- rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(11,"RdYlBu"))(100))
+cent_hm = ComplexHeatmap::Heatmap(centroid_corr, col = corr_cols, name = 'spearman' ,
+                                  cluster_columns = hclust_avg,
+                                  cluster_rows = hclust_avg,
+                                  column_title = 'Caglayan Primate clusters: Mouse MetaMarkers',
+                                  top_annotation = column_annotation)
+cent_hm = ComplexHeatmap::draw(cent_hm)
+
+
+```
+
+## FIgure 5 B and F
+
+```{r non_allen_confuse_mats}
+
+load(file = 'data_for_plots/sesten_primate_confuse_mat.Rdata')
+
+col_fun = circlize::colorRamp2(breaks = c(0,.5, 1) , colors = c('white','orange','red'))
+hm = ComplexHeatmap::Heatmap(confuse_mat_sestan,name = 'cluster proportion',
+                        col = col_fun,
+                        cluster_rows = F, row_order = row_order,
+                        cluster_columns = F, column_order = col_order,
+                        column_title = 'Sestan cluster predictions with Allen Primate MetaMarkers')
+hm = ComplexHeatmap::draw(hm)
+
+load(file = 'data_for_plots/caglayan_primate_confuse_mat.Rdata')
+
+col_fun = circlize::colorRamp2(breaks = c(0,.5, 1) , colors = c('white','orange','red'))
+hm = ComplexHeatmap::Heatmap(confuse_mat_caglayan,name = 'cluster proportion',
+                        col = col_fun,
+                        cluster_rows = F, row_order = row_order,
+                        cluster_columns = F, column_order = col_order,
+                        column_title = 'Caglayan cluster predictions with Allen Primate MetaMarkers')
+hm = ComplexHeatmap::draw(hm)
+
+
+```
+
+
+## Figure 5 C and D
+
+```{r yale_scatter}
+
+load( file = 'data_for_plots/sestan_primate_vip_sncg.Rdata')
+
+ggplot(sestan_primate_vip_sncg_df, aes(x = `mean_enrichment_all|Vip`, y = `mean_enrichment_all|Sncg`, color = subclass, label = de_novo_cluster)) + 
+  geom_point(size = 4, show.legend = F) +
+  geom_label_repel(min.segment.length = 0, show.legend = F, force_pull = .1, box.padding = .5) +
+  geom_abline(intercept = 0, slope = 1, linetype = 'dashed', color = 'black') +
+  scale_color_manual(values = celltype_color_palette) +
+  ylab('Primate Sncg marker enrichment') + xlab('Primate Vip marker enrichment') + ggtitle('Yale cross-primate data') +
+  theme_bw() + theme(aspect.ratio = 1)
+
+load( file = 'data_for_plots/sestan_mouse_vip_sncg.Rdata')
+
+ggplot(sestan_mouse_vip_sncg_df, aes(x = `all|Vip`, y = `all|Sncg`, color = subclass, label = de_novo_cluster)) + 
+  geom_point(size = 4, show.legend = F) +
+  geom_label_repel(min.segment.length = 0, show.legend = F, force_pull = .1, box.padding = .5) +
+  geom_abline(intercept = 0, slope = 1, linetype = 'dashed', color = 'black') +
+  scale_color_manual(values = celltype_color_palette) +
+  ylab('Mouse Sncg marker enrichment') + xlab('Mouse Vip marker enrichment') + ggtitle('Yale cross-primate data') +
+  theme_bw() + theme(aspect.ratio = 1)
+
+
+
+```
+
+
+## Figure 5 G and H
+
+```{r texas_scatter}
+
+load( file = 'data_for_plots/caglayan_primate_vip_sncg.Rdata')
+
+ggplot(caglayan_primate_vip_sncg_df, aes(x = `mean_enrichment_all|Vip`, y = `mean_enrichment_all|Sncg`, color = subclass, label = de_novo_cluster)) + 
+  geom_point(size = 4, show.legend = F) +
+  geom_label_repel(min.segment.length = 0, show.legend = F, force_pull = .1, box.padding = .5) +
+  geom_abline(intercept = 0, slope = 1, linetype = 'dashed', color = 'black') +
+  scale_color_manual(values = celltype_color_palette) +
+  ylab('Primate Sncg marker enrichment') + xlab('Primate Vip marker enrichment') + ggtitle('UT Southwestern cross-primate data') +
+  theme_bw() + theme(aspect.ratio = 1)
+
+load( file = 'data_for_plots/caglayan_mouse_vip_sncg.Rdata')
+
+ggplot(caglayan_mouse_vip_sncg_df, aes(x = `all|Vip`, y = `all|Sncg`, color = subclass, label = de_novo_cluster)) + 
+  geom_point(size = 4, show.legend = F) +
+  geom_label_repel(min.segment.length = 0, show.legend = F, force_pull = .1, box.padding = .5) +
+  geom_abline(intercept = 0, slope = 1, linetype = 'dashed', color = 'black') +
+  scale_color_manual(values = celltype_color_palette) +
+  ylab('Mouse Sncg marker enrichment') + xlab('Mouse Vip marker enrichment') + ggtitle('UT Southwestern cross-primate data') +
+  theme_bw() + theme(aspect.ratio = 1)
+
+
+
+```
+
+
+
+## FIgure 6A Yale primate panels
+
+```{r yale_primate_enrich_dot_plots}
+
+load(file = 'data_for_plots/sestan_primate_vip_enrich_dot.Rdata')
+
+ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Vip enrichment') + xlab('Yale cross-primate de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+load(file = 'data_for_plots/sestan_primate_pax6_enrich_dot.Rdata')
+
+ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Pax6 enrichment') + xlab('Yale cross-primate de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+
+
+load(file = 'data_for_plots/sestan_primate_sncg_enrich_dot.Rdata')
+
+ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Sncg enrichment') + xlab('Yale cross-primate de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+
+
+load(file = 'data_for_plots/sestan_mouse_sncg_enrich_dot.Rdata')
+
+ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Mouse Sncg enrichment') + xlab('Yale cross-primate de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+
+
+```
+
+
+
+
+## FIgure 6A Texas primate panels
+
+```{r texas_primate_enrich_dot_plots}
+
+load(file = 'data_for_plots/caglayan_primate_vip_enrich_dot.Rdata')
+
+ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Vip enrichment') + xlab('UT SouthWestern cross-primate de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+load(file = 'data_for_plots/caglayan_primate_pax6_enrich_dot.Rdata')
+
+ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Pax6 enrichment') + xlab('UT SouthWestern cross-primate de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+
+
+load(file = 'data_for_plots/caglayan_primate_sncg_enrich_dot.Rdata')
+
+ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Primate Sncg enrichment') + xlab('UT SouthWestern cross-primate de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+
+
+load(file = 'data_for_plots/caglayan_mouse_sncg_enrich_dot.Rdata')
+
+ggplot(plotting_df, aes(x = de_novo_cluster, y = mean_enrichment, color = mapped_primate_subclass)) +
+  geom_point(size = 3, show.legend = F) + 
+  geom_linerange(aes(ymin = mean_enrichment - sd_enrichment, ymax = mean_enrichment + sd_enrichment),
+                 show.legend = F) +
+  geom_hline(yintercept = 1, linetype = 'dashed', color = 'black') +
+  ylab('Mean Mouse Sncg enrichment') + xlab('UT SouthWestern cross-primate de novo clusters') + ylim(0,3) +
+  scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  scale_color_manual(values = celltype_color_palette) +
+  theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank())
+
+
+
+```
 
 
 ## Figure 6A mouse panels
