@@ -2290,7 +2290,13 @@ shrew_vip_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = mea
                      panel.grid.major = element_blank(),
                      panel.grid.minor = element_blank())
 
+
+#save source data
+save(plotting_df, file = '../../source_data/data_for_plots/treeShrew_primate_vip_enrich_dot.Rdata')
+
 shrew_vip_enrich_dot_plot
+
+
 
 plotting_df = ct_enrichment_tree_shrew_df %>% filter(primate_markers == 'all|Pax6')
 
@@ -2311,7 +2317,11 @@ shrew_pax6_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = me
                      panel.grid.major = element_blank(),
                      panel.grid.minor = element_blank())
 
+#save source data
+save(plotting_df, file = '../../source_data/data_for_plots/treeShrew_primate_pax6_enrich_dot.Rdata')
+
 shrew_pax6_enrich_dot_plot
+
 
 
 plotting_df = ct_enrichment_tree_shrew_df %>% filter(primate_markers == 'all|Sncg')
@@ -2332,6 +2342,9 @@ shrew_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, y = me
   theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
                      panel.grid.major = element_blank(),
                      panel.grid.minor = element_blank())
+
+#save source data
+save(plotting_df, file = '../../source_data/data_for_plots/treeShrew_primate_sncg_enrich_dot.Rdata')
 
 shrew_sncg_enrich_dot_plot
 
@@ -2389,6 +2402,10 @@ shrew_mouse_sncg_enrich_dot_plot = ggplot(plotting_df, aes(x = de_novo_cluster, 
   theme_bw() + theme(panel.border = element_blank(), axis.line = element_line(),
                      panel.grid.major = element_blank(),
                      panel.grid.minor = element_blank())
+
+#save source data
+save(plotting_df, file = '../../source_data/data_for_plots/treeShrew_mouse_sncg_enrich_dot.Rdata')
+
 
 shrew_mouse_sncg_enrich_dot_plot
 ggsave(plot = shrew_mouse_sncg_enrich_dot_plot, filename = 'dot_tree_shrew_sncg_mean_mouse_enrich.pdf', path = '../../graphs/non_allen_data/', device = 'pdf',
