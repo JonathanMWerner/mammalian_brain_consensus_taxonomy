@@ -4,6 +4,10 @@ Contains all code used for analysis in Werner, Suresh, French, and Gillis. The m
 
 
 Current analysis code can be found in code/jan_2026
+Source data files too large for github can be found at [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21925301.svg)](https://doi.org/10.5281/zenodo.21925301)
+(caglayan_mouse_cluster_tax_data.Rdata, caglayan_primate_cluster_tax_data.Rdata, sesten_mouse_cluster_tax_data.Rdata, sesten_primate_cluster_tax_data.Rdata, and spatial_annotations.Rdata)
+
+
 Below is a breif description of each notebook. A detailed description of all processed data and the underlying data for each figure panel will be made avilable prior to publication.
 
 orthology.Rmd – Identification of the 1to1-orthologs that are present across all the mouse and primate datasets
